@@ -12,6 +12,13 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 import { Dashboard } from "@/pages/Dashboard";
 import { LeadsManager } from "@/pages/LeadsManager";
 import { MyLeads } from "@/pages/MyLeads";
+import { AgentManager } from "@/pages/AgentManager";
+import { Communication } from "@/pages/Communication";
+import { Calendar } from "@/pages/Calendar";
+import { Analytics } from "@/pages/Analytics";
+import { Automation } from "@/pages/Automation";
+import { Properties } from "@/pages/Properties";
+import { Notifications } from "@/pages/Notifications";
 import { Settings } from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -33,26 +40,17 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/leads" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <LeadsManager />
-        </ProtectedRoute>
-      } />
-      <Route path="/my-leads" element={
-        <ProtectedRoute allowedRoles={['agent']}>
-          <MyLeads />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
+      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><LeadsManager /></ProtectedRoute>} />
+      <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MyLeads /></ProtectedRoute>} />
+      <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin']}><AgentManager /></ProtectedRoute>} />
+      <Route path="/communication" element={<ProtectedRoute><Communication /></ProtectedRoute>} />
+      <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
+      <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin']}><Automation /></ProtectedRoute>} />
+      <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

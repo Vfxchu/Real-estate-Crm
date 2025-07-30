@@ -1,0 +1,380 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
+  UserCheck,
+  Users,
+  Target,
+  TrendingUp,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface Agent {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'active' | 'inactive' | 'busy';
+  role: 'senior' | 'junior' | 'lead';
+  assignedLeads: number;
+  closedDeals: number;
+  conversionRate: number;
+  joinDate: string;
+  lastActive: string;
+}
+
+const mockAgents: Agent[] = [
+  {
+    id: '1',
+    name: 'Sarah Johnson',
+    email: 'sarah.j@realestate.com',
+    phone: '+1 (555) 123-4567',
+    status: 'active',
+    role: 'senior',
+    assignedLeads: 15,
+    closedDeals: 8,
+    conversionRate: 53.3,
+    joinDate: '2023-01-15',
+    lastActive: '2024-01-20 10:30',
+  },
+  {
+    id: '2',
+    name: 'Mike Chen',
+    email: 'mike.c@realestate.com',
+    phone: '+1 (555) 234-5678',
+    status: 'active',
+    role: 'junior',
+    assignedLeads: 12,
+    closedDeals: 5,
+    conversionRate: 41.7,
+    joinDate: '2023-06-01',
+    lastActive: '2024-01-20 14:15',
+  },
+  {
+    id: '3',
+    name: 'Lisa Rodriguez',
+    email: 'lisa.r@realestate.com',
+    phone: '+1 (555) 345-6789',
+    status: 'busy',
+    role: 'lead',
+    assignedLeads: 18,
+    closedDeals: 12,
+    conversionRate: 66.7,
+    joinDate: '2022-08-10',
+    lastActive: '2024-01-20 09:45',
+  },
+];
+
+export const AgentManager = () => {
+  const [agents, setAgents] = useState<Agent[]>(mockAgents);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const { toast } = useToast();
+
+  const filteredAgents = agents.filter(agent => {
+    const matchesSearch = agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         agent.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || agent.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusColor = (status: Agent['status']) => {
+    switch (status) {
+      case 'active': return 'bg-success text-success-foreground';
+      case 'inactive': return 'bg-muted text-muted-foreground';
+      case 'busy': return 'bg-warning text-warning-foreground';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getRoleColor = (role: Agent['role']) => {
+    switch (role) {
+      case 'lead': return 'border-primary text-primary';
+      case 'senior': return 'border-success text-success';
+      case 'junior': return 'border-info text-info';
+      default: return 'border-muted-foreground text-muted-foreground';
+    }
+  };
+
+  const handleAction = (action: string, agentId: string) => {
+    toast({
+      title: `${action} action`,
+      description: `${action} performed for agent ${agentId}`,
+    });
+  };
+
+  const totalAgents = agents.length;
+  const activeAgents = agents.filter(a => a.status === 'active').length;
+  const totalLeads = agents.reduce((sum, a) => sum + a.assignedLeads, 0);
+  const totalClosedDeals = agents.reduce((sum, a) => sum + a.closedDeals, 0);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Agent Manager</h1>
+          <p className="text-muted-foreground">
+            Manage your sales team and track performance
+          </p>
+        </div>
+        <Button className="btn-primary">
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Agent
+        </Button>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="card-elevated">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Users className="w-8 h-8 text-primary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Agents</p>
+                <p className="text-2xl font-bold">{totalAgents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <UserCheck className="w-8 h-8 text-success" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Active Agents</p>
+                <p className="text-2xl font-bold">{activeAgents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Target className="w-8 h-8 text-info" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Active Leads</p>
+                <p className="text-2xl font-bold">{totalLeads}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <TrendingUp className="w-8 h-8 text-warning" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Closed Deals</p>
+                <p className="text-2xl font-bold">{totalClosedDeals}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="card-elevated">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search agents by name or email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="busy">Busy</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Agents Table */}
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Agents ({filteredAgents.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agent</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Leads</TableHead>
+                  <TableHead>Deals</TableHead>
+                  <TableHead>Conversion</TableHead>
+                  <TableHead>Last Active</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAgents.map((agent) => (
+                  <TableRow key={agent.id} className="hover:bg-muted/30">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>
+                            {agent.name.split(' ').map(n => n[0]).join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{agent.name}</p>
+                          <p className="text-sm text-muted-foreground">{agent.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="text-sm">{agent.phone}</p>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                            <Phone className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                            <Mail className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(agent.status)}>
+                        {agent.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={getRoleColor(agent.role)}>
+                        {agent.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{agent.assignedLeads}</TableCell>
+                    <TableCell>{agent.closedDeals}</TableCell>
+                    <TableCell>
+                      <span className={agent.conversionRate >= 50 ? 'text-success' : 'text-warning'}>
+                        {agent.conversionRate}%
+                      </span>
+                    </TableCell>
+                    <TableCell>{agent.lastActive}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => setSelectedAgent(agent)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Agent Details - {selectedAgent?.name}</DialogTitle>
+                            </DialogHeader>
+                            {selectedAgent && (
+                              <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label>Name</Label>
+                                    <Input defaultValue={selectedAgent.name} className="mt-2" />
+                                  </div>
+                                  <div>
+                                    <Label>Email</Label>
+                                    <Input defaultValue={selectedAgent.email} className="mt-2" />
+                                  </div>
+                                  <div>
+                                    <Label>Phone</Label>
+                                    <Input defaultValue={selectedAgent.phone} className="mt-2" />
+                                  </div>
+                                  <div>
+                                    <Label>Role</Label>
+                                    <Select defaultValue={selectedAgent.role}>
+                                      <SelectTrigger className="mt-2">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="junior">Junior Agent</SelectItem>
+                                        <SelectItem value="senior">Senior Agent</SelectItem>
+                                        <SelectItem value="lead">Lead Agent</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label>Status</Label>
+                                    <Select defaultValue={selectedAgent.status}>
+                                      <SelectTrigger className="mt-2">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                        <SelectItem value="busy">Busy</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button className="btn-primary">Save Changes</Button>
+                                  <Button variant="outline">View Performance</Button>
+                                  <Button variant="outline">Assign Leads</Button>
+                                </div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-destructive"
+                          onClick={() => handleAction('Remove', agent.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
