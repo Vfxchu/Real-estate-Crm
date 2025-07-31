@@ -29,7 +29,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
@@ -141,17 +141,17 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <Button variant="ghost" size="sm" className="gap-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                 <span className="text-xs font-medium text-primary-foreground">
-                  {user?.name.split(' ').map(n => n[0]).join('')}
+                  {profile?.name.split(' ').map(n => n[0]).join('') || 'U'}
                 </span>
               </div>
-              <span className="hidden md:block">{user?.name}</span>
+              <span className="hidden md:block">{profile?.name || user?.email}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
               <div>
-                <p className="font-medium">{user?.name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="font-medium">{profile?.name || user?.email}</p>
+                <p className="text-xs text-muted-foreground">{profile?.email || user?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

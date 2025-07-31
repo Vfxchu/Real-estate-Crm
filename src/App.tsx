@@ -6,9 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { LoginForm } from "@/components/auth/LoginForm";
-import { SignupForm } from "@/components/auth/SignupForm";
-import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import { Auth } from "@/pages/Auth";
 import { Dashboard } from "@/pages/Dashboard";
 import { LeadsManager } from "@/pages/LeadsManager";
 import { MyLeads } from "@/pages/MyLeads";
@@ -30,10 +28,8 @@ const AppRoutes = () => {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/login" element={<LoginForm />} />
-        <Route path="/signup" element={<SignupForm />} />
-        <Route path="/forgot-password" element={<ForgotPasswordForm />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
   }
@@ -51,7 +47,7 @@ const AppRoutes = () => {
       <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/auth" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

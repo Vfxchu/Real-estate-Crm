@@ -23,16 +23,16 @@ import {
 } from 'lucide-react';
 
 export const Settings = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = profile?.role === 'admin';
 
   const [settings, setSettings] = useState({
     // Profile settings
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
+    name: profile?.name || '',
+    email: profile?.email || user?.email || '',
+    phone: profile?.phone || '',
     
     // Notification settings
     emailNotifications: true,
@@ -139,7 +139,7 @@ export const Settings = () => {
                   <Label htmlFor="role">Role</Label>
                   <Input
                     id="role"
-                    value={user?.role}
+                    value={profile?.role || 'agent'}
                     disabled
                     className="mt-2 capitalize"
                   />

@@ -12,7 +12,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   allowedRoles 
 }) => {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, profile, isLoading } = useAuth();
   const location = useLocation();
 
   // Show loading spinner while checking authentication
@@ -30,7 +30,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Check role-based access if allowedRoles is specified
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && profile && !allowedRoles.includes(profile.role)) {
     return <Navigate to="/" replace />;
   }
 

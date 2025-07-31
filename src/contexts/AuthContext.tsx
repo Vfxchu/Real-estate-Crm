@@ -1,24 +1,31 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 export type UserRole = 'admin' | 'agent';
 
-export interface User {
+export interface UserProfile {
   id: string;
+  user_id: string;
   email: string;
   name: string;
   role: UserRole;
-  avatar?: string;
+  avatar_url?: string;
   phone?: string;
   status?: 'active' | 'inactive';
-  createdAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  profile: UserProfile | null;
+  login: (email: string, password: string) => Promise<{ error: any }>;
+  signup: (email: string, password: string, name: string, role?: UserRole) => Promise<{ error: any }>;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,66 +38,90 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock users for demo
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'admin@realestate.com',
-    name: 'Admin User',
-    role: 'admin',
-    status: 'active',
-    createdAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    email: 'agent@realestate.com',
-    name: 'Jane Agent',
-    role: 'agent',
-    phone: '+1234567890',
-    status: 'active',
-    createdAt: '2024-01-02T00:00:00Z',
-  },
-];
-
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('crm-user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch user profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          setProfile(profileData as UserProfile);
+        } else {
+          setProfile(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Fetch user profile
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+          .then(({ data: profileData }) => {
+            setProfile(profileData as UserProfile);
+            setIsLoading(false);
+          });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Demo login - accept any password for demo users
-    const foundUser = mockUsers.find(u => u.email === email);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('crm-user', JSON.stringify(foundUser));
-    } else {
-      throw new Error('Invalid credentials');
-    }
-    
-    setIsLoading(false);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('crm-user');
+  const signup = async (email: string, password: string, name: string, role: UserRole = 'agent') => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name,
+          role,
+        }
+      }
+    });
+    return { error };
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   const isAuthenticated = !!user;
@@ -98,7 +129,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      profile,
+      session,
       login, 
+      signup,
       logout, 
       isLoading, 
       isAuthenticated 

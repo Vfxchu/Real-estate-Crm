@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 
 export const Dashboard = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { user, profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
 
   // Mock data - replace with real data
   const adminStats = [
@@ -107,7 +107,7 @@ export const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
-            Welcome back, {user?.name?.split(' ')[0]}!
+            Welcome back, {profile?.name?.split(' ')[0] || 'User'}!
           </h1>
           <p className="text-muted-foreground">
             {isAdmin 

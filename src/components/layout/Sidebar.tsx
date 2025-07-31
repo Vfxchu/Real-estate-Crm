@@ -98,11 +98,11 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const location = useLocation();
 
   const filteredNavigation = navigation.filter(item => 
-    user?.role && item.roles.includes(user.role)
+    profile?.role && item.roles.includes(profile.role as UserRole)
   );
 
   return (
@@ -159,20 +159,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       </nav>
 
       {/* User Info */}
-      {!isCollapsed && user && (
+      {!isCollapsed && profile && (
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3 animate-fade-in">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <span className="text-xs font-medium text-primary-foreground">
-                {user.name.split(' ').map(n => n[0]).join('')}
+                {profile.name.split(' ').map(n => n[0]).join('')}
               </span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                {user.name}
+                {profile.name}
               </p>
               <p className="text-xs text-sidebar-foreground/60 capitalize">
-                {user.role}
+                {profile.role}
               </p>
             </div>
           </div>
