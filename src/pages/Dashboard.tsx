@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { LeadsChart } from '@/components/dashboard/LeadsChart';
@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
+import { AddLeadForm } from '@/components/forms/AddLeadForm';
+import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
+import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
 import {
   Target,
   Users,
@@ -21,6 +24,9 @@ import {
 export const Dashboard = () => {
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedChatLead, setSelectedChatLead] = useState<{name: string, phone?: string} | null>(null);
 
   // Mock data - replace with real data
   const adminStats = [
@@ -116,7 +122,7 @@ export const Dashboard = () => {
             }
           </p>
         </div>
-        <Button className="btn-primary">
+        <Button className="btn-primary" onClick={() => setAddLeadFormOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
@@ -141,6 +147,11 @@ export const Dashboard = () => {
                 key={index}
                 variant="outline"
                 className="h-20 flex-col gap-2 hover:scale-105 transition-transform"
+                onClick={() => {
+                  if (action.label === 'Add New Lead') {
+                    setAddLeadFormOpen(true);
+                  }
+                }}
               >
                 <div className={`w-8 h-8 rounded-full ${action.color} flex items-center justify-center`}>
                   <action.icon className="w-4 h-4 text-white" />
@@ -259,6 +270,32 @@ export const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Lead Form */}
+      <AddLeadForm 
+        open={addLeadFormOpen} 
+        onOpenChange={setAddLeadFormOpen} 
+      />
+
+      {/* WhatsApp Chat */}
+      {selectedChatLead && (
+        <WhatsAppChat
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          leadName={selectedChatLead.name}
+          leadPhone={selectedChatLead.phone}
+        />
+      )}
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppFloatingButton 
+        onClick={() => {
+          // For demo, use first lead or a default
+          const demoLead = { name: 'John Smith', phone: '+1 (555) 123-4567' };
+          setSelectedChatLead(demoLead);
+          setChatOpen(true);
+        }}
+      />
     </div>
   );
 };

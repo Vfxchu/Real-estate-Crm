@@ -10,6 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useLeads } from '@/hooks/useLeads';
+import { AddLeadForm } from '@/components/forms/AddLeadForm';
+import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
+import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
+import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
 import {
   Search,
   Phone,
@@ -91,10 +96,13 @@ const mockLeads: Lead[] = [
 export const MyLeads = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>(mockLeads);
+  const { leads, loading } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [selectedChatLead, setSelectedChatLead] = useState<{name: string, phone?: string} | null>(null);
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,7 +157,7 @@ export const MyLeads = () => {
             Track and manage your assigned leads
           </p>
         </div>
-        <Button className="btn-primary">
+        <Button className="btn-primary" onClick={() => setAddLeadFormOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
@@ -221,8 +229,13 @@ export const MyLeads = () => {
       </Card>
 
       {/* Leads Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredLeads.map((lead) => (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredLeads.map((lead) => (
           <Card key={lead.id} className="card-elevated hover:shadow-lg transition-all duration-200">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -301,7 +314,10 @@ export const MyLeads = () => {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => handleAction('whatsapp', lead.id)}
+                  onClick={() => {
+                    setSelectedChatLead({ name: lead.name, phone: lead.phone });
+                    setChatOpen(true);
+                  }}
                 >
                   <MessageSquare className="w-4 h-4" />
                 </Button>
@@ -392,7 +408,8 @@ export const MyLeads = () => {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      )}
 
       {filteredLeads.length === 0 && (
         <Card className="card-elevated">
@@ -408,6 +425,31 @@ export const MyLeads = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Lead Form */}
+      <AddLeadForm 
+        open={addLeadFormOpen} 
+        onOpenChange={setAddLeadFormOpen} 
+      />
+
+      {/* WhatsApp Chat */}
+      {selectedChatLead && (
+        <WhatsAppChat
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          leadName={selectedChatLead.name}
+          leadPhone={selectedChatLead.phone}
+        />
+      )}
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppFloatingButton 
+        onClick={() => {
+          const demoLead = { name: 'John Smith', phone: '+1 (555) 123-4567' };
+          setSelectedChatLead(demoLead);
+          setChatOpen(true);
+        }}
+      />
     </div>
   );
 };
