@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AddPropertyForm } from "@/components/forms/AddPropertyForm";
+import { useProperties, Property } from "@/hooks/useProperties";
 import {
   Search,
   Plus,
@@ -24,92 +26,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-interface Property {
-  id: string;
-  title: string;
-  address: string;
-  price: number;
-  type: 'house' | 'condo' | 'apartment' | 'commercial';
-  status: 'available' | 'pending' | 'sold' | 'off-market';
-  bedrooms: number;
-  bathrooms: number;
-  sqft: number;
-  agent: string;
-  listed: string;
-  description: string;
-  features: string[];
-  images: string[];
-}
-
-const mockProperties: Property[] = [
-  {
-    id: '1',
-    title: 'Modern Downtown House',
-    address: '123 Main St, Downtown',
-    price: 450000,
-    type: 'house',
-    status: 'available',
-    bedrooms: 3,
-    bathrooms: 2,
-    sqft: 1800,
-    agent: 'Sarah Johnson',
-    listed: '2024-01-15',
-    description: 'Beautiful modern house in the heart of downtown with updated kitchen and spacious living areas.',
-    features: ['Modern Kitchen', 'Hardwood Floors', 'Garden', 'Garage'],
-    images: ['/placeholder.jpg'],
-  },
-  {
-    id: '2',
-    title: 'Luxury Beachfront Condo',
-    address: '456 Ocean Drive, Beach District',
-    price: 285000,
-    type: 'condo',
-    status: 'pending',
-    bedrooms: 2,
-    bathrooms: 2,
-    sqft: 1200,
-    agent: 'Mike Chen',
-    listed: '2024-01-10',
-    description: 'Stunning condo with ocean views and modern amenities in a prime location.',
-    features: ['Ocean View', 'Balcony', 'Pool Access', 'Concierge'],
-    images: ['/placeholder.jpg'],
-  },
-  {
-    id: '3',
-    title: 'Family Home with Pool',
-    address: '789 Maple Street, Suburbs',
-    price: 525000,
-    type: 'house',
-    status: 'available',
-    bedrooms: 4,
-    bathrooms: 3,
-    sqft: 2400,
-    agent: 'Lisa Rodriguez',
-    listed: '2024-01-12',
-    description: 'Spacious family home with swimming pool and large backyard, perfect for families.',
-    features: ['Swimming Pool', 'Large Yard', 'Master Suite', '2-Car Garage'],
-    images: ['/placeholder.jpg'],
-  },
-  {
-    id: '4',
-    title: 'Commercial Office Space',
-    address: '321 Business Ave, Financial District',
-    price: 750000,
-    type: 'commercial',
-    status: 'available',
-    bedrooms: 0,
-    bathrooms: 4,
-    sqft: 3500,
-    agent: 'Tom Wilson',
-    listed: '2024-01-08',
-    description: 'Prime commercial space in the financial district with modern facilities.',
-    features: ['Conference Rooms', 'Parking', 'Reception Area', 'Kitchen'],
-    images: ['/placeholder.jpg'],
-  },
-];
-
 export const Properties = () => {
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const { properties, loading } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -120,7 +38,7 @@ export const Properties = () => {
   const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          property.address.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || property.type === typeFilter;
+    const matchesType = typeFilter === 'all' || property.property_type === typeFilter;
     const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
     
     return matchesSearch && matchesType && matchesStatus;
@@ -131,12 +49,12 @@ export const Properties = () => {
       case 'available': return 'bg-success text-success-foreground';
       case 'pending': return 'bg-warning text-warning-foreground';
       case 'sold': return 'bg-info text-info-foreground';
-      case 'off-market': return 'bg-muted text-muted-foreground';
+      case 'off_market': return 'bg-muted text-muted-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
   };
 
-  const getTypeIcon = (type: Property['type']) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'house': return <Home className="w-4 h-4" />;
       case 'condo': return <Building className="w-4 h-4" />;
@@ -144,14 +62,6 @@ export const Properties = () => {
       case 'commercial': return <Building className="w-4 h-4" />;
       default: return <Home className="w-4 h-4" />;
     }
-  };
-
-  const handleAddProperty = () => {
-    toast({
-      title: 'Property added',
-      description: 'New property has been added to the listings',
-    });
-    setShowAddProperty(false);
   };
 
   const totalProperties = properties.length;
@@ -169,89 +79,10 @@ export const Properties = () => {
             Manage your property listings and inventory
           </p>
         </div>
-        <Dialog open={showAddProperty} onOpenChange={setShowAddProperty}>
-          <DialogTrigger asChild>
-            <Button className="btn-primary">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Property
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add New Property</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Property Title</Label>
-                <Input placeholder="Enter property title" className="mt-2" />
-              </div>
-              <div>
-                <Label>Address</Label>
-                <Input placeholder="Full property address" className="mt-2" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Property Type</Label>
-                  <Select>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="house">House</SelectItem>
-                      <SelectItem value="condo">Condo</SelectItem>
-                      <SelectItem value="apartment">Apartment</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
-                      <SelectItem value="off-market">Off Market</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <Label>Price ($)</Label>
-                  <Input type="number" placeholder="Price" className="mt-2" />
-                </div>
-                <div>
-                  <Label>Bedrooms</Label>
-                  <Input type="number" placeholder="Beds" className="mt-2" />
-                </div>
-                <div>
-                  <Label>Bathrooms</Label>
-                  <Input type="number" placeholder="Baths" className="mt-2" />
-                </div>
-                <div>
-                  <Label>Sq Ft</Label>
-                  <Input type="number" placeholder="Square feet" className="mt-2" />
-                </div>
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea placeholder="Property description..." className="mt-2" rows={4} />
-              </div>
-              <div>
-                <Label>Features (comma separated)</Label>
-                <Input placeholder="Pool, Garden, Garage..." className="mt-2" />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleAddProperty} className="btn-primary">Add Property</Button>
-                <Button variant="outline" onClick={() => setShowAddProperty(false)}>Cancel</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button className="btn-primary" onClick={() => setShowAddProperty(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Property
+        </Button>
       </div>
 
       {/* Stats Overview */}
@@ -373,46 +204,33 @@ export const Properties = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1">
-                  {getTypeIcon(property.type)}
-                  <span className="text-sm capitalize">{property.type}</span>
+                  {getTypeIcon(property.property_type)}
+                  <span className="text-sm capitalize">{property.property_type}</span>
                 </div>
                 <div className="text-lg font-bold text-primary">
                   ${(property.price / 1000).toFixed(0)}K
                 </div>
               </div>
 
-              {property.type !== 'commercial' && (
+              {property.property_type !== 'commercial' && (
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Bed className="w-4 h-4" />
-                    <span>{property.bedrooms}</span>
+                    <span>{property.bedrooms || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Bath className="w-4 h-4" />
-                    <span>{property.bathrooms}</span>
+                    <span>{property.bathrooms || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Square className="w-4 h-4" />
-                    <span>{property.sqft.toLocaleString()}</span>
+                    <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-1">
-                {property.features.slice(0, 3).map((feature) => (
-                  <Badge key={feature} variant="outline" className="text-xs">
-                    {feature}
-                  </Badge>
-                ))}
-                {property.features.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{property.features.length - 3} more
-                  </Badge>
-                )}
-              </div>
-
               <div className="text-sm text-muted-foreground">
-                Listed by {property.agent} • {property.listed}
+                Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
               </div>
 
               <div className="flex gap-2">
@@ -451,7 +269,7 @@ export const Properties = () => {
                           </div>
                           <div>
                             <Label>Type</Label>
-                            <p className="mt-1 capitalize">{selectedProperty.type}</p>
+                            <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
                           </div>
                           <div>
                             <Label>Status</Label>
@@ -461,7 +279,7 @@ export const Properties = () => {
                           </div>
                         </div>
 
-                        {selectedProperty.type !== 'commercial' && (
+                        {selectedProperty.property_type !== 'commercial' && (
                           <div className="grid grid-cols-3 gap-4">
                             <div>
                               <Label>Bedrooms</Label>
@@ -473,7 +291,7 @@ export const Properties = () => {
                             </div>
                             <div>
                               <Label>Square Feet</Label>
-                              <p className="mt-1">{selectedProperty.sqft.toLocaleString()}</p>
+                              <p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p>
                             </div>
                           </div>
                         )}
@@ -485,11 +303,7 @@ export const Properties = () => {
 
                         <div>
                           <Label>Features</Label>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {selectedProperty.features.map((feature) => (
-                              <Badge key={feature} variant="outline">{feature}</Badge>
-                            ))}
-                          </div>
+                          <p className="mt-1 text-muted-foreground">Custom features can be added in future updates</p>
                         </div>
 
                         <div className="flex gap-2">
@@ -524,6 +338,12 @@ export const Properties = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Property Form */}
+      <AddPropertyForm 
+        open={showAddProperty} 
+        onOpenChange={setShowAddProperty} 
+      />
     </div>
   );
 };

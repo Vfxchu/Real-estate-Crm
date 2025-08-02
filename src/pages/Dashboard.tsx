@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
+import { useLeads } from '@/hooks/useLeads';
 import { AddLeadForm } from '@/components/forms/AddLeadForm';
 import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
 import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
+import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
 import {
   Target,
   Users,
@@ -23,71 +25,80 @@ import {
 
 export const Dashboard = () => {
   const { user, profile } = useAuth();
+  const { leads, loading } = useLeads();
   const isAdmin = profile?.role === 'admin';
   const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedChatLead, setSelectedChatLead] = useState<{name: string, phone?: string} | null>(null);
+  const [editLeadOpen, setEditLeadOpen] = useState(false);
+  const [selectedEditLead, setSelectedEditLead] = useState<any>(null);
 
-  // Mock data - replace with real data
+  // Calculate real stats from data
+  const totalLeads = leads.length;
+  const myLeads = isAdmin ? totalLeads : leads.filter(lead => lead.agent_id === user?.id).length;
+  const newLeads = leads.filter(lead => lead.status === 'new').length;
+  const convertedLeads = leads.filter(lead => lead.status === 'won').length;
+  const conversionRate = totalLeads > 0 ? ((convertedLeads / totalLeads) * 100).toFixed(1) : '0';
+
   const adminStats = [
     {
       title: 'Total Leads',
-      value: '1,247',
-      change: { value: '+12%', type: 'increase' as const },
+      value: totalLeads.toString(),
+      change: { value: `+${newLeads}`, type: 'increase' as const },
       icon: Target,
-      description: 'This month',
+      description: 'All leads',
     },
     {
-      title: 'Active Agents',
-      value: '24',
-      change: { value: '+2', type: 'increase' as const },
+      title: 'New Leads',
+      value: newLeads.toString(),
+      change: { value: 'Today', type: 'neutral' as const },
       icon: Users,
-      description: 'Currently active',
+      description: 'Requiring attention',
     },
     {
       title: 'Conversion Rate',
-      value: '24.5%',
-      change: { value: '+2.1%', type: 'increase' as const },
+      value: `${conversionRate}%`,
+      change: { value: `${convertedLeads} won`, type: 'increase' as const },
       icon: TrendingUp,
-      description: 'This month',
+      description: 'Overall',
     },
     {
-      title: 'Appointments',
-      value: '89',
-      change: { value: '+15%', type: 'increase' as const },
+      title: 'Active Leads',
+      value: leads.filter(lead => ['new', 'contacted', 'qualified'].includes(lead.status)).length.toString(),
+      change: { value: 'In progress', type: 'neutral' as const },
       icon: Calendar,
-      description: 'This week',
+      description: 'Being processed',
     },
   ];
 
   const agentStats = [
     {
       title: 'My Leads',
-      value: '42',
-      change: { value: '+5', type: 'increase' as const },
+      value: myLeads.toString(),
+      change: { value: 'Assigned', type: 'neutral' as const },
       icon: Target,
-      description: 'Active leads',
+      description: 'Total assigned',
     },
     {
-      title: 'Calls Today',
-      value: '8',
-      change: { value: '+2', type: 'increase' as const },
+      title: 'New Leads',
+      value: leads.filter(lead => lead.agent_id === user?.id && lead.status === 'new').length.toString(),
+      change: { value: 'Require attention', type: 'neutral' as const },
       icon: Phone,
-      description: 'Completed',
+      description: 'To contact',
     },
     {
-      title: 'Conversion Rate',
-      value: '28%',
-      change: { value: '+3%', type: 'increase' as const },
+      title: 'In Progress',
+      value: leads.filter(lead => lead.agent_id === user?.id && ['contacted', 'qualified'].includes(lead.status)).length.toString(),
+      change: { value: 'Active', type: 'increase' as const },
       icon: TrendingUp,
-      description: 'This month',
+      description: 'Being worked',
     },
     {
-      title: 'Next Appointment',
-      value: '2:30 PM',
-      change: { value: 'Today', type: 'neutral' as const },
+      title: 'Converted',
+      value: leads.filter(lead => lead.agent_id === user?.id && lead.status === 'won').length.toString(),
+      change: { value: 'Success', type: 'increase' as const },
       icon: Calendar,
-      description: 'Property viewing',
+      description: 'Closed deals',
     },
   ];
 
@@ -189,34 +200,9 @@ export const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              {
-                name: 'John Smith',
-                email: 'john.smith@email.com',
-                phone: '+1 (555) 123-4567',
-                status: 'new',
-                priority: 'high',
-                agent: isAdmin ? 'Sarah Agent' : undefined,
-              },
-              {
-                name: 'Maria Garcia',
-                email: 'maria.garcia@email.com',
-                phone: '+1 (555) 234-5678',
-                status: 'contacted',
-                priority: 'medium',
-                agent: isAdmin ? 'Mike Agent' : undefined,
-              },
-              {
-                name: 'David Wilson',
-                email: 'david.wilson@email.com',
-                phone: '+1 (555) 345-6789',
-                status: 'interested',
-                priority: 'high',
-                agent: isAdmin ? 'Lisa Agent' : undefined,
-              },
-            ].map((lead, index) => (
+            {leads.slice(0, 3).map((lead) => (
               <div
-                key={index}
+                key={lead.id}
                 className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <div className="flex-1">
@@ -232,7 +218,11 @@ export const Dashboard = () => {
                           ? 'bg-info text-info-foreground'
                           : lead.status === 'contacted'
                           ? 'bg-warning text-warning-foreground'
-                          : 'bg-success text-success-foreground'
+                          : lead.status === 'qualified'
+                          ? 'bg-success text-success-foreground'
+                          : lead.status === 'won'
+                          ? 'bg-success text-success-foreground'
+                          : 'bg-muted text-muted-foreground'
                       }
                     >
                       {lead.status}
@@ -248,25 +238,44 @@ export const Dashboard = () => {
                       {lead.priority} priority
                     </Badge>
                   </div>
-                  {isAdmin && lead.agent && (
+                  {isAdmin && lead.profiles?.name && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Assigned to: {lead.agent}
+                      Assigned to: {lead.profiles.name}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => {
+                      setSelectedChatLead({ name: lead.name, phone: lead.phone });
+                      setChatOpen(true);
+                    }}
+                  >
                     <Phone className="w-4 h-4" />
                   </Button>
                   <Button size="sm" variant="ghost">
                     <Mail className="w-4 h-4" />
                   </Button>
-                  <Button size="sm" variant="outline">
-                    View Details
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedEditLead(lead);
+                      setEditLeadOpen(true);
+                    }}
+                  >
+                    Update Status
                   </Button>
                 </div>
               </div>
             ))}
+            {leads.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No leads found. Add your first lead to get started!</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -276,6 +285,15 @@ export const Dashboard = () => {
         open={addLeadFormOpen} 
         onOpenChange={setAddLeadFormOpen} 
       />
+
+      {/* Edit Lead Status Form */}
+      {selectedEditLead && (
+        <EditLeadStatusForm
+          open={editLeadOpen}
+          onOpenChange={setEditLeadOpen}
+          lead={selectedEditLead}
+        />
+      )}
 
       {/* WhatsApp Chat */}
       {selectedChatLead && (
@@ -290,9 +308,13 @@ export const Dashboard = () => {
       {/* Floating WhatsApp Button */}
       <WhatsAppFloatingButton 
         onClick={() => {
-          // For demo, use first lead or a default
-          const demoLead = { name: 'John Smith', phone: '+1 (555) 123-4567' };
-          setSelectedChatLead(demoLead);
+          if (leads.length > 0) {
+            const firstLead = leads[0];
+            setSelectedChatLead({ name: firstLead.name, phone: firstLead.phone });
+          } else {
+            // Demo lead for when no leads exist
+            setSelectedChatLead({ name: 'Demo Lead', phone: '+1 (555) 123-4567' });
+          }
           setChatOpen(true);
         }}
       />
