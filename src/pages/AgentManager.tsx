@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AddAgentForm } from "@/components/forms/AddAgentForm";
 import {
   Table,
   TableBody,
@@ -90,6 +91,7 @@ export const AgentManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
   const filteredAgents = agents.filter(agent => {
@@ -140,7 +142,7 @@ export const AgentManager = () => {
             Manage your sales team and track performance
           </p>
         </div>
-        <Button className="btn-primary">
+        <Button className="btn-primary" onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Agent
         </Button>
@@ -375,6 +377,9 @@ export const AgentManager = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Agent Form */}
+      <AddAgentForm open={showAddForm} onOpenChange={setShowAddForm} />
     </div>
   );
 };

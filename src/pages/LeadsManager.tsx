@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { AddLeadForm } from "@/components/forms/AddLeadForm";
 import {
   Table,
   TableBody,
@@ -113,6 +114,7 @@ export const LeadsManager = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
 
   const filteredLeads = leads.filter(lead => {
@@ -180,7 +182,7 @@ export const LeadsManager = () => {
             Manage and track all your leads in one place
           </p>
         </div>
-        <Button className="btn-primary">
+        <Button className="btn-primary" onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
@@ -449,6 +451,9 @@ export const LeadsManager = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Lead Form */}
+      <AddLeadForm open={showAddForm} onOpenChange={setShowAddForm} />
     </div>
   );
 };
