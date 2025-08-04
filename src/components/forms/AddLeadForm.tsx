@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { validateEmail, validatePhone, escapeHtml } from "@/lib/sanitizer";
 
 interface AddLeadFormProps {
   open: boolean;
@@ -125,11 +126,37 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
     setLoading(true);
 
     try {
-      // Validation
+      // Validation and sanitization
       if (!formData.name.trim() || !formData.phone.trim()) {
         toast({
           title: 'Validation Error',
           description: 'Name and phone are required fields.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Validate email if provided
+      if (formData.email.trim()) {
+        try {
+          validateEmail(formData.email);
+        } catch (error) {
+          toast({
+            title: 'Validation Error',
+            description: 'Please enter a valid email address.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+
+      // Validate phone
+      try {
+        validatePhone(formData.phone);
+      } catch (error) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter a valid phone number.',
           variant: 'destructive',
         });
         return;
@@ -147,10 +174,10 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
       }
 
       const leadData = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        notes: formData.notes.trim() || null,
+        name: escapeHtml(formData.name.trim()),
+        email: formData.email.trim() ? validateEmail(formData.email) : '',
+        phone: validatePhone(formData.phone.trim()),
+        notes: formData.notes.trim() ? escapeHtml(formData.notes.trim()) : null,
         source: formData.source as 'website' | 'referral' | 'social' | 'advertising' | 'cold_call' | 'email',
         priority: formData.priority,
         status: formData.status,

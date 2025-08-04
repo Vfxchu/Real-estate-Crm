@@ -51,23 +51,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          setProfile(profileData as UserProfile);
+          // Use setTimeout to prevent authentication deadlock
+          setTimeout(() => {
+            supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single()
+              .then(({ data: profileData, error }) => {
+                if (error) {
+                  console.error('Error fetching profile:', error);
+                  setProfile(null);
+                } else {
+                  setProfile(profileData as UserProfile);
+                }
+                setIsLoading(false);
+              });
+          }, 0);
         } else {
           setProfile(null);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
@@ -77,14 +86,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Fetch user profile
+        // Fetch user profile with error handling
         supabase
           .from('profiles')
           .select('*')
           .eq('user_id', session.user.id)
           .single()
-          .then(({ data: profileData }) => {
-            setProfile(profileData as UserProfile);
+          .then(({ data: profileData, error }) => {
+            if (error) {
+              console.error('Error fetching profile:', error);
+              setProfile(null);
+            } else {
+              setProfile(profileData as UserProfile);
+            }
             setIsLoading(false);
           });
       } else {
