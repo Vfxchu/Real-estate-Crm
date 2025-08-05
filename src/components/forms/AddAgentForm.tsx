@@ -12,9 +12,10 @@ import { validateEmail, validatePhone, escapeHtml } from "@/lib/sanitizer";
 interface AddAgentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAgentCreated?: () => void;
 }
 
-export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange }) => {
+export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, onAgentCreated }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
@@ -122,6 +123,7 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange }
         status: 'active' as const,
       });
       
+      onAgentCreated?.();
       onOpenChange(false);
     } catch (error: any) {
       toast({

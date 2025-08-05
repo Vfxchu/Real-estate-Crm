@@ -43,10 +43,21 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
 
     try {
       // Validation
-      if (!formData.title.trim() || !formData.address.trim() || !formData.price.trim()) {
+      if (!formData.title.trim() || !formData.address.trim() || !formData.city.trim() || 
+          !formData.state.trim() || !formData.property_type || !formData.price) {
         toast({
           title: 'Validation Error',
-          description: 'Title, address, and price are required fields.',
+          description: 'Please fill in all required fields.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const price = parseFloat(formData.price);
+      if (isNaN(price) || price <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter a valid price.',
           variant: 'destructive',
         });
         return;
@@ -60,9 +71,9 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
         city: formData.city.trim(),
         state: formData.state.trim(),
         zip_code: formData.zip_code.trim() || null,
-        price: parseFloat(formData.price),
+        price,
         bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-        bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+        bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : null,
         area_sqft: formData.area_sqft ? parseInt(formData.area_sqft) : null,
         status: formData.status,
         featured: formData.featured,
@@ -106,7 +117,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Property</DialogTitle>
         </DialogHeader>
@@ -134,29 +145,36 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="house">House</SelectItem>
-                    <SelectItem value="apartment">Apartment</SelectItem>
                     <SelectItem value="condo">Condo</SelectItem>
+                    <SelectItem value="apartment">Apartment</SelectItem>
                     <SelectItem value="villa">Villa</SelectItem>
-                    <SelectItem value="studio">Studio</SelectItem>
                     <SelectItem value="penthouse">Penthouse</SelectItem>
+                    <SelectItem value="studio">Studio</SelectItem>
                     <SelectItem value="commercial">Commercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="sold">Sold</SelectItem>
-                    <SelectItem value="off_market">Off Market</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="price">Price *</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => handleInputChange('price', e.target.value)}
+                  placeholder="Enter price"
+                  required
+                />
               </div>
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
+                placeholder="Enter property description..."
+                rows={3}
+              />
             </div>
           </div>
 
@@ -170,7 +188,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                   id="address"
                   value={formData.address}
                   onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Enter full address"
+                  placeholder="Enter street address"
                   required
                 />
               </div>
@@ -195,12 +213,12 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                 />
               </div>
               <div>
-                <Label htmlFor="zip_code">Zip Code</Label>
+                <Label htmlFor="zip_code">ZIP Code</Label>
                 <Input
                   id="zip_code"
                   value={formData.zip_code}
                   onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                  placeholder="Enter zip code"
+                  placeholder="Enter ZIP code"
                 />
               </div>
             </div>
@@ -209,18 +227,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
           {/* Property Details */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Property Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label htmlFor="price">Price ($) *</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', e.target.value)}
-                  placeholder="Enter price"
-                  required
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="bedrooms">Bedrooms</Label>
                 <Input
@@ -229,6 +236,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                   value={formData.bedrooms}
                   onChange={(e) => handleInputChange('bedrooms', e.target.value)}
                   placeholder="Number of bedrooms"
+                  min="0"
                 />
               </div>
               <div>
@@ -240,46 +248,56 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                   value={formData.bathrooms}
                   onChange={(e) => handleInputChange('bathrooms', e.target.value)}
                   placeholder="Number of bathrooms"
+                  min="0"
                 />
               </div>
               <div>
-                <Label htmlFor="area_sqft">Square Feet</Label>
+                <Label htmlFor="area_sqft">Area (sq ft)</Label>
                 <Input
                   id="area_sqft"
                   type="number"
                   value={formData.area_sqft}
                   onChange={(e) => handleInputChange('area_sqft', e.target.value)}
-                  placeholder="Area in sq ft"
+                  placeholder="Area in square feet"
+                  min="0"
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="sold">Sold</SelectItem>
+                    <SelectItem value="off_market">Off Market</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2 mt-8">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  checked={formData.featured}
+                  onChange={(e) => handleInputChange('featured', e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="featured">Featured Property</Label>
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Describe the property features, amenities, etc..."
-              rows={4}
-            />
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
+          <div className="flex gap-2 pt-4">
+            <Button type="submit" className="btn-primary flex-1" disabled={loading}>
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Add Property
+              {loading ? 'Creating...' : 'Create Property'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
             </Button>
           </div>
         </form>

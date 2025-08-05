@@ -68,11 +68,29 @@ export const MyLeads = () => {
     return 'text-destructive';
   };
 
+  const { updateLead } = useLeads();
+
   const handleAction = (action: string, leadId: string) => {
     toast({
       title: `${action} initiated`,
       description: `Action ${action} for lead ${leadId}`,
     });
+  };
+
+  const handleStatusUpdate = async (leadId: string, newStatus: string) => {
+    try {
+      await updateLead(leadId, { status: newStatus as any });
+      toast({
+        title: 'Status updated',
+        description: `Lead status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error updating status',
+        description: 'Failed to update lead status',
+        variant: 'destructive',
+      });
+    }
   };
 
   const statusCounts = {
@@ -310,7 +328,10 @@ export const MyLeads = () => {
 
                         <div>
                           <Label>Update Status</Label>
-                          <Select defaultValue={selectedLead.status}>
+                          <Select 
+                            defaultValue={selectedLead.status}
+                            onValueChange={(value) => handleStatusUpdate(selectedLead.id, value)}
+                          >
                             <SelectTrigger className="mt-2">
                               <SelectValue />
                             </SelectTrigger>

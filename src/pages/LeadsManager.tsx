@@ -31,84 +31,10 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: 'new' | 'contacted' | 'interested' | 'qualified' | 'closed' | 'lost';
-  priority: 'low' | 'medium' | 'high';
-  source: string;
-  agent?: string;
-  createdAt: string;
-  lastContact?: string;
-  notes?: string;
-  propertyInterest?: string;
-  budget?: string;
-}
-
-// Mock data
-const mockLeads: Lead[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    email: 'john.smith@email.com',
-    phone: '+1 (555) 123-4567',
-    status: 'new',
-    priority: 'high',
-    source: 'Website',
-    agent: 'Sarah Agent',
-    createdAt: '2024-01-15',
-    propertyInterest: '3BR House',
-    budget: '$300k-400k',
-  },
-  {
-    id: '2',
-    name: 'Maria Garcia',
-    email: 'maria.garcia@email.com',
-    phone: '+1 (555) 234-5678',
-    status: 'contacted',
-    priority: 'medium',
-    source: 'Referral',
-    agent: 'Mike Agent',
-    createdAt: '2024-01-14',
-    lastContact: '2024-01-16',
-    propertyInterest: '2BR Condo',
-    budget: '$200k-300k',
-  },
-  {
-    id: '3',
-    name: 'David Wilson',
-    email: 'david.wilson@email.com',
-    phone: '+1 (555) 345-6789',
-    status: 'interested',
-    priority: 'high',
-    source: 'Social Media',
-    agent: 'Lisa Agent',
-    createdAt: '2024-01-13',
-    lastContact: '2024-01-17',
-    propertyInterest: '4BR House',
-    budget: '$500k+',
-  },
-  {
-    id: '4',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@email.com',
-    phone: '+1 (555) 456-7890',
-    status: 'qualified',
-    priority: 'high',
-    source: 'Walk-in',
-    agent: 'Tom Agent',
-    createdAt: '2024-01-12',
-    lastContact: '2024-01-18',
-    propertyInterest: 'Commercial Space',
-    budget: '$1M+',
-  },
-];
+import { useLeads, type Lead } from '@/hooks/useLeads';
 
 export const LeadsManager = () => {
-  const [leads, setLeads] = useState<Lead[]>(mockLeads);
+  const { leads, loading } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -131,9 +57,9 @@ export const LeadsManager = () => {
     switch (status) {
       case 'new': return 'bg-info text-info-foreground';
       case 'contacted': return 'bg-warning text-warning-foreground';
-      case 'interested': return 'bg-primary text-primary-foreground';
       case 'qualified': return 'bg-success text-success-foreground';
-      case 'closed': return 'bg-success text-success-foreground';
+      case 'negotiating': return 'bg-primary text-primary-foreground';
+      case 'won': return 'bg-success text-success-foreground';
       case 'lost': return 'bg-destructive text-destructive-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -213,9 +139,9 @@ export const LeadsManager = () => {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="new">New</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="interested">Interested</SelectItem>
                   <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="negotiating">Negotiating</SelectItem>
+                  <SelectItem value="won">Won</SelectItem>
                   <SelectItem value="lost">Lost</SelectItem>
                 </SelectContent>
               </Select>
@@ -286,8 +212,13 @@ export const LeadsManager = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
+          {loading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
@@ -318,13 +249,13 @@ export const LeadsManager = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{lead.name}</p>
-                        <p className="text-xs text-muted-foreground">{lead.email}</p>
+                          <p className="font-medium">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">{lead.email}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="text-sm">{lead.phone}</p>
+                        <p className="text-sm">{lead.phone || 'No phone'}</p>
                         <div className="flex gap-1">
                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
                             <Phone className="w-3 h-3" />
@@ -349,14 +280,14 @@ export const LeadsManager = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>{lead.source}</TableCell>
-                    <TableCell>{lead.agent}</TableCell>
+                    <TableCell>{lead.profiles?.name || 'Unassigned'}</TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">{lead.propertyInterest}</p>
-                        <p className="text-xs text-muted-foreground">{lead.budget}</p>
+                        <p className="text-sm">{lead.interested_in || 'Not specified'}</p>
+                        <p className="text-xs text-muted-foreground">{lead.budget_range || 'Not specified'}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{lead.createdAt}</TableCell>
+                    <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -406,11 +337,11 @@ export const LeadsManager = () => {
                                 </div>
                                 <div>
                                   <Label>Property Interest</Label>
-                                  <p>{selectedLead.propertyInterest}</p>
+                                  <p>{selectedLead.interested_in || 'Not specified'}</p>
                                 </div>
                                 <div>
                                   <Label>Budget</Label>
-                                  <p>{selectedLead.budget}</p>
+                                  <p>{selectedLead.budget_range || 'Not specified'}</p>
                                 </div>
                               </div>
                               
@@ -447,8 +378,9 @@ export const LeadsManager = () => {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -29,65 +29,12 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Agent {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: 'active' | 'inactive' | 'busy';
-  role: 'senior' | 'junior' | 'lead';
-  assignedLeads: number;
-  closedDeals: number;
-  conversionRate: number;
-  joinDate: string;
-  lastActive: string;
-}
-
-const mockAgents: Agent[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@realestate.com',
-    phone: '+1 (555) 123-4567',
-    status: 'active',
-    role: 'senior',
-    assignedLeads: 15,
-    closedDeals: 8,
-    conversionRate: 53.3,
-    joinDate: '2023-01-15',
-    lastActive: '2024-01-20 10:30',
-  },
-  {
-    id: '2',
-    name: 'Mike Chen',
-    email: 'mike.c@realestate.com',
-    phone: '+1 (555) 234-5678',
-    status: 'active',
-    role: 'junior',
-    assignedLeads: 12,
-    closedDeals: 5,
-    conversionRate: 41.7,
-    joinDate: '2023-06-01',
-    lastActive: '2024-01-20 14:15',
-  },
-  {
-    id: '3',
-    name: 'Lisa Rodriguez',
-    email: 'lisa.r@realestate.com',
-    phone: '+1 (555) 345-6789',
-    status: 'busy',
-    role: 'lead',
-    assignedLeads: 18,
-    closedDeals: 12,
-    conversionRate: 66.7,
-    joinDate: '2022-08-10',
-    lastActive: '2024-01-20 09:45',
-  },
-];
+import { useAgents, type Agent } from '@/hooks/useAgents';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const AgentManager = () => {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
+  const { agents, loading, updateAgent, deleteAgent } = useAgents();
+  const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -106,7 +53,6 @@ export const AgentManager = () => {
     switch (status) {
       case 'active': return 'bg-success text-success-foreground';
       case 'inactive': return 'bg-muted text-muted-foreground';
-      case 'busy': return 'bg-warning text-warning-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -129,7 +75,7 @@ export const AgentManager = () => {
 
   const totalAgents = agents.length;
   const activeAgents = agents.filter(a => a.status === 'active').length;
-  const totalLeads = agents.reduce((sum, a) => sum + a.assignedLeads, 0);
+  const totalLeads = agents.reduce((sum, a) => sum + (a.assignedLeads || 0), 0);
   const totalClosedDeals = agents.reduce((sum, a) => sum + a.closedDeals, 0);
 
   return (
@@ -217,7 +163,6 @@ export const AgentManager = () => {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="busy">Busy</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -247,7 +192,7 @@ export const AgentManager = () => {
               </TableHeader>
               <TableBody>
                 {filteredAgents.map((agent) => (
-                  <TableRow key={agent.id} className="hover:bg-muted/30">
+                  <TableRow key={agent.user_id} className="hover:bg-muted/30">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -291,7 +236,7 @@ export const AgentManager = () => {
                         {agent.conversionRate}%
                       </span>
                     </TableCell>
-                    <TableCell>{agent.lastActive}</TableCell>
+                    <TableCell>{new Date(agent.updated_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Dialog>
@@ -346,7 +291,7 @@ export const AgentManager = () => {
                                       <SelectContent>
                                         <SelectItem value="active">Active</SelectItem>
                                         <SelectItem value="inactive">Inactive</SelectItem>
-                                        <SelectItem value="busy">Busy</SelectItem>
+                                        
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -364,7 +309,7 @@ export const AgentManager = () => {
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0 text-destructive"
-                          onClick={() => handleAction('Remove', agent.id)}
+                          onClick={() => deleteAgent(agent.user_id)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -379,7 +324,14 @@ export const AgentManager = () => {
       </Card>
 
       {/* Add Agent Form */}
-      <AddAgentForm open={showAddForm} onOpenChange={setShowAddForm} />
+      <AddAgentForm 
+        open={showAddForm} 
+        onOpenChange={setShowAddForm}
+        onAgentCreated={() => {
+          // Refresh agents list after creation
+          window.location.reload();
+        }}
+      />
     </div>
   );
 };
