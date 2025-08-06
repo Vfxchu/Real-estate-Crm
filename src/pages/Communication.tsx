@@ -42,39 +42,8 @@ interface CommunicationLog {
   leadId: string;
 }
 
-const mockCommunications: CommunicationLog[] = [
-  {
-    id: '1',
-    leadName: 'John Smith',
-    agentName: 'Sarah Johnson',
-    type: 'email',
-    subject: 'Welcome to Our Real Estate Services',
-    message: 'Thank you for your interest in our properties...',
-    status: 'read',
-    timestamp: '2024-01-20 10:30',
-    leadId: '1',
-  },
-  {
-    id: '2',
-    leadName: 'Maria Garcia',
-    agentName: 'Mike Chen',
-    type: 'whatsapp',
-    message: 'Hi Maria! I saw you\'re interested in the 2BR condo. Would you like to schedule a viewing?',
-    status: 'delivered',
-    timestamp: '2024-01-20 14:15',
-    leadId: '2',
-  },
-  {
-    id: '3',
-    leadName: 'David Wilson',
-    agentName: 'Lisa Rodriguez',
-    type: 'call',
-    message: 'Discussed 4BR house requirements and budget',
-    status: 'sent',
-    timestamp: '2024-01-19 16:45',
-    leadId: '3',
-  },
-];
+// Mock communication logs - in production, store in Supabase
+const mockCommunications: CommunicationLog[] = [];
 
 export const Communication = () => {
   const [communications, setCommunications] = useState<CommunicationLog[]>(mockCommunications);

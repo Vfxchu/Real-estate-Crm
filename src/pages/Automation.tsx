@@ -40,43 +40,8 @@ interface AutomationRule {
   timesTriggered: number;
 }
 
-const mockRules: AutomationRule[] = [
-  {
-    id: '1',
-    name: 'Welcome Email for New Leads',
-    description: 'Send welcome email when new lead is created',
-    trigger: 'new_lead',
-    action: 'send_email',
-    isActive: true,
-    conditions: ['Source is Website', 'Status is New'],
-    createdAt: '2024-01-15',
-    lastTriggered: '2024-01-20 14:30',
-    timesTriggered: 45,
-  },
-  {
-    id: '2',
-    name: 'Follow-up Reminder',
-    description: 'Send WhatsApp reminder after 3 days of inactivity',
-    trigger: 'time_based',
-    action: 'send_whatsapp',
-    isActive: true,
-    conditions: ['No contact for 3 days', 'Status is Contacted'],
-    createdAt: '2024-01-10',
-    lastTriggered: '2024-01-19 09:15',
-    timesTriggered: 28,
-  },
-  {
-    id: '3',
-    name: 'Auto-assign High Priority Leads',
-    description: 'Automatically assign high priority leads to senior agents',
-    trigger: 'new_lead',
-    action: 'assign_agent',
-    isActive: false,
-    conditions: ['Priority is High', 'Budget > $500k'],
-    createdAt: '2024-01-08',
-    timesTriggered: 12,
-  },
-];
+// Mock automation rules - in production, store in Supabase
+const mockRules: AutomationRule[] = [];
 
 const emailTemplates = [
   { id: '1', name: 'Welcome Email', subject: 'Welcome to Our Real Estate Services' },

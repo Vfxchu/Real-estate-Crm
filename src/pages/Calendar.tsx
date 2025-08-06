@@ -34,55 +34,9 @@ interface CalendarEvent {
   propertyAddress?: string;
 }
 
-const mockEvents: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Property Viewing - 3BR House',
-    type: 'viewing',
-    leadName: 'John Smith',
-    agentName: 'Sarah Johnson',
-    date: '2024-01-22',
-    time: '10:00',
-    location: '123 Main St, Downtown',
-    status: 'scheduled',
-    propertyAddress: '123 Main St, Downtown',
-    notes: 'Client interested in family home with garden',
-  },
-  {
-    id: '2',
-    title: 'Follow-up Call',
-    type: 'follow-up',
-    leadName: 'Maria Garcia',
-    agentName: 'Mike Chen',
-    date: '2024-01-22',
-    time: '14:00',
-    status: 'scheduled',
-    notes: 'Discuss financing options',
-  },
-  {
-    id: '3',
-    title: 'Client Meeting',
-    type: 'meeting',
-    leadName: 'David Wilson',
-    agentName: 'Lisa Rodriguez',
-    date: '2024-01-23',
-    time: '11:30',
-    location: 'Office Conference Room',
-    status: 'scheduled',
-    notes: 'Contract signing for 4BR house',
-  },
-  {
-    id: '4',
-    title: 'Virtual Tour',
-    type: 'call',
-    leadName: 'Emma Davis',
-    agentName: 'Sarah Johnson',
-    date: '2024-01-24',
-    time: '15:00',
-    status: 'completed',
-    notes: 'Showed luxury condo via video call',
-  },
-];
+// This component shows mock data for demonstration
+// In production, connect to Supabase calendar/appointments table
+const mockEvents: CalendarEvent[] = [];
 
 export const Calendar = () => {
   const [events, setEvents] = useState<CalendarEvent[]>(mockEvents);

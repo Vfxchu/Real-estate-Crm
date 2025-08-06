@@ -312,8 +312,8 @@ export const Dashboard = () => {
             const firstLead = leads[0];
             setSelectedChatLead({ name: firstLead.name, phone: firstLead.phone });
           } else {
-            // Demo lead for when no leads exist
-            setSelectedChatLead({ name: 'Demo Lead', phone: '+1 (555) 123-4567' });
+            // Set fallback demo lead only if no real leads exist
+            setSelectedChatLead({ name: 'Demo Contact', phone: '+1 (555) 123-4567' });
           }
           setChatOpen(true);
         }}

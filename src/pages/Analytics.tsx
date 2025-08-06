@@ -28,6 +28,7 @@ import {
   Activity,
 } from 'lucide-react';
 
+// Analytics data - in production, fetch from Supabase analytics queries
 const leadsData = [
   { month: 'Jan', leads: 65, converted: 12 },
   { month: 'Feb', leads: 78, converted: 18 },

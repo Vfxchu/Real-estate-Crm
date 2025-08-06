@@ -33,61 +33,8 @@ interface Notification {
   actionUrl?: string;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'New High Priority Lead',
-    message: 'John Smith submitted an inquiry for a $500k+ property',
-    type: 'new_lead',
-    priority: 'high',
-    isRead: false,
-    timestamp: '2024-01-20 14:30',
-    relatedId: 'lead-1',
-    actionUrl: '/leads',
-  },
-  {
-    id: '2',
-    title: 'Appointment Reminder',
-    message: 'Property viewing with Maria Garcia at 3:00 PM today',
-    type: 'appointment',
-    priority: 'medium',
-    isRead: false,
-    timestamp: '2024-01-20 12:00',
-    relatedId: 'appointment-1',
-    actionUrl: '/calendar',
-  },
-  {
-    id: '3',
-    title: 'System Update',
-    message: 'CRM system will be updated tonight at 11:00 PM',
-    type: 'system',
-    priority: 'low',
-    isRead: true,
-    timestamp: '2024-01-20 09:15',
-  },
-  {
-    id: '4',
-    title: 'Agent Performance Alert',
-    message: 'Sarah Johnson exceeded her monthly target by 120%',
-    type: 'agent_activity',
-    priority: 'medium',
-    isRead: true,
-    timestamp: '2024-01-19 16:45',
-    relatedId: 'agent-1',
-    actionUrl: '/agents',
-  },
-  {
-    id: '5',
-    title: 'Follow-up Reminder',
-    message: 'David Wilson: 3 days since last contact',
-    type: 'reminder',
-    priority: 'medium',
-    isRead: false,
-    timestamp: '2024-01-19 10:30',
-    relatedId: 'lead-3',
-    actionUrl: '/my-leads',
-  },
-];
+// Mock notifications - in production, store in Supabase
+const mockNotifications: Notification[] = [];
 
 export const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
