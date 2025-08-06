@@ -23,17 +23,32 @@ import {
   Building,
   Filter,
   Star,
+  Trash2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export const Properties = () => {
-  const { properties, loading } = useProperties();
+  const { properties, loading, deleteProperty } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(propertyId);
+    try {
+      await deleteProperty(propertyId);
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const filteredProperties = properties.filter(property => {
     const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -310,6 +325,14 @@ export const Properties = () => {
                           <Button className="btn-primary">Edit Property</Button>
                           <Button variant="outline">Share Listing</Button>
                           <Button variant="outline">Schedule Viewing</Button>
+                          <Button 
+                            variant="destructive" 
+                            onClick={() => handleDeleteProperty(selectedProperty.id)}
+                            disabled={deleting === selectedProperty.id}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Property
+                          </Button>
                         </div>
                       </div>
                     )}
@@ -317,6 +340,15 @@ export const Properties = () => {
                 </Dialog>
                 <Button size="sm" variant="ghost">
                   <Edit className="w-4 h-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteProperty(property.id)}
+                  disabled={deleting === property.id}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             </CardContent>

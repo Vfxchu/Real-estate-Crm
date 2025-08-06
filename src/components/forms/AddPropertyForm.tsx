@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useProperties } from "@/hooks/useProperties";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 
 interface AddPropertyFormProps {
   open: boolean;
@@ -16,10 +16,12 @@ interface AddPropertyFormProps {
 }
 
 export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenChange }) => {
-  const { createProperty } = useProperties();
+  const { createProperty, uploadPropertyImage } = useProperties();
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -78,6 +80,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
         status: formData.status,
         featured: formData.featured,
         agent_id: user?.id,
+        images: uploadedImages.length > 0 ? uploadedImages : null,
       };
 
       await createProperty(propertyData);
@@ -98,6 +101,7 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
         status: 'available',
         featured: false,
       });
+      setUploadedImages([]);
       
       onOpenChange(false);
     } catch (error: any) {
@@ -113,6 +117,42 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    const tempPropertyId = 'temp-' + Date.now(); // Temporary ID for upload
+
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const result = await uploadPropertyImage(tempPropertyId, file);
+        return result.data;
+      });
+
+      const urls = await Promise.all(uploadPromises);
+      const validUrls = urls.filter(url => url !== null) as string[];
+      
+      setUploadedImages(prev => [...prev, ...validUrls]);
+      toast({
+        title: 'Images uploaded',
+        description: `${validUrls.length} image(s) uploaded successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Upload failed',
+        description: 'Failed to upload some images.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setUploadedImages(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   return (
@@ -289,6 +329,50 @@ export const AddPropertyForm: React.FC<AddPropertyFormProps> = ({ open, onOpenCh
                 <Label htmlFor="featured">Featured Property</Label>
               </div>
             </div>
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Property Images</h3>
+            <div>
+              <Label htmlFor="images">Upload Images</Label>
+              <Input
+                id="images"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploading}
+                className="cursor-pointer"
+              />
+              {uploading && <p className="text-sm text-muted-foreground mt-1">Uploading images...</p>}
+            </div>
+            
+            {uploadedImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Uploaded Images ({uploadedImages.length})</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {uploadedImages.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={url} 
+                        alt={`Property image ${index + 1}`}
+                        className="w-full h-20 object-cover rounded border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">

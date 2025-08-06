@@ -126,6 +126,19 @@ export const useProperties = () => {
 
   const deleteProperty = async (id: string) => {
     try {
+      // First delete associated images from storage
+      const property = properties.find(p => p.id === id);
+      if (property?.images?.length) {
+        const imagePaths = property.images.map(url => {
+          const urlParts = url.split('/');
+          return `${id}/${urlParts[urlParts.length - 1]}`;
+        });
+        
+        await supabase.storage
+          .from('property-images')
+          .remove(imagePaths);
+      }
+
       const { error } = await supabase
         .from('properties')
         .delete()
@@ -150,6 +163,33 @@ export const useProperties = () => {
     }
   };
 
+  const uploadPropertyImage = async (propertyId: string, file: File) => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${propertyId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('property-images')
+        .getPublicUrl(filePath);
+
+      return { data: publicUrl, error: null };
+    } catch (error: any) {
+      toast({
+        title: 'Error uploading image',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { data: null, error };
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchProperties();
@@ -163,5 +203,6 @@ export const useProperties = () => {
     createProperty,
     updateProperty,
     deleteProperty,
+    uploadPropertyImage,
   };
 };

@@ -120,24 +120,24 @@ export type Database = {
       }
       profile_audit: {
         Row: {
-          changed_at: string
-          changed_by: string
+          changed_at: string | null
+          changed_by: string | null
           id: string
           new_role: string | null
           old_role: string | null
           user_id: string
         }
         Insert: {
-          changed_at?: string
-          changed_by: string
+          changed_at?: string | null
+          changed_by?: string | null
           id?: string
           new_role?: string | null
           old_role?: string | null
           user_id: string
         }
         Update: {
-          changed_at?: string
-          changed_by?: string
+          changed_at?: string | null
+          changed_by?: string | null
           id?: string
           new_role?: string | null
           old_role?: string | null
@@ -261,6 +261,10 @@ export type Database = {
     }
     Functions: {
       get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_least_busy_agent: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

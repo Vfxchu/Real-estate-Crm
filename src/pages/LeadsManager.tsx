@@ -34,14 +34,34 @@ import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
 
 export const LeadsManager = () => {
-  const { leads, loading } = useLeads();
+  const { leads, loading, updateLead, addActivity, deleteLead } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
+    await updateLead(leadId, { status: newStatus });
+    await addActivity(leadId, 'status_change', `Status changed to ${newStatus}`);
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(leadId);
+    try {
+      await deleteLead(leadId);
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -288,19 +308,20 @@ export const LeadsManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0"
-                            onClick={() => setSelectedLead(lead)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                     <TableCell>
+                       <div className="flex items-center gap-1">
+                         <Dialog>
+                           <DialogTrigger asChild>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               className="h-8 w-8 p-0"
+                               onClick={() => setSelectedLead(lead)}
+                             >
+                               <Eye className="w-4 h-4" />
+                             </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Lead Details - {selectedLead?.name}</DialogTitle>
                           </DialogHeader>
@@ -371,10 +392,20 @@ export const LeadsManager = () => {
                                 </Button>
                               </div>
                             </div>
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
+                           )}
+                           </DialogContent>
+                         </Dialog>
+                         <Button
+                           size="sm"
+                           variant="ghost"
+                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                           onClick={() => handleDeleteLead(lead.id)}
+                           disabled={deleting === lead.id}
+                         >
+                           <Trash2 className="w-4 h-4" />
+                         </Button>
+                       </div>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
