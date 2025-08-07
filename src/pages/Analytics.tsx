@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart,
   Bar,
@@ -53,13 +55,101 @@ const agentPerformance = [
 ];
 
 export const Analytics = () => {
+  const { user, profile } = useAuth();
+  const [analytics, setAnalytics] = useState({
+    totalLeads: 0,
+    newLeads: 0,
+    convertedLeads: 0,
+    activeAgents: 0,
+    conversionRate: 0
+  });
+  const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6months');
 
-  const totalLeads = 512;
-  const convertedLeads = 156;
-  const conversionRate = (convertedLeads / totalLeads * 100).toFixed(1);
-  const totalRevenue = 2450000;
-  const avgDealValue = totalRevenue / convertedLeads;
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        // Fetch total leads count
+        let leadsQuery = supabase.from('leads').select('id, status, agent_id', { count: 'exact' });
+        
+        // If user is an agent, only show their leads
+        if (profile?.role === 'agent') {
+          leadsQuery = leadsQuery.eq('agent_id', user.id);
+        }
+        
+        const { count: totalLeads } = await leadsQuery;
+        
+        // Fetch new leads count (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        let newLeadsQuery = supabase
+          .from('leads')
+          .select('id', { count: 'exact' })
+          .gte('created_at', thirtyDaysAgo.toISOString());
+          
+        if (profile?.role === 'agent') {
+          newLeadsQuery = newLeadsQuery.eq('agent_id', user.id);
+        }
+        
+        const { count: newLeads } = await newLeadsQuery;
+        
+        // Fetch converted leads count
+        let convertedQuery = supabase
+          .from('leads')
+          .select('id', { count: 'exact' })
+          .eq('status', 'won');
+          
+        if (profile?.role === 'agent') {
+          convertedQuery = convertedQuery.eq('agent_id', user.id);
+        }
+        
+        const { count: convertedLeads } = await convertedQuery;
+        
+        // Fetch active agents count (only for admin)
+        let activeAgents = 0;
+        if (profile?.role === 'admin') {
+          const { count } = await supabase
+            .from('profiles')
+            .select('id', { count: 'exact' })
+            .eq('role', 'agent')
+            .eq('status', 'active');
+          activeAgents = count || 0;
+        }
+        
+        // Calculate conversion rate
+        const conversionRate = totalLeads && totalLeads > 0 
+          ? Math.round(((convertedLeads || 0) / totalLeads) * 100) 
+          : 0;
+        
+        setAnalytics({
+          totalLeads: totalLeads || 0,
+          newLeads: newLeads || 0,
+          convertedLeads: convertedLeads || 0,
+          activeAgents,
+          conversionRate
+        });
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [user, profile]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -92,11 +182,8 @@ export const Analytics = () => {
               <Target className="w-8 h-8 text-primary" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
-                <p className="text-2xl font-bold">{totalLeads.toLocaleString()}</p>
-                <div className="flex items-center mt-1">
-                  <TrendingUp className="w-4 h-4 text-success mr-1" />
-                  <span className="text-sm text-success">+12.5%</span>
-                </div>
+                <p className="text-2xl font-bold">{analytics.totalLeads.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">All time</p>
               </div>
             </div>
           </CardContent>
@@ -107,12 +194,9 @@ export const Analytics = () => {
             <div className="flex items-center">
               <Award className="w-8 h-8 text-success" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
-                <p className="text-2xl font-bold">{conversionRate}%</p>
-                <div className="flex items-center mt-1">
-                  <TrendingUp className="w-4 h-4 text-success mr-1" />
-                  <span className="text-sm text-success">+3.2%</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">New Leads</p>
+                <p className="text-2xl font-bold">{analytics.newLeads}</p>
+                <p className="text-xs text-muted-foreground">Last 30 days</p>
               </div>
             </div>
           </CardContent>
@@ -123,12 +207,9 @@ export const Analytics = () => {
             <div className="flex items-center">
               <DollarSign className="w-8 h-8 text-warning" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">${(totalRevenue / 1000000).toFixed(1)}M</p>
-                <div className="flex items-center mt-1">
-                  <TrendingUp className="w-4 h-4 text-success mr-1" />
-                  <span className="text-sm text-success">+18.3%</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">Converted</p>
+                <p className="text-2xl font-bold">{analytics.convertedLeads}</p>
+                <p className="text-xs text-muted-foreground">Won leads</p>
               </div>
             </div>
           </CardContent>
@@ -139,12 +220,15 @@ export const Analytics = () => {
             <div className="flex items-center">
               <Activity className="w-8 h-8 text-info" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Avg Deal Value</p>
-                <p className="text-2xl font-bold">${(avgDealValue / 1000).toFixed(0)}K</p>
-                <div className="flex items-center mt-1">
-                  <TrendingDown className="w-4 h-4 text-destructive mr-1" />
-                  <span className="text-sm text-destructive">-2.1%</span>
-                </div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  {profile?.role === 'admin' ? 'Active Agents' : 'Conversion Rate'}
+                </p>
+                <p className="text-2xl font-bold">
+                  {profile?.role === 'admin' ? analytics.activeAgents : `${analytics.conversionRate}%`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {profile?.role === 'admin' ? 'Available agents' : 'Success rate'}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -265,7 +349,7 @@ export const Analytics = () => {
                     <div className="text-right">
                       <p className="font-bold">{source.value}%</p>
                       <p className="text-sm text-muted-foreground">
-                        {Math.round(totalLeads * source.value / 100)} leads
+                        {Math.round(analytics.totalLeads * source.value / 100)} leads
                       </p>
                     </div>
                   </div>

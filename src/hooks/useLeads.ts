@@ -71,7 +71,13 @@ export const useLeads = () => {
       const { data, error } = await supabase
         .from('leads')
         .insert([leadData])
-        .select()
+        .select(`
+          *,
+          profiles!leads_agent_id_fkey (
+            name,
+            email
+          )
+        `)
         .single();
 
       if (error) throw error;
@@ -91,6 +97,10 @@ export const useLeads = () => {
       });
       return { data: null, error };
     }
+  };
+
+  const upsertLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
+    return createLead(leadData);
   };
 
   const updateLead = async (id: string, updates: Partial<Lead>) => {
@@ -187,6 +197,7 @@ export const useLeads = () => {
     loading,
     fetchLeads,
     createLead,
+    upsertLead,
     updateLead,
     deleteLead,
     addActivity,

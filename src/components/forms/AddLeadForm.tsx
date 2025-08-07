@@ -25,7 +25,7 @@ interface Agent {
 }
 
 export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) => {
-  const { createLead } = useLeads();
+  const { upsertLead } = useLeads();
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -198,7 +198,11 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
         budget_range: formData.budget_range || null,
       };
 
-      await createLead(leadData);
+      const result = await upsertLead(leadData);
+      
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
       
       // Reset form
       setFormData({
@@ -247,7 +251,7 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+                 <div>
                 <Label htmlFor="name">Full Name *</Label>
                 <Input
                   id="name"
@@ -268,13 +272,13 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
                 />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email (Optional)</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter email address"
+                  placeholder="Enter email address (optional)"
                 />
               </div>
               <div>
