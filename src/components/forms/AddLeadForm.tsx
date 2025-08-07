@@ -162,15 +162,18 @@ export const AddLeadForm: React.FC<AddLeadFormProps> = ({ open, onOpenChange }) 
         return;
       }
 
-      // Determine agent assignment
+      // Determine agent assignment based on role
       let assignedAgentId = null;
       
-      if (profile?.role === 'admin') {
-        // For admin, auto-assign to agent with fewest leads
-        assignedAgentId = await getAgentWithFewestLeads();
-      } else {
+      console.log('User ID:', user?.id);
+      console.log('User Role:', profile?.role);
+      
+      if (profile?.role === 'agent') {
         // For agents, assign to themselves
         assignedAgentId = user?.id;
+      } else if (profile?.role === 'admin') {
+        // For admin, set to null (Supabase trigger will auto-assign to least busy agent)
+        assignedAgentId = null;
       }
 
       const leadData = {
