@@ -14,49 +14,42 @@ export default function AuthReset() {
   const [saving, setSaving] = useState(false);
 
   // 1) Exchange OTP (code) in URL for a session
- useEffect(() => {
-  (async () => {
-    try {
-      const href = window.location.href;
-      const url = new URL(href);
+  useEffect(() => {
+    (async () => {
+      try {
+        const href = window.location.href;
+        const url = new URL(href);
 
-      // Parse both query (?code=) and hash (#access_token=...) styles
-      const code = url.searchParams.get("code");
-      const hash = window.location.hash || "";
-      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
-      const access_token = hashParams.get("access_token");
-      const refresh_token = hashParams.get("refresh_token");
+        // A) Newer PKCE / OTP: ?code=...
+        const code = url.searchParams.get("code");
 
-      // 1) Newer OTP / PKCE style (?code=...)
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(href);
-        if (error) throw error;
+        // B) Older magic-link style: #access_token=...&refresh_token=...
+        const hash = window.location.hash || "";
+        const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+        const access_token = hashParams.get("access_token");
+        const refresh_token = hashParams.get("refresh_token");
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(href);
+          if (error) throw error;
+        } else if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) throw error;
+        } else {
+          throw new Error("No reset token found in URL");
+        }
+
+        const { data: s } = await supabase.auth.getSession();
+        if (!s?.session) throw new Error("Session not established after verification");
+
+        setStage("ready");
+      } catch (err: any) {
+        console.error("RESET ERROR:", err);
+        toast.error(err?.message || "Reset link invalid or expired");
+        setTimeout(() => navigate("/auth"), 1500);
       }
-      // 2) Older magic-link style (#access_token=...&refresh_token=...)
-      else if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
-        if (error) throw error;
-      }
-      // 3) If no code or tokens found, the link is invalid
-      else {
-        throw new Error("No valid authentication data found in URL");
-      }
-
-      // Double-check we actually have a session before showing the form
-      const { data: s } = await supabase.auth.getSession();
-      if (!s?.session) throw new Error("Session not established after verification");
-
-      setStage("ready"); // show the password form
-    } catch (err: any) {
-      console.error("RESET ERROR:", err);
-      toast.error(err?.message || "Reset link invalid or expired");
-      setTimeout(() => navigate("/auth"), 1500);
-    }
-  })();
-}, [navigate]);
+    })();
+  }, [navigate]);
 
 
   // 2) Update password
