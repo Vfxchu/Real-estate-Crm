@@ -17,27 +17,49 @@ export default function AuthReset() {
  useEffect(() => {
   (async () => {
     try {
-      // Handle BOTH patterns:
-      // A) OAuth/Pkce style: ?code=...   → exchangeCodeForSession
-      // B) Email recovery/magic link: #access_token=... → getSessionFromUrl
       const href = window.location.href;
-      const hasCode = new URL(href).searchParams.get("code");
-      if (hasCode) {
+      const url = new URL(href);
+
+      // Parse both query (?code=) and hash (#access_token=...) styles
+      const code = url.searchParams.get("code");
+      const hash = window.location.hash || "";
+      const hashParams = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
+      const access_token = hashParams.get("access_token");
+      const refresh_token = hashParams.get("refresh_token");
+
+      // 1) Newer OTP / PKCE style (?code=...)
+      if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(href);
         if (error) throw error;
-      } else {
-        // Will read tokens from the hash (#access_token=...) and store the session
+      }
+      // 2) Older magic-link style (#access_token=...&refresh_token=...)
+      else if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (error) throw error;
+      }
+      // 3) Supabase helper that also handles hash links in some versions
+      else {
         const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
         if (error) throw error;
         if (!data?.session) throw new Error("No session found in URL");
       }
-      setStage("ready"); // show the "Set new password" form
+
+      // Double-check we actually have a session before showing the form
+      const { data: s } = await supabase.auth.getSession();
+      if (!s?.session) throw new Error("Session not established after verification");
+
+      setStage("ready"); // show the password form
     } catch (err: any) {
+      console.error("RESET ERROR:", err);
       toast.error(err?.message || "Reset link invalid or expired");
       setTimeout(() => navigate("/auth"), 1500);
     }
   })();
 }, [navigate]);
+
 
   // 2) Update password
   async function onSubmit(e: React.FormEvent) {
