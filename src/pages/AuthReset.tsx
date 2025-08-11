@@ -326,6 +326,15 @@ export default function AuthReset() {
               >
                 {saving ? "Updating Password..." : "Update Password"}
               </Button>
+              
+              <Button 
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => navigate("/auth")}
+              >
+                Back to Login
+              </Button>
             </form>
           </CardContent>
         </Card>
