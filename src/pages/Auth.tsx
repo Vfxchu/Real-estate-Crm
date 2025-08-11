@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Building2 } from 'lucide-react';
+
 
 export const Auth: React.FC = () => {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -54,11 +54,17 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+    <div className="min-h-screen w-full bg-[#000034] flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="flex items-center justify-center mb-8">
-          <Building2 className="h-8 w-8 text-primary mr-2" />
-          <h1 className="text-2xl font-bold">RealEstate CRM</h1>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <img
+            src="/dkv-logo.svg"
+            alt="DKV International Logo"
+            className="w-28 md:w-32 lg:w-36 h-auto"
+          />
+          <div className="mt-3 text-white font-semibold tracking-wide text-sm md:text-base">
+            DKV INTERNATIONAL REAL ESTATE CRM
+          </div>
         </div>
         
         <Card>
