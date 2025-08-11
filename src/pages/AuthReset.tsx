@@ -14,18 +14,30 @@ export default function AuthReset() {
   const [saving, setSaving] = useState(false);
 
   // 1) Exchange OTP (code) in URL for a session
-  useEffect(() => {
-    (async () => {
-      try {
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+ useEffect(() => {
+  (async () => {
+    try {
+      // Handle BOTH patterns:
+      // A) OAuth/Pkce style: ?code=...   → exchangeCodeForSession
+      // B) Email recovery/magic link: #access_token=... → getSessionFromUrl
+      const href = window.location.href;
+      const hasCode = new URL(href).searchParams.get("code");
+      if (hasCode) {
+        const { error } = await supabase.auth.exchangeCodeForSession(href);
         if (error) throw error;
-        setStage("ready");
-      } catch (err: any) {
-        toast.error(err.message ?? "Reset link invalid or expired");
-        setTimeout(() => navigate("/auth"), 1500);
+      } else {
+        // Will read tokens from the hash (#access_token=...) and store the session
+        const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+        if (error) throw error;
+        if (!data?.session) throw new Error("No session found in URL");
       }
-    })();
-  }, [navigate]);
+      setStage("ready"); // show the "Set new password" form
+    } catch (err: any) {
+      toast.error(err?.message || "Reset link invalid or expired");
+      setTimeout(() => navigate("/auth"), 1500);
+    }
+  })();
+}, [navigate]);
 
   // 2) Update password
   async function onSubmit(e: React.FormEvent) {
