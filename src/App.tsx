@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Auth } from "@/pages/Auth";
+import PasswordReset from "@/pages/PasswordReset";
 import { Dashboard } from "@/pages/Dashboard";
 import { LeadsManager } from "@/pages/LeadsManager";
 import { MyLeads } from "@/pages/MyLeads";
@@ -30,6 +31,7 @@ const AppRoutes = () => {
     return (
       <Routes>
         <Route path="/auth" element={<Auth />} />
+        <Route path="/auth/reset" element={<PasswordReset />} />
         <Route path="*" element={<Navigate to="/auth" replace />} />
       </Routes>
     );
@@ -50,6 +52,7 @@ const AppRoutes = () => {
       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
+      <Route path="/auth/reset" element={<PasswordReset />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

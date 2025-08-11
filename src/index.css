@@ -57,6 +57,9 @@ All colors MUST be HSL.
     --shadow-md: 0 4px 6px -1px hsl(220 13% 91% / 0.1), 0 2px 4px -1px hsl(220 13% 91% / 0.06);
     --shadow-lg: 0 10px 15px -3px hsl(220 13% 91% / 0.1), 0 4px 6px -2px hsl(220 13% 91% / 0.05);
     --shadow-xl: 0 20px 25px -5px hsl(220 13% 91% / 0.1), 0 10px 10px -5px hsl(220 13% 91% / 0.04);
+
+    /* Typography */
+    --font-heading: 'Tenor Sans', serif;
   }
 
   .dark {
@@ -187,6 +190,10 @@ All colors MUST be HSL.
   
   .gradient-secondary {
     background: var(--gradient-secondary);
+  }
+  
+  .font-heading {
+    font-family: var(--font-heading);
   }
   
   .animate-fade-in {

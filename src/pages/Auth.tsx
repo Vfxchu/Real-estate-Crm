@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 
 export const Auth: React.FC = () => {
@@ -15,6 +17,23 @@ export const Auth: React.FC = () => {
   
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+
+  // Force light theme on the login page
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = new Set(root.classList);
+    root.classList.remove('dark', 'dark-blue');
+    root.classList.add('light');
+    return () => {
+      root.classList.remove('light');
+      // Restore previous theme classes
+      root.classList.remove('dark', 'dark-blue');
+      previous.forEach((c) => root.classList.add(c));
+    };
+  }, []);
 
   const from = location.state?.from?.pathname || '/';
 
@@ -44,6 +63,31 @@ export const Auth: React.FC = () => {
     setLoading(false);
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setResetLoading(true);
+    const redirectTo = `${window.location.origin}/auth/reset`;
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo,
+    });
+
+    if (error) {
+      toast({
+        title: 'Reset failed',
+        description: error.message || 'Unable to send reset email.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Check your email',
+        description: 'We sent a link to reset your password.',
+      });
+      setForgotOpen(false);
+      setForgotEmail('');
+    }
+    setResetLoading(false);
+  };
 
   if (isLoading) {
     return (
@@ -54,26 +98,26 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#000034] flex flex-col items-center justify-center p-4 light">
+    <div className="min-h-screen w-full bg-[#161D2D] flex flex-col items-center justify-center p-4 light">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <img
-            src="/lovable-uploads/f0e8820e-d879-4db3-87ff-cb9405576fc4.png"
+            src="/lovable-uploads/92146f7d-7396-400a-8bf4-92d1603d8ea5.png"
             alt="DKV International Logo"
             className="w-28 md:w-32 lg:w-36 h-auto"
           />
-          <div className="mt-3 text-white font-semibold tracking-wide text-sm md:text-base">
+          <div className="mt-3 font-heading text-white font-semibold tracking-wide text-xl md:text-2xl">
             DKV INTERNATIONAL REAL ESTATE CRM
           </div>
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Welcome</CardTitle>
-            <CardDescription>
-              Sign in to your account
-            </CardDescription>
-          </CardHeader>
+          <Card>
+            <CardHeader>
+              <CardTitle>Welcome</CardTitle>
+              <CardDescription>
+                Sign in to your account
+              </CardDescription>
+            </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
@@ -102,6 +146,37 @@ export const Auth: React.FC = () => {
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
+
+            <div className="mt-2 text-right">
+              <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="link" className="px-0">Forgot password?</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Reset your password</DialogTitle>
+                    <DialogDescription>
+                      Enter your email and we'll send you a reset link.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={resetLoading}>
+                      {resetLoading ? 'Sending...' : 'Send reset link'}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardContent>
         </Card>
       </div>
