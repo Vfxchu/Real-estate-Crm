@@ -58,7 +58,7 @@ export const Auth: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <img
-            src="/dkv-logo.svg"
+            src="/lovable-uploads/f0e8820e-d879-4db3-87ff-cb9405576fc4.png"
             alt="DKV International Logo"
             className="w-28 md:w-32 lg:w-36 h-auto"
           />
