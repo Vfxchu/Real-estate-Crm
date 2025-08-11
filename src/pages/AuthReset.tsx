@@ -33,7 +33,7 @@ export default function AuthReset() {
     };
   }, []);
 
-  // 1) Exchange OTP (code) in URL for a session
+  // 1) Check if we have a reset token in URL or if user is already authenticated
   useEffect(() => {
     (async () => {
       try {
@@ -56,7 +56,10 @@ export default function AuthReset() {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token });
           if (error) throw error;
         } else {
-          throw new Error("No reset token found in URL");
+          // No token in URL - this could be direct access
+          // Allow direct access to reset page (user will need to authenticate via email first)
+          setStage("ready");
+          return;
         }
 
         const { data: s } = await supabase.auth.getSession();
@@ -91,8 +94,18 @@ export default function AuthReset() {
 
     setSaving(true);
     try {
+      // Check if user is authenticated
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session) {
+        toast.error("Please access this page through the password reset email link.");
+        navigate("/auth");
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      
+      toast.success("Password updated successfully!");
       setStage("success");
     } catch (err: any) {
       toast.error(err.message ?? "Failed to update password");
