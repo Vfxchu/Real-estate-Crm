@@ -54,7 +54,7 @@ export const Auth: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#000034] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-[#000034] flex flex-col items-center justify-center p-4 light">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <img
