@@ -80,6 +80,12 @@ const navigation: NavItem[] = [
     roles: ['admin', 'agent'],
   },
   {
+    title: 'Contacts',
+    href: '/contacts',
+    icon: Users,
+    roles: ['admin', 'agent'],
+  },
+  {
     title: 'Notifications',
     href: '/notifications',
     icon: Bell,

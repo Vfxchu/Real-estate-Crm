@@ -60,11 +60,14 @@ export type Database = {
         Row: {
           agent_id: string | null
           budget_range: string | null
+          contact_status: string | null
           created_at: string
+          custom_fields: Json | null
           email: string
           follow_up_date: string | null
           id: string
           interested_in: string | null
+          merged_into_id: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -72,16 +75,20 @@ export type Database = {
           score: number | null
           source: string
           status: string
+          tags: string[] | null
           updated_at: string
         }
         Insert: {
           agent_id?: string | null
           budget_range?: string | null
+          contact_status?: string | null
           created_at?: string
+          custom_fields?: Json | null
           email: string
           follow_up_date?: string | null
           id?: string
           interested_in?: string | null
+          merged_into_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -89,16 +96,20 @@ export type Database = {
           score?: number | null
           source?: string
           status?: string
+          tags?: string[] | null
           updated_at?: string
         }
         Update: {
           agent_id?: string | null
           budget_range?: string | null
+          contact_status?: string | null
           created_at?: string
+          custom_fields?: Json | null
           email?: string
           follow_up_date?: string | null
           id?: string
           interested_in?: string | null
+          merged_into_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -106,6 +117,7 @@ export type Database = {
           score?: number | null
           source?: string
           status?: string
+          tags?: string[] | null
           updated_at?: string
         }
         Relationships: [
@@ -257,7 +269,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      leads_per_agent_per_month: {
+        Row: {
+          agent_id: string | null
+          lead_count: number | null
+          month: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_current_user_role: {

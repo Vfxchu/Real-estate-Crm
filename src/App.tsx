@@ -16,6 +16,7 @@ import { Calendar } from "@/pages/Calendar";
 import { Analytics } from "@/pages/Analytics";
 import { Automation } from "@/pages/Automation";
 import { Properties } from "@/pages/Properties";
+import Contacts from "@/pages/Contacts";
 import { Notifications } from "@/pages/Notifications";
 import { Settings } from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -45,6 +46,7 @@ const AppRoutes = () => {
       <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
       <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin']}><Automation /></ProtectedRoute>} />
       <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
+      <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
