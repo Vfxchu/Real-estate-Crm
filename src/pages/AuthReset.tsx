@@ -40,11 +40,9 @@ export default function AuthReset() {
         });
         if (error) throw error;
       }
-      // 3) Supabase helper that also handles hash links in some versions
+      // 3) If no code or tokens found, the link is invalid
       else {
-        const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
-        if (error) throw error;
-        if (!data?.session) throw new Error("No session found in URL");
+        throw new Error("No valid authentication data found in URL");
       }
 
       // Double-check we actually have a session before showing the form
