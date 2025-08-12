@@ -96,7 +96,7 @@ export const useLeads = () => {
     return createLead(leadData);
   };
 
-  const updateLead = async (id: string, updates: Partial<Lead>) => {
+  const updateLead = async (id: string, updates: any) => {
     try {
       const { data, error } = await supabase
         .from('leads')

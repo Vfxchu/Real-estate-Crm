@@ -63,10 +63,9 @@ export const LeadsManager = () => {
     await addActivity(leadId, 'status_change', `Status changed to ${newStatus}`);
   };
 
-  const handleContactStatusToggle = async (leadId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'contacted' ? 'lead' : 'contacted';
-    await updateLead(leadId, { contact_status: newStatus });
-    await addActivity(leadId, 'contact_status_change', `Contact status changed to ${newStatus}`);
+  const handleContactStatusChange = async (leadId: string, newContactStatus: string) => {
+    await updateLead(leadId, { contact_status: newContactStatus });
+    await addActivity(leadId, 'contact_status_change', `Contact status changed to ${newContactStatus}`);
   };
 
   const handleDeleteLead = async (leadId: string) => {
@@ -339,7 +338,7 @@ export const LeadsManager = () => {
                         size="sm"
                         variant={lead.contact_status === 'contacted' ? 'default' : 'outline'}
                         className="h-8"
-                        onClick={() => handleContactStatusToggle(lead.id, lead.contact_status || 'lead')}
+                        onClick={() => handleContactStatusChange(lead.id, lead.contact_status === 'contacted' ? 'lead' : 'contacted')}
                       >
                         {lead.contact_status === 'contacted' ? (
                           <>
