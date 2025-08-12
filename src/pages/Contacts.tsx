@@ -7,8 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Download, Upload, GitMerge, X, Plus } from 'lucide-react';
+import { Users, Download, Upload, GitMerge, X, Plus, Phone, Mail, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'react-router-dom';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type StatusFilter = 'all' | ContactStatus;
 const TAGS = ['buyer', 'seller', 'landlord', 'tenant', 'first_time', 'investor'];
@@ -32,7 +36,7 @@ export default function Contacts() {
 
   const fetchRows = async () => {
     setLoading(true);
-    const { data, error } = await list({ q, status, tags, limit: 200 });
+    const { data, error } = await list({ q, status_category: status, page: 1, pageSize: 200 });
     setLoading(false);
     
     if (error) {

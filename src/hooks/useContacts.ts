@@ -13,30 +13,42 @@ export function useContacts() {
 
   const list = useCallback(async (opts: {
     q?: string;
-    status?: 'all' | ContactStatus;
-    tags?: string[];
-    limit?: number;
-    includeMerged?: boolean;
+    status_category?: 'all' | ContactStatus;
+    interest_type?: 'buyer' | 'seller' | 'landlord' | 'tenant' | 'investor' | 'all';
+    page?: number;
+    pageSize?: number;
+    filters?: Partial<{
+      source: string;
+      segment: string;
+      subtype: string;
+      bedrooms: string;
+      size_band: string;
+      location_address: string;
+      contact_pref: string[];
+      tags: string[];
+    }>;
   } = {}) => {
-    const { q, status = 'all', tags = [], limit = 50, includeMerged = false } = opts;
+    const { q, status_category = 'all', interest_type = 'all', page = 1, pageSize = 25, filters = {} } = opts;
 
     // Prefer shared service for consistent listing
     const { listLeads } = await import("@/services/leads");
-    const { rows, error } = await listLeads({
+    const { rows, total, error } = await listLeads({
       q,
-      status_category: status === 'all' ? undefined : status,
-      page: 1,
-      pageSize: limit,
+      status_category: status_category === 'all' ? undefined : status_category,
+      interest_type: interest_type === 'all' ? undefined : interest_type,
+      page,
+      pageSize,
+      source: filters.source,
+      filters: {
+        segment: filters.segment,
+        subtype: filters.subtype,
+        bedrooms: filters.bedrooms,
+        size_band: filters.size_band,
+        location_address: filters.location_address,
+      },
     });
 
-    // Filter tags client-side (service doesn't support tags natively yet)
-    const filtered = (rows || []).filter((row: any) => {
-      if (!tags.length) return true;
-      const rowTags: string[] = row.tags || [];
-      return tags.every(t => rowTags.includes(t));
-    });
-
-    return { data: filtered, error } as const;
+    return { data: rows, total, error } as const;
   }, []);
 
   const updateContact = useCallback(async (id: string, patch: Partial<{
