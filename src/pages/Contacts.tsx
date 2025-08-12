@@ -7,49 +7,150 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Download, Upload, GitMerge, X, Plus, Phone, Mail, MessageSquare } from 'lucide-react';
+import { Users, Download, Upload, GitMerge, X, Plus, Phone, Mail, MessageSquare, Filter, Edit } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LeadMeta } from '@/components/leads/LeadMeta';
+import { supabase } from '@/integrations/supabase/client';
+import { deleteLead } from '@/services/leads';
 
 type StatusFilter = 'all' | ContactStatus;
-const TAGS = ['buyer', 'seller', 'landlord', 'tenant', 'first_time', 'investor'];
+type InterestFilter = 'all' | 'buyer' | 'seller' | 'landlord' | 'tenant' | 'investor';
+
+// Debounced search hook
+function useDebounced<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Column presets by interest type
+const getColumnsByInterestType = (interestType: InterestFilter) => {
+  switch (interestType) {
+    case 'buyer':
+      return ['name', 'phone', 'property_type', 'bedrooms', 'location', 'budget_sale_band', 'contact_status', 'notes', 'updated_at'];
+    case 'seller':
+      return ['name', 'phone', 'property_type', 'bedrooms', 'location', 'budget_sale_band', 'contact_status', 'notes', 'updated_at'];
+    case 'landlord':
+      return ['name', 'phone', 'property_type', 'bedrooms', 'location', 'budget_rent_band', 'contact_status', 'notes', 'updated_at'];
+    case 'tenant':
+      return ['name', 'phone', 'property_type', 'bedrooms', 'location', 'budget_rent_band', 'notes', 'updated_at'];
+    case 'investor':
+      return ['name', 'phone', 'property_type', 'bedrooms', 'location', 'budget_sale_band', 'notes', 'contact_status', 'updated_at'];
+    default:
+      return ['name', 'phone', 'email', 'contact_status', 'interest_tags', 'updated_at', 'actions'];
+  }
+};
 
 export default function Contacts() {
   const { user, profile } = useAuth();
-  const { list, updateContact, mergeContacts, potentialDuplicates, toCSV, getActivities } = useContacts();
+  const { list, updateContact, mergeContacts, potentialDuplicates, toCSV } = useContacts();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState<StatusFilter>('all');
-  const [tags, setTags] = useState<string[]>([]);
+  // URL-driven state
+  const page = Number(searchParams.get('page')) || 1;
+  const pageSize = Number(searchParams.get('pageSize')) || 25;
+  const q = searchParams.get('q') || '';
+  const status = (searchParams.get('status') || 'all') as StatusFilter;
+  const interestType = (searchParams.get('interest_type') || 'all') as InterestFilter;
+  const source = searchParams.get('source') || '';
+  const segment = searchParams.get('segment') || '';
+  const subtype = searchParams.get('subtype') || '';
+  const bedrooms = searchParams.get('bedrooms') || '';
+  const sizeBand = searchParams.get('size_band') || '';
+  const location = searchParams.get('location') || '';
+  
+  // Local state
+  const [searchInput, setSearchInput] = useState(q);
   const [rows, setRows] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  
+  // 300ms debounced search
+  const debouncedSearch = useDebounced(searchInput, 300);
   
   const dupes = useMemo(() => potentialDuplicates(rows), [rows, potentialDuplicates]);
+  const columns = getColumnsByInterestType(interestType);
+
+  // Update URL params
+  const updateUrlParam = (key: string, value: string | number) => {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== 'all' && value !== '') {
+      params.set(key, String(value));
+    } else {
+      params.delete(key);
+    }
+    // Reset page when filters change (except when changing page itself)
+    if (key !== 'page') {
+      params.delete('page');
+    }
+    setSearchParams(params);
+  };
+
+  // Sync search input with URL
+  useEffect(() => {
+    if (debouncedSearch !== q) {
+      updateUrlParam('q', debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    setSearchInput(q);
+  }, [q]);
 
   const fetchRows = async () => {
     setLoading(true);
-    const { data, error } = await list({ q, status_category: status, page: 1, pageSize: 200 });
-    setLoading(false);
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      return;
+    try {
+      const { data, total: rowTotal, error } = await list({
+        q: q,
+        status_category: status === 'all' ? 'all' : status,
+        interest_type: interestType,
+        page,
+        pageSize,
+        filters: {
+          source: source || undefined,
+          segment: segment || undefined,
+          subtype: subtype || undefined,
+          bedrooms: bedrooms || undefined,
+          size_band: sizeBand || undefined,
+          location_address: location || undefined,
+        },
+      });
+      
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        return;
+      }
+      
+      setRows(data || []);
+      setTotal(rowTotal || 0);
+    } finally {
+      setLoading(false);
     }
-    
-    setRows(data || []);
   };
 
   useEffect(() => {
     fetchRows();
-  }, [q, status, tags.join('|')]);
+  }, [page, pageSize, q, status, interestType, source, segment, subtype, bedrooms, sizeBand, location]);
 
   // Refresh when any part of the app creates/updates leads
   useEffect(() => {
@@ -79,29 +180,6 @@ export default function Contacts() {
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
-    );
-  };
-
-  const addTagToContact = async (contactId: string, tag: string) => {
-    const contact = rows.find(r => r.id === contactId);
-    if (!contact) return;
-    
-    const newTags = [...new Set([...(contact.tags || []), tag])];
-    const { error } = await updateContact(contactId, { tags: newTags });
-    
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      fetchRows();
-      toast({ title: 'Tag added', description: `Added "${tag}" tag` });
-    }
-  };
-
   const updateContactStatus = async (contactId: string, newStatus: ContactStatus) => {
     const { error } = await updateContact(contactId, { contact_status: newStatus });
     
@@ -112,6 +190,8 @@ export default function Contacts() {
     }
   };
 
+  const totalPages = Math.ceil(total / pageSize);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -119,7 +199,7 @@ export default function Contacts() {
         <div className="flex items-center gap-2">
           <Users className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Contacts</h1>
-          <Badge variant="secondary">{rows.length}</Badge>
+          <Badge variant="secondary">{total}</Badge>
         </div>
         
         <div className="flex items-center gap-2">
@@ -163,13 +243,98 @@ export default function Contacts() {
 
       {/* Filters */}
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-4">
           <Input
             placeholder="Search name, email, or phone..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="max-w-sm"
           />
+          
+          <Popover open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Advanced Filters
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Source</label>
+                  <Select value={source} onValueChange={(value) => updateUrlParam('source', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All sources" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All sources</SelectItem>
+                      <SelectItem value="website">Website</SelectItem>
+                      <SelectItem value="referral">Referral</SelectItem>
+                      <SelectItem value="email_campaign">Email Campaign</SelectItem>
+                      <SelectItem value="whatsapp_campaign">WhatsApp Campaign</SelectItem>
+                      <SelectItem value="property_finder">Property Finder</SelectItem>
+                      <SelectItem value="bayut_dubizzle">Bayut/Dubizzle</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Property Type</label>
+                  <Select value={segment} onValueChange={(value) => updateUrlParam('segment', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="residential">Residential</SelectItem>
+                      <SelectItem value="commercial">Commercial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Bedrooms</label>
+                  <Select value={bedrooms} onValueChange={(value) => updateUrlParam('bedrooms', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All bedrooms" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All bedrooms</SelectItem>
+                      <SelectItem value="Studio">Studio</SelectItem>
+                      <SelectItem value="1BR">1BR</SelectItem>
+                      <SelectItem value="2BR">2BR</SelectItem>
+                      <SelectItem value="3BR">3BR</SelectItem>
+                      <SelectItem value="4BR">4BR</SelectItem>
+                      <SelectItem value="5BR">5BR</SelectItem>
+                      <SelectItem value="6+ BR">6+ BR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Location</label>
+                  <Input
+                    placeholder="Location contains..."
+                    value={location}
+                    onChange={(e) => updateUrlParam('location', e.target.value)}
+                  />
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setSearchParams({});
+                    setSearchInput('');
+                    setShowAdvancedFilters(false);
+                  }}
+                  className="w-full"
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +344,7 @@ export default function Contacts() {
               key={s}
               variant={status === s ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setStatus(s)}
+              onClick={() => updateUrlParam('status', s)}
             >
               {s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </Button>
@@ -187,15 +352,15 @@ export default function Contacts() {
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">Tags:</span>
-          {TAGS.map(tag => (
+          <span className="text-sm font-medium">Interest Type:</span>
+          {(['all', 'buyer', 'seller', 'landlord', 'tenant', 'investor'] as InterestFilter[]).map(t => (
             <Button
-              key={tag}
-              variant={tags.includes(tag) ? 'default' : 'outline'}
+              key={t}
+              variant={interestType === t ? 'default' : 'outline'}
               size="sm"
-              onClick={() => toggleTag(tag)}
+              onClick={() => updateUrlParam('interest_type', t)}
             >
-              {tag.replace('_', ' ')}
+              {t.charAt(0).toUpperCase() + t.slice(1)}
             </Button>
           ))}
         </div>
@@ -203,7 +368,7 @@ export default function Contacts() {
 
       {/* Table */}
       <div className="border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-8 bg-muted px-4 py-3 text-sm font-medium">
+        <div className="grid grid-cols-7 bg-muted px-4 py-3 text-sm font-medium">
           <div>
             <input
               type="checkbox"
@@ -214,10 +379,9 @@ export default function Contacts() {
             />
           </div>
           <div>Name</div>
-          <div>Phone</div>
-          <div>Email</div>
-          <div>Contact Status</div>
-          <div>Tags</div>
+          <div>Contact</div>
+          <div>Details</div>
+          <div>Status</div>
           <div>Last Update</div>
           <div>Actions</div>
         </div>
@@ -232,7 +396,7 @@ export default function Contacts() {
           rows.map(row => (
             <div 
               key={row.id} 
-              className="grid grid-cols-8 px-4 py-3 border-t hover:bg-accent/50 cursor-pointer"
+              className="grid grid-cols-7 px-4 py-3 border-t hover:bg-accent/50 cursor-pointer"
               onClick={() => setDrawerId(row.id)}
             >
               <div onClick={(e) => e.stopPropagation()}>
@@ -250,8 +414,15 @@ export default function Contacts() {
               </div>
               
               <div className="font-medium">{row.name}</div>
-              <div>{row.phone}</div>
-              <div>{row.email}</div>
+              
+              <div className="text-sm space-y-1">
+                <div>{row.phone}</div>
+                <div className="text-muted-foreground">{row.email}</div>
+              </div>
+              
+              <div className="text-sm">
+                <LeadMeta lead={row} layout="table" />
+              </div>
               
               <div onClick={(e) => e.stopPropagation()}>
                 <Select
@@ -269,35 +440,11 @@ export default function Contacts() {
                 </Select>
               </div>
               
-              <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-                {(row.tags || []).map((tag: string) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-1 text-xs"
-                  onClick={() => addTagToContact(row.id, 'buyer')}
-                >
-                  +buyer
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 px-1 text-xs"
-                  onClick={() => addTagToContact(row.id, 'seller')}
-                >
-                  +seller
-                </Button>
-              </div>
-              
               <div className="text-sm text-muted-foreground">
                 {row.updated_at ? new Date(row.updated_at).toLocaleDateString() : '—'}
               </div>
               
-              <div>
+              <div onClick={(e) => e.stopPropagation()}>
                 <Button variant="outline" size="sm">
                   View
                 </Button>
@@ -306,6 +453,58 @@ export default function Contacts() {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => page > 1 && updateUrlParam('page', page - 1)}
+                className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+            
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <PaginationItem key={pageNum}>
+                  <PaginationLink
+                    onClick={() => updateUrlParam('page', pageNum)}
+                    isActive={page === pageNum}
+                    className="cursor-pointer"
+                  >
+                    {pageNum}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+            
+            {totalPages > 5 && page < totalPages - 2 && (
+              <>
+                <PaginationItem>
+                  <span className="px-3 py-2">...</span>
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationLink
+                    onClick={() => updateUrlParam('page', totalPages)}
+                    className="cursor-pointer"
+                  >
+                    {totalPages}
+                  </PaginationLink>
+                </PaginationItem>
+              </>
+            )}
+            
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => page < totalPages && updateUrlParam('page', page + 1)}
+                className={page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       {/* Contact Drawer */}
       {drawerId && (
@@ -358,11 +557,12 @@ function ContactDrawer({ id, onClose, onUpdate }: {
   onClose: () => void;
   onUpdate: () => void;
 }) {
-  const { updateContact, getActivities } = useContacts();
+  const { updateContact } = useContacts();
   const { toast } = useToast();
   const [contact, setContact] = useState<any>(null);
-  const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
     const fetchContact = async () => {
@@ -378,10 +578,7 @@ function ContactDrawer({ id, onClose, onUpdate }: {
         return;
       }
 
-      const { data: activitiesData } = await getActivities(id);
-      
       setContact(contactData);
-      setActivities(activitiesData || []);
       setLoading(false);
     };
 
@@ -390,19 +587,51 @@ function ContactDrawer({ id, onClose, onUpdate }: {
 
   if (loading || !contact) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-background p-6 rounded-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex">
+    <div className="fixed inset-0 bg-black/50 flex z-50">
       <div className="ml-auto h-full w-full max-w-4xl bg-background overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">{contact.name}</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold">{contact.name}</h2>
+              <div className="flex items-center gap-2">
+                {contact.phone && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`tel:${contact.phone}`}>
+                      <Phone className="h-4 w-4 mr-1" />
+                      Call
+                    </a>
+                  </Button>
+                )}
+                {contact.email && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`mailto:${contact.email}`}>
+                      <Mail className="h-4 w-4 mr-1" />
+                      Email
+                    </a>
+                  </Button>
+                )}
+                {contact.phone && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`https://wa.me/${contact.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      WhatsApp
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Edit className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
               <DeleteLeadButton id={contact.id} onDeleted={() => { onUpdate(); onClose(); }} />
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="h-4 w-4" />
@@ -410,171 +639,546 @@ function ContactDrawer({ id, onClose, onUpdate }: {
             </div>
           </div>
           
-            <div className="grid grid-cols-3 gap-6">
-            {/* Contact Info */}
-            <section className="space-y-4">
-              <h3 className="font-medium">Contact Information</h3>
-              <div className="space-y-2 text-sm">
-                <div><strong>Email:</strong> {contact.email || '—'}</div>
-                <div><strong>Phone:</strong> {contact.phone || '—'}</div>
-                <div>
-                  <strong>Status:</strong>
-                  <Select
-                    value={contact.contact_status || 'lead'}
-                    onValueChange={async (value: ContactStatus) => {
-                      const { error } = await updateContact(contact.id, { contact_status: value });
-                      if (error) {
-                        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-                      } else {
-                        setContact({ ...contact, contact_status: value });
-                        onUpdate();
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lead">Lead</SelectItem>
-                      <SelectItem value="active_client">Active Client</SelectItem>
-                      <SelectItem value="past_client">Past Client</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <strong>Tags:</strong>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {(contact.tags || []).map((tag: string) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Activity History */}
-            <section>
-              <h3 className="font-medium mb-4">Activity History</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {activities.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No activity yet.</div>
-                ) : (
-                  activities.map(activity => (
-                    <div key={activity.id} className="border rounded-md p-3 text-sm">
-                      <div className="font-medium">{activity.type}</div>
-                      <div className="text-muted-foreground mt-1">{activity.description}</div>
-                      <div className="text-xs text-muted-foreground mt-2">
-                        {new Date(activity.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {/* Custom Fields */}
-            <section>
-              <h3 className="font-medium mb-4">Custom Fields</h3>
-              <CustomFieldsEditor 
-                id={contact.id} 
-                initial={contact.custom_fields || {}}
-                onUpdate={() => {
-                  onUpdate();
-                  // Refresh contact data
-                  supabase.from('leads').select('*').eq('id', id).single().then(({ data }) => {
-                    if (data) setContact(data);
-                  });
-                }}
-              />
-            </section>
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="details">Contact Details</TabsTrigger>
+              <TabsTrigger value="enquiry">Enquiry Details</TabsTrigger>
+              <TabsTrigger value="communication">Communication</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="mt-6">
+              <ContactDetailsTab contact={contact} onUpdate={onUpdate} />
+            </TabsContent>
+            
+            <TabsContent value="enquiry" className="mt-6">
+              <EnquiryDetailsTab contact={contact} />
+            </TabsContent>
+            
+            <TabsContent value="communication" className="mt-6">
+              <CommunicationTab leadId={contact.id} />
+            </TabsContent>
+            
+            <TabsContent value="documents" className="mt-6">
+              <DocumentsTab leadId={contact.id} />
+            </TabsContent>
+            
+            <TabsContent value="transactions" className="mt-6">
+              <TransactionsTab leadId={contact.id} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Contact</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            context="agent"
+            defaultValues={contact}
+            onSuccess={async () => {
+              await onUpdate();
+              // Refresh contact data
+              const { data } = await supabase.from('leads').select('*').eq('id', id).single();
+              if (data) setContact(data);
+              setEditOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function CustomFieldsEditor({ 
-  id, 
-  initial, 
-  onUpdate 
-}: { 
-  id: string; 
-  initial: Record<string, any>;
-  onUpdate: () => void;
-}) {
+// Tab Components
+function ContactDetailsTab({ contact, onUpdate }: { contact: any; onUpdate: () => void }) {
   const { updateContact } = useContacts();
   const { toast } = useToast();
-  const [pairs, setPairs] = useState<[string, string][]>(
-    Object.entries(initial || {}).map(([k, v]) => [k, String(v)])
-  );
 
-  const save = async () => {
-    const customFields: Record<string, any> = {};
-    for (const [key, value] of pairs) {
-      if (key.trim()) {
-        customFields[key.trim()] = value;
+  return (
+    <div className="grid grid-cols-2 gap-6">
+      <section className="space-y-4">
+        <h3 className="font-medium">Contact Information</h3>
+        <div className="space-y-2 text-sm">
+          <div><strong>Name:</strong> {contact.name}</div>
+          <div><strong>Email:</strong> {contact.email || '—'}</div>
+          <div><strong>Phone:</strong> {contact.phone || '—'}</div>
+          <div><strong>Source:</strong> {contact.source || '—'}</div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="font-medium">Status & Tags</h3>
+        <div className="space-y-3">
+          <div>
+            <strong>Contact Status:</strong>
+            <Select
+              value={contact.contact_status || 'lead'}
+              onValueChange={async (value: ContactStatus) => {
+                const { error } = await updateContact(contact.id, { contact_status: value });
+                if (error) {
+                  toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                } else {
+                  onUpdate();
+                  toast({ title: 'Status updated' });
+                }
+              }}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="active_client">Active Client</SelectItem>
+                <SelectItem value="past_client">Past Client</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <strong>Interest Tags:</strong>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {(contact.interest_tags || []).map((tag: string) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function EnquiryDetailsTab({ contact }: { contact: any }) {
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="font-medium mb-4">Property Requirements</h3>
+        <LeadMeta lead={contact} layout="card" />
+      </section>
+      
+      {contact.notes && (
+        <section>
+          <h3 className="font-medium mb-2">Notes</h3>
+          <div className="bg-muted p-3 rounded-md text-sm">
+            {contact.notes}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function CommunicationTab({ leadId }: { leadId: string }) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newActivity, setNewActivity] = useState({ type: '', description: '' });
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      const { listActivities } = await import('@/services/activities');
+      const { data, error } = await listActivities(leadId);
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        setActivities(data || []);
       }
-    }
+      setLoading(false);
+    };
+    fetchActivities();
+  }, [leadId]);
+
+  const addActivity = async () => {
+    if (!newActivity.type || !newActivity.description) return;
     
-    const { error } = await updateContact(id, { custom_fields: customFields });
+    const { createActivity } = await import('@/services/activities');
+    const { error } = await createActivity(leadId, newActivity);
+    
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Saved', description: 'Custom fields updated' });
-      onUpdate();
+      setNewActivity({ type: '', description: '' });
+      // Refresh activities
+      const { listActivities } = await import('@/services/activities');
+      const { data } = await listActivities(leadId);
+      setActivities(data || []);
+      toast({ title: 'Activity added' });
     }
   };
 
-  const addField = () => {
-    setPairs([...pairs, ['', '']]);
+  if (loading) return <div>Loading activities...</div>;
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="font-medium mb-4">Add Activity</h3>
+        <div className="space-y-3">
+          <Select value={newActivity.type} onValueChange={(value) => setNewActivity(prev => ({ ...prev, type: value }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Activity type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="call">Call</SelectItem>
+              <SelectItem value="email">Email</SelectItem>
+              <SelectItem value="meeting">Meeting</SelectItem>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Input
+            placeholder="Description"
+            value={newActivity.description}
+            onChange={(e) => setNewActivity(prev => ({ ...prev, description: e.target.value }))}
+          />
+          
+          <Button onClick={addActivity} disabled={!newActivity.type || !newActivity.description}>
+            Add Activity
+          </Button>
+        </div>
+      </section>
+
+      <section>
+        <h3 className="font-medium mb-4">Activity History</h3>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {activities.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No activity yet.</div>
+          ) : (
+            activities.map(activity => (
+              <div key={activity.id} className="border rounded-md p-3 text-sm">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-medium">{activity.type}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(activity.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-muted-foreground">{activity.description}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DocumentsTab({ leadId }: { leadId: string }) {
+  const [files, setFiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const { toast } = useToast();
+
+  const fetchFiles = async () => {
+    const { listFiles } = await import('@/services/storage');
+    const { data, error } = await listFiles(`${leadId}/`);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      setFiles(data || []);
+    }
+    setLoading(false);
   };
 
-  const removeField = (index: number) => {
-    setPairs(pairs.filter((_, i) => i !== index));
+  useEffect(() => {
+    fetchFiles();
+  }, [leadId]);
+
+  const uploadFile = async (file: File) => {
+    setUploading(true);
+    const { uploadFile: upload } = await import('@/services/storage');
+    const fileName = `${leadId}/${Date.now()}-${file.name}`;
+    const { error } = await upload(fileName, file);
+    
+    if (error) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'File uploaded' });
+      fetchFiles();
+    }
+    setUploading(false);
+  };
+
+  const deleteFile = async (path: string) => {
+    const { deleteFile: deleteFileFromStorage } = await import('@/services/storage');
+    const { error } = await deleteFileFromStorage(path);
+    
+    if (error) {
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'File deleted' });
+      fetchFiles();
+    }
+  };
+
+  if (loading) return <div>Loading documents...</div>;
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="font-medium mb-4">Upload Document</h3>
+        <label className="cursor-pointer">
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadFile(file);
+            }}
+            disabled={uploading}
+          />
+          <Button variant="outline" disabled={uploading} asChild>
+            <span>
+              <Upload className="mr-2 h-4 w-4" />
+              {uploading ? 'Uploading...' : 'Choose File'}
+            </span>
+          </Button>
+        </label>
+      </section>
+
+      <section>
+        <h3 className="font-medium mb-4">Documents</h3>
+        <div className="space-y-2">
+          {files.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No documents uploaded.</div>
+          ) : (
+            files.map(file => (
+              <div key={file.name} className="flex items-center justify-between border rounded-md p-3">
+                <div>
+                  <div className="font-medium text-sm">{file.name.split('/').pop()}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {file.metadata?.size ? `${Math.round(file.metadata.size / 1024)} KB` : ''} • 
+                    {new Date(file.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteFile(file.name)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TransactionsTab({ leadId }: { leadId: string }) {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const { toast } = useToast();
+
+  const fetchTransactions = async () => {
+    const { listTransactions } = await import('@/services/transactions');
+    const { data, error } = await listTransactions(leadId);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      setTransactions(data || []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [leadId]);
+
+  if (loading) return <div>Loading transactions...</div>;
+
+  return (
+    <div className="space-y-6">
+      <section className="flex items-center justify-between">
+        <h3 className="font-medium">Transactions</h3>
+        <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Transaction
+        </Button>
+      </section>
+
+      <div className="space-y-3">
+        {transactions.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No transactions recorded.</div>
+        ) : (
+          transactions.map(transaction => (
+            <div key={transaction.id} className="border rounded-md p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-medium">{transaction.type}</div>
+                <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
+                  {transaction.status}
+                </Badge>
+              </div>
+              {transaction.amount && (
+                <div className="text-sm">
+                  Amount: {transaction.currency || 'AED'} {transaction.amount.toLocaleString()}
+                </div>
+              )}
+              {transaction.notes && (
+                <div className="text-sm text-muted-foreground mt-1">{transaction.notes}</div>
+              )}
+              {transaction.source_of_funds && (
+                <div className="text-xs text-muted-foreground mt-2">
+                  Source: {transaction.source_of_funds}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {showAddForm && (
+        <TransactionForm 
+          leadId={leadId} 
+          onClose={() => setShowAddForm(false)}
+          onSuccess={() => {
+            fetchTransactions();
+            setShowAddForm(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TransactionForm({ leadId, onClose, onSuccess }: { 
+  leadId: string; 
+  onClose: () => void; 
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState({
+    type: '',
+    amount: '',
+    currency: 'AED',
+    status: 'pending',
+    notes: '',
+    source_of_funds: '',
+  });
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.type) return;
+
+    const { createTransaction } = await import('@/services/transactions');
+    const { error } = await createTransaction(leadId, {
+      ...form,
+      amount: form.amount ? Number(form.amount) : undefined,
+    });
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Transaction added' });
+      onSuccess();
+    }
   };
 
   return (
-    <div className="space-y-3">
-      {pairs.map((pair, index) => (
-        <div key={index} className="flex gap-2">
-          <Input
-            placeholder="Field name"
-            value={pair[0]}
-            onChange={(e) => {
-              const newPairs = [...pairs];
-              newPairs[index] = [e.target.value, pair[1]];
-              setPairs(newPairs);
-            }}
-            className="flex-1"
-          />
-          <Input
-            placeholder="Value"
-            value={pair[1]}
-            onChange={(e) => {
-              const newPairs = [...pairs];
-              newPairs[index] = [pair[0], e.target.value];
-              setPairs(newPairs);
-            }}
-            className="flex-1"
-          />
-          <Button variant="ghost" size="sm" onClick={() => removeField(index)}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
-      
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={addField}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Field
-        </Button>
-        <Button size="sm" onClick={save}>
-          Save Fields
+    <div className="border rounded-md p-4 bg-muted/50">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-medium">Add Transaction</h4>
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          <X className="h-4 w-4" />
         </Button>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium">Type *</label>
+            <Select value={form.type} onValueChange={(value) => setForm(prev => ({ ...prev, type: value }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Transaction type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sale">Sale</SelectItem>
+                <SelectItem value="rental">Rental</SelectItem>
+                <SelectItem value="commission">Commission</SelectItem>
+                <SelectItem value="deposit">Deposit</SelectItem>
+                <SelectItem value="refund">Refund</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Status</label>
+            <Select value={form.status} onValueChange={(value) => setForm(prev => ({ ...prev, status: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium">Amount</label>
+            <Input
+              type="number"
+              placeholder="0.00"
+              value={form.amount}
+              onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Currency</label>
+            <Select value={form.currency} onValueChange={(value) => setForm(prev => ({ ...prev, currency: value }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AED">AED</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="GBP">GBP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Source of Funds</label>
+          <Input
+            placeholder="e.g., Salary, Investment, etc."
+            value={form.source_of_funds}
+            onChange={(e) => setForm(prev => ({ ...prev, source_of_funds: e.target.value }))}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Notes</label>
+          <Input
+            placeholder="Additional details"
+            value={form.notes}
+            onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button type="submit" disabled={!form.type}>
+            Add Transaction
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -642,10 +1246,6 @@ function DeduplicateDialog({
     </Dialog>
   );
 }
-
-// Import supabase client for drawer functionality
-import { supabase } from '@/integrations/supabase/client';
-import { deleteLead } from '@/services/leads';
 
 function DeleteLeadButton({ id, onDeleted }: { id: string; onDeleted: () => void }) {
   const { profile } = useAuth();
