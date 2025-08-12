@@ -46,6 +46,8 @@ export const LeadsManager = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -443,7 +445,23 @@ export const LeadsManager = () => {
                             </div>
                            )}
                            </DialogContent>
-                         </Dialog>
+                          </Dialog>
+                          
+                          {/* Admin-only Edit Button */}
+                          {profile?.role === 'admin' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setEditingLead(lead);
+                                setShowEditForm(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
                           {profile?.role === 'admin' && (
                             <Button
                               size="sm"
@@ -479,6 +497,26 @@ export const LeadsManager = () => {
               setShowAddForm(false);
             }}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin-only Edit Lead Form */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Lead - {editingLead?.name}</DialogTitle>
+          </DialogHeader>
+          {editingLead && (
+            <LeadForm
+              context="admin"
+              defaultValues={editingLead}
+              onSuccess={async () => {
+                await fetchLeads();
+                setShowEditForm(false);
+                setEditingLead(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
