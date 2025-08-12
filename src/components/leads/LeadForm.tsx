@@ -297,18 +297,31 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Lead Source</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select source (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {leadSourceOptions.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {leadSourceLabels[s]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select source (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {leadSourceOptions.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {leadSourceLabels[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -348,15 +361,28 @@ export default function LeadForm({
                 <FormItem>
                   <FormLabel>Property Type</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Residential or Commercial" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="residential">Residential</SelectItem>
-                        <SelectItem value="commercial">Commercial</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Residential or Commercial" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="residential">Residential</SelectItem>
+                          <SelectItem value="commercial">Commercial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 px-2"
+                          onClick={() => field.onChange(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -373,18 +399,31 @@ export default function LeadForm({
                 <FormItem>
                   <FormLabel>Subtype</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!segment}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select subtype" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(subtypeOptions as readonly string[]).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Select onValueChange={(v) => field.onChange(v)} value={field.value} disabled={!segment}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select subtype" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(subtypeOptions as readonly string[]).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 px-2"
+                          onClick={() => field.onChange(undefined)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -400,18 +439,31 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Budget (Sale)</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select sale budget" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["under AED1M", "AED1M – AED2M", "AED2M – AED5M", "AED5M – AED10M", "AED10M - AED15M", "Above AED15M"].map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select sale budget" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["under AED1M", "AED1M – AED2M", "AED2M – AED5M", "AED5M – AED10M", "AED10M - AED15M", "Above AED15M"].map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -426,18 +478,31 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Budget (Rent)</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select rent budget" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {["under AED100K", "AED100K – AED200K", "AED200K – AED300K", "AED300K – AED500K", "AED500K – AED1M", "Above AED1M"].map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select rent budget" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["under AED100K", "AED100K – AED200K", "AED200K – AED300K", "AED300K – AED500K", "AED500K – AED1M", "Above AED1M"].map((b) => (
+                          <SelectItem key={b} value={b}>
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -452,9 +517,10 @@ export default function LeadForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Bedroom Count</FormLabel>
-                  <FormControl>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
+                <FormControl>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                      <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select bedrooms" />
                       </SelectTrigger>
                       <SelectContent>
@@ -465,7 +531,19 @@ export default function LeadForm({
                         ))}
                       </SelectContent>
                     </Select>
-                  </FormControl>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -480,18 +558,31 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Size (sqft)</FormLabel>
                 <FormControl>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sizeBands.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sizeBands.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-10 px-2"
+                        onClick={() => field.onChange(undefined)}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
