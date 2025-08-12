@@ -54,10 +54,14 @@ export const LeadsManager = () => {
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
     const updateData: Partial<Lead> = { status: newStatus };
     
-    // Auto-update contact_status based on lead status
-    if (newStatus === 'contacted' || newStatus === 'qualified' || newStatus === 'negotiating' || newStatus === 'won') {
+    // Auto-update contact_status based on lead status (matching our database function)
+    if (newStatus === 'contacted' || newStatus === 'qualified' || newStatus === 'negotiating') {
       updateData.contact_status = 'contacted';
-    } else if (newStatus === 'new' || newStatus === 'lost') {
+    } else if (newStatus === 'won') {
+      updateData.contact_status = 'active_client';
+    } else if (newStatus === 'lost') {
+      updateData.contact_status = 'past_client';
+    } else if (newStatus === 'new') {
       updateData.contact_status = 'lead';
     }
     
@@ -68,6 +72,16 @@ export const LeadsManager = () => {
   const handleContactStatusChange = async (leadId: string, newContactStatus: string) => {
     await updateLead(leadId, { contact_status: newContactStatus });
     await addActivity(leadId, 'contact_status_change', `Contact status changed to ${newContactStatus}`);
+  };
+
+  const getContactStatusDisplay = (status: string) => {
+    switch (status) {
+      case 'lead': return 'Not Contacted';
+      case 'contacted': return 'Contacted';
+      case 'active_client': return 'Active Client';
+      case 'past_client': return 'Past Client';
+      default: return 'Not Contacted';
+    }
   };
 
   const handleDeleteLead = async (leadId: string) => {
@@ -335,26 +349,21 @@ export const LeadsManager = () => {
                         {lead.priority}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant={lead.contact_status === 'contacted' ? 'default' : 'outline'}
-                        className="h-8"
-                        onClick={() => handleContactStatusChange(lead.id, lead.contact_status === 'contacted' ? 'lead' : 'contacted')}
-                      >
-                        {lead.contact_status === 'contacted' ? (
-                          <>
-                            <UserCheck className="w-3 h-3 mr-1" />
-                            Contacted
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="w-3 h-3 mr-1" />
-                            Not Contacted
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
+                     <TableCell>
+                       <Select value={lead.contact_status || 'lead'} onValueChange={(newStatus) => handleContactStatusChange(lead.id, newStatus)}>
+                         <SelectTrigger className="w-36">
+                           <SelectValue>
+                             <span className="text-sm">{getContactStatusDisplay(lead.contact_status || 'lead')}</span>
+                           </SelectValue>
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="lead">Not Contacted</SelectItem>
+                           <SelectItem value="contacted">Contacted</SelectItem>
+                           <SelectItem value="active_client">Active Client</SelectItem>
+                           <SelectItem value="past_client">Past Client</SelectItem>
+                         </SelectContent>
+                       </Select>
+                     </TableCell>
                     <TableCell>{lead.source}</TableCell>
                     <TableCell>{lead.profiles?.name || 'Unassigned'}</TableCell>
                     <TableCell>
