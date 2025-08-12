@@ -75,6 +75,11 @@ export default function Contacts() {
   const bedrooms = searchParams.get('bedrooms') || undefined;
   const sizeBand = searchParams.get('size_band') || undefined;
   const location = searchParams.get('location') || undefined;
+  const interestTags = searchParams.get('interest_tags') || undefined;
+  const category = searchParams.get('category') || undefined;
+  const budgetSaleBand = searchParams.get('budget_sale_band') || undefined;
+  const budgetRentBand = searchParams.get('budget_rent_band') || undefined;
+  const contactPref = searchParams.get('contact_pref') || undefined;
   
   // Local state
   const [searchInput, setSearchInput] = useState(q);
@@ -135,6 +140,11 @@ export default function Contacts() {
           bedrooms: bedrooms || undefined,
           size_band: sizeBand || undefined,
           location_address: location || undefined,
+          interest_tags: interestTags || undefined,
+          category: category || undefined,
+          budget_sale_band: budgetSaleBand || undefined,
+          budget_rent_band: budgetRentBand || undefined,
+          contact_pref: contactPref || undefined,
         },
       });
       
@@ -152,7 +162,7 @@ export default function Contacts() {
 
   useEffect(() => {
     fetchRows();
-  }, [page, pageSize, q, status, interestType, source, segment, subtype, bedrooms, sizeBand, location]);
+  }, [page, pageSize, q, status, interestType, source, segment, subtype, bedrooms, sizeBand, location, interestTags, category, budgetSaleBand, budgetRentBand, contactPref]);
 
   // Refresh when any part of the app creates/updates leads
   useEffect(() => {
@@ -260,8 +270,8 @@ export default function Contacts() {
                 Advanced Filters
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80">
-              <div className="space-y-3">
+            <PopoverContent className="w-96">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 <div>
                   <label className="text-sm font-medium">Source</label>
                   <ClearableSelect
@@ -273,9 +283,44 @@ export default function Contacts() {
                       { value: "email_campaign", label: "Email Campaign" },
                       { value: "whatsapp_campaign", label: "WhatsApp Campaign" },
                       { value: "property_finder", label: "Property Finder" },
-                      { value: "bayut_dubizzle", label: "Bayut/Dubizzle" }
+                      { value: "bayut_dubizzle", label: "Bayut/Dubizzle" },
+                      { value: "inbound_call", label: "Inbound Call" },
+                      { value: "outbound_call", label: "Outbound Call" },
+                      { value: "campaigns", label: "Campaigns" },
+                      { value: "organic_social_media", label: "Organic Social Media" }
                     ]}
                     placeholder="All sources"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Interest Tags</label>
+                  <ClearableSelect
+                    value={interestTags}
+                    onChange={(value) => updateUrlParam('interest_tags', value)}
+                    options={[
+                      { value: "Buyer", label: "Buyer" },
+                      { value: "Seller", label: "Seller" },
+                      { value: "Landlord", label: "Landlord" },
+                      { value: "Tenant", label: "Tenant" },
+                      { value: "Investor", label: "Investor" }
+                    ]}
+                    placeholder="All interests"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Category</label>
+                  <ClearableSelect
+                    value={category}
+                    onChange={(value) => updateUrlParam('category', value)}
+                    options={[
+                      { value: "property", label: "Property" },
+                      { value: "requirement", label: "Requirement" }
+                    ]}
+                    placeholder="All categories"
                     allowClear={true}
                   />
                 </div>
@@ -290,6 +335,25 @@ export default function Contacts() {
                       { value: "commercial", label: "Commercial" }
                     ]}
                     placeholder="All types"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Subtype</label>
+                  <ClearableSelect
+                    value={subtype}
+                    onChange={(value) => updateUrlParam('subtype', value)}
+                    options={[
+                      { value: "Apartment", label: "Apartment" },
+                      { value: "Townhouse", label: "Townhouse" },
+                      { value: "Villa", label: "Villa" },
+                      { value: "Plot", label: "Plot" },
+                      { value: "Building", label: "Building" },
+                      { value: "Office", label: "Office" },
+                      { value: "Shop", label: "Shop" }
+                    ]}
+                    placeholder="All subtypes"
                     allowClear={true}
                   />
                 </div>
@@ -309,6 +373,72 @@ export default function Contacts() {
                       { value: "6+ BR", label: "6+ BR" }
                     ]}
                     placeholder="All bedrooms"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Size</label>
+                  <ClearableSelect
+                    value={sizeBand}
+                    onChange={(value) => updateUrlParam('size_band', value)}
+                    options={[
+                      { value: "under 1,000", label: "Under 1,000 sqft" },
+                      { value: "1,000–2,000", label: "1,000–2,000 sqft" },
+                      { value: "2,000–3,000", label: "2,000–3,000 sqft" },
+                      { value: "3,000–5,000", label: "3,000–5,000 sqft" },
+                      { value: "Above 5,000", label: "Above 5,000 sqft" }
+                    ]}
+                    placeholder="All sizes"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Sale Budget</label>
+                  <ClearableSelect
+                    value={budgetSaleBand}
+                    onChange={(value) => updateUrlParam('budget_sale_band', value)}
+                    options={[
+                      { value: "under 500k", label: "Under AED 500K" },
+                      { value: "500k-1m", label: "AED 500K - 1M" },
+                      { value: "1m-2m", label: "AED 1M - 2M" },
+                      { value: "2m-5m", label: "AED 2M - 5M" },
+                      { value: "above 5m", label: "Above AED 5M" }
+                    ]}
+                    placeholder="All sale budgets"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Rent Budget</label>
+                  <ClearableSelect
+                    value={budgetRentBand}
+                    onChange={(value) => updateUrlParam('budget_rent_band', value)}
+                    options={[
+                      { value: "under 50k", label: "Under AED 50K/year" },
+                      { value: "50k-100k", label: "AED 50K - 100K/year" },
+                      { value: "100k-200k", label: "AED 100K - 200K/year" },
+                      { value: "200k-500k", label: "AED 200K - 500K/year" },
+                      { value: "above 500k", label: "Above AED 500K/year" }
+                    ]}
+                    placeholder="All rent budgets"
+                    allowClear={true}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">Contact Preference</label>
+                  <ClearableSelect
+                    value={contactPref}
+                    onChange={(value) => updateUrlParam('contact_pref', value)}
+                    options={[
+                      { value: "call", label: "Call" },
+                      { value: "whatsapp", label: "WhatsApp" },
+                      { value: "email", label: "Email" }
+                    ]}
+                    placeholder="All preferences"
                     allowClear={true}
                   />
                 </div>

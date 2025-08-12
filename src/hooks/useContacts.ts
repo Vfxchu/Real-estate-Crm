@@ -24,8 +24,12 @@ export function useContacts() {
       bedrooms: string;
       size_band: string;
       location_address: string;
-      contact_pref: string[];
+      contact_pref: string;
       tags: string[];
+      interest_tags: string;
+      category: string;
+      budget_sale_band: string;
+      budget_rent_band: string;
     }>;
   } = {}) => {
     const { q, status_category = 'all', interest_type = 'all', page = 1, pageSize = 25, filters = {} } = opts;
@@ -45,6 +49,11 @@ export function useContacts() {
         bedrooms: filters.bedrooms,
         size_band: filters.size_band,
         location_address: filters.location_address,
+        interest_tags: filters.interest_tags,
+        category: filters.category,
+        budget_sale_band: filters.budget_sale_band,
+        budget_rent_band: filters.budget_rent_band,
+        contact_pref: filters.contact_pref,
       },
     });
 

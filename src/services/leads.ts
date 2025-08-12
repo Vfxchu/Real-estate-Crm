@@ -64,6 +64,11 @@ export async function listLeads(opts: {
     bedrooms: string;
     size_band: string;
     location_address: string; // ilike
+    interest_tags: string;
+    category: string;
+    budget_sale_band: string;
+    budget_rent_band: string;
+    contact_pref: string;
   }>;
   includeProfile?: boolean;
 } = {}) {
@@ -117,6 +122,17 @@ export async function listLeads(opts: {
   if (filters.location_address) {
     const like = `%${filters.location_address}%`;
     query = query.ilike("location_address", like);
+  }
+  if (filters.interest_tags) {
+    // Single tag filter - check if interest_tags array contains this tag
+    query = query.contains("interest_tags", [filters.interest_tags]);
+  }
+  if (filters.category) query = query.eq("category", filters.category);
+  if (filters.budget_sale_band) query = query.eq("budget_sale_band", filters.budget_sale_band);
+  if (filters.budget_rent_band) query = query.eq("budget_rent_band", filters.budget_rent_band);
+  if (filters.contact_pref) {
+    // Single contact preference filter - check if contact_pref array contains this preference
+    query = query.contains("contact_pref", [filters.contact_pref]);
   }
 
   const { data, error, count } = await query.range(from, to);
