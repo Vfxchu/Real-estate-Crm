@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import LeadForm from "@/components/leads/LeadForm";
+import { LeadMeta } from "@/components/leads/LeadMeta";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
   TableBody,
@@ -34,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
 
 export const LeadsManager = () => {
+  const { profile } = useAuth();
   const { leads, loading, updateLead, addActivity, deleteLead, fetchLeads } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -302,10 +305,7 @@ export const LeadsManager = () => {
                     <TableCell>{lead.source}</TableCell>
                     <TableCell>{lead.profiles?.name || 'Unassigned'}</TableCell>
                     <TableCell>
-                      <div>
-                        <p className="text-sm">{lead.interested_in || 'Not specified'}</p>
-                        <p className="text-xs text-muted-foreground">{lead.budget_range || 'Not specified'}</p>
-                      </div>
+                      <LeadMeta lead={lead} layout="table" />
                     </TableCell>
                     <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
                      <TableCell>
@@ -356,13 +356,11 @@ export const LeadsManager = () => {
                                   <Label>Source</Label>
                                   <p>{selectedLead.source}</p>
                                 </div>
-                                <div>
-                                  <Label>Property Interest</Label>
-                                  <p>{selectedLead.interested_in || 'Not specified'}</p>
-                                </div>
-                                <div>
-                                  <Label>Budget</Label>
-                                  <p>{selectedLead.budget_range || 'Not specified'}</p>
+                                <div className="col-span-2">
+                                  <Label>Interest & Property Details</Label>
+                                  <div className="mt-2">
+                                    <LeadMeta lead={selectedLead as any} layout="card" />
+                                  </div>
                                 </div>
                               </div>
                               
@@ -395,15 +393,17 @@ export const LeadsManager = () => {
                            )}
                            </DialogContent>
                          </Dialog>
-                         <Button
-                           size="sm"
-                           variant="ghost"
-                           className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                           onClick={() => handleDeleteLead(lead.id)}
-                           disabled={deleting === lead.id}
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </Button>
+                          {profile?.role === 'admin' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteLead(lead.id)}
+                              disabled={deleting === lead.id}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                        </div>
                      </TableCell>
                   </TableRow>

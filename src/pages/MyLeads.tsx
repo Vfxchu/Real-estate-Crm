@@ -15,6 +15,7 @@ import LeadForm from '@/components/leads/LeadForm';
 import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
 import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
 import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
+import { LeadMeta } from '@/components/leads/LeadMeta';
 import {
   Search,
   Phone,
@@ -231,13 +232,8 @@ export const MyLeads = () => {
                   <Phone className="w-4 h-4 text-muted-foreground" />
                   <span>{lead.phone || 'No phone'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-muted-foreground" />
-                  <span className="truncate">{lead.interested_in || 'Not specified'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Budget:</span>
-                  <span>{lead.budget_range || 'Not specified'}</span>
+                <div className="pt-1">
+                  <LeadMeta lead={lead} layout="card" />
                 </div>
                 {lead.follow_up_date && (
                   <div className="flex items-center gap-2 text-warning">
@@ -306,13 +302,11 @@ export const MyLeads = () => {
                               <p><strong>Score:</strong> {selectedLead.score}%</p>
                             </div>
                           </div>
-                          <div>
-                            <Label>Property Interest</Label>
-                            <p className="mt-2">{selectedLead.interested_in || 'Not specified'}</p>
-                          </div>
-                          <div>
-                            <Label>Budget</Label>
-                            <p className="mt-2">{selectedLead.budget_range || 'Not specified'}</p>
+                          <div className="col-span-2">
+                            <Label>Interest & Property Details</Label>
+                            <div className="mt-2">
+                              <LeadMeta lead={selectedLead as any} layout="card" />
+                            </div>
                           </div>
                         </div>
                         
