@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeads } from '@/hooks/useLeads';
-import { AddLeadForm } from '@/components/forms/AddLeadForm';
+import LeadForm from "@/components/leads/LeadForm";
 import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
 import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
 import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Target,
   Users,
@@ -25,7 +26,7 @@ import {
 
 export const Dashboard = () => {
   const { user, profile } = useAuth();
-  const { leads, loading } = useLeads();
+  const { leads, loading, createLead } = useLeads();
   const isAdmin = profile?.role === 'admin';
   const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -281,10 +282,21 @@ export const Dashboard = () => {
       </Card>
 
       {/* Add Lead Form */}
-      <AddLeadForm 
-        open={addLeadFormOpen} 
-        onOpenChange={setAddLeadFormOpen} 
-      />
+      <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            mode="create"
+            context="admin"
+            onSubmit={async (payload) => {
+              await createLead(payload as any);
+              setAddLeadFormOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Lead Status Form */}
       {selectedEditLead && (

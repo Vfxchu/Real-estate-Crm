@@ -384,10 +384,21 @@ export const MyLeads = () => {
       )}
 
       {/* Add Lead Form */}
-      <AddLeadForm 
-        open={addLeadFormOpen} 
-        onOpenChange={setAddLeadFormOpen} 
-      />
+      <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            mode="create"
+            context="agent"
+            onSubmit={async (payload) => {
+              await createLead(payload as any);
+              setAddLeadFormOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* WhatsApp Chat */}
       {selectedChatLead && (

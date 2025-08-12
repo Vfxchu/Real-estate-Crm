@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AddLeadForm } from "@/components/forms/AddLeadForm";
+import LeadForm from "@/components/leads/LeadForm";
 import {
   Table,
   TableBody,
@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
 
 export const LeadsManager = () => {
-  const { leads, loading, updateLead, addActivity, deleteLead } = useLeads();
+  const { leads, loading, updateLead, addActivity, deleteLead, createLead } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -416,7 +416,21 @@ export const LeadsManager = () => {
       </Card>
 
       {/* Add Lead Form */}
-      <AddLeadForm open={showAddForm} onOpenChange={setShowAddForm} />
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Lead</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            mode="create"
+            context="admin"
+            onSubmit={async (payload) => {
+              await createLead(payload as any);
+              setShowAddForm(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
