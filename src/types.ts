@@ -38,4 +38,5 @@ export interface Lead {
   location_lng?: number | null;
   location_address?: string | null;
   contact_pref?: string[] | null;
+  contact_status?: string | null;
 }

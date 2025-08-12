@@ -31,6 +31,8 @@ import {
   Trash2,
   Eye,
   MoreHorizontal,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
@@ -50,6 +52,12 @@ export const LeadsManager = () => {
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
     await updateLead(leadId, { status: newStatus });
     await addActivity(leadId, 'status_change', `Status changed to ${newStatus}`);
+  };
+
+  const handleContactStatusToggle = async (leadId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'contacted' ? 'lead' : 'contacted';
+    await updateLead(leadId, { contact_status: newStatus });
+    await addActivity(leadId, 'contact_status_change', `Contact status changed to ${newStatus}`);
   };
 
   const handleDeleteLead = async (leadId: string) => {
@@ -254,6 +262,7 @@ export const LeadsManager = () => {
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Priority</TableHead>
+                  <TableHead>Contact Status</TableHead>
                   <TableHead>Source</TableHead>
                   <TableHead>Agent</TableHead>
                   <TableHead>Interest</TableHead>
@@ -301,6 +310,26 @@ export const LeadsManager = () => {
                       <Badge variant="outline" className={getPriorityColor(lead.priority)}>
                         {lead.priority}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant={lead.contact_status === 'contacted' ? 'default' : 'outline'}
+                        className="h-8"
+                        onClick={() => handleContactStatusToggle(lead.id, lead.contact_status || 'lead')}
+                      >
+                        {lead.contact_status === 'contacted' ? (
+                          <>
+                            <UserCheck className="w-3 h-3 mr-1" />
+                            Contacted
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="w-3 h-3 mr-1" />
+                            Not Contacted
+                          </>
+                        )}
+                      </Button>
                     </TableCell>
                     <TableCell>{lead.source}</TableCell>
                     <TableCell>{lead.profiles?.name || 'Unassigned'}</TableCell>
