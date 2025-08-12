@@ -23,46 +23,54 @@ const sizeBands = [
   "Above 5,000",
 ] as const;
 
-const bedroomOptions = [
-  "Studio",
-  "1BR",
-  "2BR",
-  "3BR",
-  "4BR",
-  "5BR",
-  "6+ BR",
-] as const;
-
+const bedroomOptions = ["Studio", "1BR", "2BR", "3BR", "4BR", "5BR", "6+ BR"] as const;
 const residentialSubtypes = ["Apartment", "Townhouse", "Villa", "Plot", "Building"] as const;
 const commercialSubtypes = ["Office", "Shop", "Villa", "Plot", "Building"] as const;
-
 const contactPrefs = ["call", "whatsapp", "email"] as const;
 
-// Keep source optional and omit when empty to let DB default apply
-const sourceOptions = ["website", "referral", "email", "cold_call", "social", "advertising"] as const;
+// Enum token values we send to DB (omit if none chosen to use DB default)
+const leadSourceOptions = [
+  "website",
+  "referral",
+  "email_campaign",
+  "whatsapp_campaign",
+  "property_finder",
+  "bayut_dubizzle",
+  "inbound_call",
+  "outbound_call",
+  "campaigns",
+  "organic_social_media",
+] as const;
+const leadSourceLabels: Record<(typeof leadSourceOptions)[number], string> = {
+  website: "Website",
+  referral: "Referral",
+  email_campaign: "Email Campaign",
+  whatsapp_campaign: "Whatsapp Campaign",
+  property_finder: "Property Finder",
+  bayut_dubizzle: "Bayut/Dubizzle",
+  inbound_call: "Inbound Call",
+  outbound_call: "Outbound Call",
+  campaigns: "Campaigns",
+  organic_social_media: "Organic Social Media",
+};
 
 const E164 = /^\+?[1-9]\d{1,14}$/;
 
 const Schema = z
   .object({
-    // Basic
-    name: z.string().trim().min(1, "Full name is required"),
-    phone: z
-      .string()
-      .trim()
-      .optional()
-      .or(z.literal(""))
-      .refine((v) => !v || E164.test(v), { message: "Enter a valid E.164 number (e.g. +971501234567)" }),
-    email: z.string().trim().email("Invalid email").optional().or(z.literal("")),
-    source: z.enum(sourceOptions).optional(),
+    // Basic (all required per request)
+    name: z.string().trim().min(1, "Full Name is required"),
+    phone: z.string().trim().regex(E164, "Enter a valid E.164 number (e.g. +971501234567)"),
+    email: z.string().trim().email("Invalid email"),
+    source: z.enum(leadSourceOptions).optional(),
 
-    // Interest + category/segment
+    // Interest & flow
     interest_tags: z.array(z.enum(["Buyer", "Seller", "Landlord", "Tenant", "Investor"])) .default([]),
     category: z.enum(["property", "requirement"]).optional(),
     segment: z.enum(["residential", "commercial"]).optional(),
     subtype: z.string().optional(),
 
-    // Budgets and details
+    // Budgets/details
     budget_sale_band: z.string().optional(),
     budget_rent_band: z.string().optional(),
     bedrooms: z.enum(bedroomOptions).optional(),
@@ -74,7 +82,7 @@ const Schema = z
     location_lng: z.number().optional(),
     location_address: z.string().optional(),
 
-    // Preferences & notes
+    // Prefs/notes
     contact_pref: z.array(z.enum(contactPrefs)).default([]),
     notes: z.string().optional(),
   })
@@ -103,7 +111,7 @@ export default function LeadForm({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
-  // Google Places
+  // Google Places (residential flow). Use global key window.__GOOGLE_MAPS_API_KEY if present
   const locationInputRef = useRef<HTMLInputElement | null>(null);
   const [placesReady, setPlacesReady] = useState(false);
 
@@ -124,30 +132,6 @@ export default function LeadForm({
     document.head.appendChild(script);
   }, []);
 
-  useEffect(() => {
-    // Wire autocomplete
-    if (!placesReady) return;
-    // @ts-ignore
-    if (locationInputRef.current && window.google?.maps?.places?.Autocomplete) {
-      // @ts-ignore
-      const ac = new window.google.maps.places.Autocomplete(locationInputRef.current, {
-        fields: ["place_id", "formatted_address", "geometry"],
-      });
-      ac.addListener("place_changed", () => {
-        // @ts-ignore
-        const place = ac.getPlace();
-        if (!place) return;
-        const loc = place.geometry?.location;
-        form.setValue("location_place_id", place.place_id || undefined);
-        form.setValue("location_address", place.formatted_address || undefined);
-        if (loc) {
-          form.setValue("location_lat", typeof loc.lat === "function" ? loc.lat() : (loc.lat as any));
-          form.setValue("location_lng", typeof loc.lng === "function" ? loc.lng() : (loc.lng as any));
-        }
-      });
-    }
-  }, [placesReady]);
-
   const defaults = useMemo(
     () => ({
       // basic
@@ -155,7 +139,7 @@ export default function LeadForm({
       phone: defaultValues?.phone ?? "",
       email: defaultValues?.email ?? "",
       source: (defaultValues as any)?.source ?? undefined,
-      // derived
+      // flow
       interest_tags: defaultValues?.interest_tags ?? [],
       category: defaultValues?.category ?? undefined,
       segment: defaultValues?.segment ?? undefined,
@@ -188,17 +172,40 @@ export default function LeadForm({
   const segment = form.watch("segment");
   const subtypeOptions = segment === "commercial" ? commercialSubtypes : residentialSubtypes;
 
+  // Wire autocomplete when residential (map input visible)
+  useEffect(() => {
+    if (!placesReady || segment !== "residential") return;
+    // @ts-ignore
+    if (locationInputRef.current && window.google?.maps?.places?.Autocomplete) {
+      // @ts-ignore
+      const ac = new window.google.maps.places.Autocomplete(locationInputRef.current, {
+        fields: ["place_id", "formatted_address", "geometry"],
+      });
+      ac.addListener("place_changed", () => {
+        // @ts-ignore
+        const place = ac.getPlace();
+        if (!place) return;
+        const loc = place.geometry?.location;
+        form.setValue("location_place_id", place.place_id || undefined);
+        form.setValue("location_address", place.formatted_address || undefined);
+        if (loc) {
+          form.setValue("location_lat", typeof loc.lat === "function" ? loc.lat() : (loc.lat as any));
+          form.setValue("location_lng", typeof loc.lng === "function" ? loc.lng() : (loc.lng as any));
+        }
+      });
+    }
+  }, [placesReady, segment]);
+
   const handleSubmit = async (values: z.infer<typeof Schema>) => {
     setSubmitting(true);
     try {
       const { createLead } = await import("@/services/leads");
-
       const payload: Partial<Lead> = {
         name: values.name,
-        email: values.email || "",
-        phone: values.phone || null,
+        email: values.email,
+        phone: values.phone,
         status: "new",
-        // optional enum source; omit to let DB default apply
+        // source: send only if chosen to let DB default apply otherwise
         ...(values.source ? { source: values.source } : {}),
         // new additive fields
         interest_tags: values.interest_tags,
@@ -223,15 +230,11 @@ export default function LeadForm({
       const { error } = await createLead(payload as any);
       if (error) throw error;
 
-      // Let lists know to refresh
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("leads:changed"));
-      }
-
-      useToast().toast({ title: "Lead created", description: "New lead has been added successfully." });
+      if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("leads:changed"));
+      toast({ title: "Lead created", description: "New lead has been added successfully." });
       onSuccess?.();
     } catch (e: any) {
-      useToast().toast({ title: "Error creating lead", description: e.message || String(e), variant: "destructive" });
+      toast({ title: "Error creating lead", description: e.message || String(e), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -241,13 +244,84 @@ export default function LeadForm({
     <Card className="p-4 md:p-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Interest Type (Tags) at the beginning */}
+          {/* Full Name (required) */}
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Phone (required) */}
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Phone Number</FormLabel>
+                <FormControl>
+                  <Input inputMode="tel" placeholder="+971501234567" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Email (required) */}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="name@example.com" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Lead Source (not required; omit to use DB default) */}
+          <FormField
+            control={form.control}
+            name="source"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Lead Source</FormLabel>
+                <FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leadSourceOptions.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {leadSourceLabels[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Interest Type (Tags) */}
           <FormField
             control={form.control}
             name="interest_tags"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
-                <FormLabel>Interest Type</FormLabel>
+                <FormLabel>Interest Type (Tags)</FormLabel>
                 <FormControl>
                   <ToggleGroup type="multiple" value={(field.value as string[]) || []} onValueChange={field.onChange} className="flex flex-wrap gap-2">
                     {["Buyer", "Seller", "Landlord", "Tenant", "Investor"].map((t) => (
@@ -262,12 +336,10 @@ export default function LeadForm({
             )}
           />
 
-          {/* Auto-derived category (not editable) */}
-          <div className="md:col-span-2">
-            <div className="text-sm text-muted-foreground">Category inferred: {derivedCategory || "—"}</div>
-          </div>
+          {/* Derived category text */}
+          <div className="md:col-span-2 text-sm text-muted-foreground">Category inferred: {derivedCategory || "—"}</div>
 
-          {/* Property Type (segment) shown when tags selected */}
+          {/* Property Type (segment) */}
           {(derivedCategory || tags.length > 0) && (
             <FormField
               control={form.control}
@@ -379,7 +451,7 @@ export default function LeadForm({
               name="bedrooms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bedrooms</FormLabel>
+                  <FormLabel>Bedroom Count</FormLabel>
                   <FormControl>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger>
@@ -426,20 +498,36 @@ export default function LeadForm({
             )}
           />
 
-          {/* Location (Google autocomplete input) */}
-          <FormField
-            control={form.control}
-            name="location_address"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Location</FormLabel>
-                <FormControl>
-                  <Input placeholder="Search address or place" {...field} ref={locationInputRef} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Location: map input for residential; textarea for commercial */}
+          {segment === "commercial" ? (
+            <FormField
+              control={form.control}
+              name="location_address"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Textarea rows={3} placeholder="Enter location details" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <FormField
+              control={form.control}
+              name="location_address"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Search address or place" {...field} ref={locationInputRef} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* Contact Preference */}
           <FormField
@@ -481,73 +569,6 @@ export default function LeadForm({
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
                   <Textarea rows={4} placeholder="Additional information..." {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Basic info (name, phone, email) at end for completeness */}
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone</FormLabel>
-                <FormControl>
-                  <Input inputMode="tel" placeholder="+971501234567" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input type="email" placeholder="name@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Source (optional) */}
-          <FormField
-            control={form.control}
-            name="source"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Source</FormLabel>
-                <FormControl>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select source (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sourceOptions.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s.replace(/_/g, " ")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
