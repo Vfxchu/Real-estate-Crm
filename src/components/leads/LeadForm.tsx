@@ -6,12 +6,13 @@ import { Lead } from "@/types";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import ClearableSelect from "@/components/ui/ClearableSelect";
+import { asOptional } from "@/lib/schema-utils";
 
 export type LeadFormContext = "agent" | "admin";
 
@@ -62,29 +63,29 @@ const Schema = z
     name: z.string().trim().min(1, "Full Name is required"),
     phone: z.string().trim().regex(E164, "Enter a valid E.164 number (e.g. +971501234567)"),
     email: z.string().trim().email("Invalid email"),
-    source: z.enum(leadSourceOptions).optional(),
+    source: asOptional(z.enum(leadSourceOptions)),
 
     // Interest & flow
-    interest_tags: z.array(z.enum(["Buyer", "Seller", "Landlord", "Tenant", "Investor"])) .default([]),
-    category: z.enum(["property", "requirement"]).optional(),
-    segment: z.enum(["residential", "commercial"]).optional(),
-    subtype: z.string().optional(),
+    interest_tags: z.array(z.enum(["Buyer", "Seller", "Landlord", "Tenant", "Investor"])).default([]),
+    category: asOptional(z.enum(["property", "requirement"])),
+    segment: asOptional(z.enum(["residential", "commercial"])),
+    subtype: asOptional(z.string()),
 
     // Budgets/details
-    budget_sale_band: z.string().optional(),
-    budget_rent_band: z.string().optional(),
-    bedrooms: z.enum(bedroomOptions).optional(),
-    size_band: z.enum(sizeBands).optional(),
+    budget_sale_band: asOptional(z.string()),
+    budget_rent_band: asOptional(z.string()),
+    bedrooms: asOptional(z.enum(bedroomOptions)),
+    size_band: asOptional(z.enum(sizeBands)),
 
     // Location
-    location_place_id: z.string().optional(),
+    location_place_id: asOptional(z.string()),
     location_lat: z.number().optional(),
     location_lng: z.number().optional(),
-    location_address: z.string().optional(),
+    location_address: asOptional(z.string()),
 
     // Prefs/notes
     contact_pref: z.array(z.enum(contactPrefs)).default([]),
-    notes: z.string().optional(),
+    notes: asOptional(z.string()),
   })
   .refine((d) => !(d.budget_sale_band && d.budget_rent_band), {
     message: "Choose either Sale budget or Rent budget (not both).",
@@ -156,7 +157,7 @@ export default function LeadForm({
       location_address: defaultValues?.location_address ?? undefined,
       // prefs/notes
       contact_pref: defaultValues?.contact_pref ?? [],
-      notes: defaultValues?.notes ?? "",
+      notes: defaultValues?.notes ?? undefined,
     }),
     [defaultValues]
   );
@@ -297,31 +298,13 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Lead Source</FormLabel>
                 <FormControl>
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select source (optional)" />
-                      </SelectTrigger>
-                      <SelectContent className="z-50 bg-background">
-                        {leadSourceOptions.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {leadSourceLabels[s]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-2"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
+                  <ClearableSelect
+                    value={field.value ?? undefined}
+                    onChange={field.onChange}
+                    options={leadSourceOptions.map(s => ({ value: s, label: leadSourceLabels[s] }))}
+                    placeholder="Select source (optional)"
+                    allowClear={true}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -361,28 +344,25 @@ export default function LeadForm({
                 <FormItem>
                   <FormLabel>Property Type</FormLabel>
                   <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Residential or Commercial" />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          <SelectItem value="residential">Residential</SelectItem>
-                          <SelectItem value="commercial">Commercial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {field.value && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-10 px-2"
-                          onClick={() => field.onChange(undefined)}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
+                    <ClearableSelect
+                      value={field.value ?? undefined}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        // Dependent clears: when segment is cleared, also clear dependent fields
+                        if (!value) {
+                          form.setValue("subtype", undefined);
+                          form.setValue("bedrooms", undefined);
+                          form.setValue("budget_sale_band", undefined);
+                          form.setValue("budget_rent_band", undefined);
+                        }
+                      }}
+                      options={[
+                        { value: "residential", label: "Residential" },
+                        { value: "commercial", label: "Commercial" }
+                      ]}
+                      placeholder="Residential or Commercial"
+                      allowClear={true}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -399,31 +379,14 @@ export default function LeadForm({
                 <FormItem>
                   <FormLabel>Subtype</FormLabel>
                   <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Select onValueChange={(v) => field.onChange(v)} value={field.value} disabled={!segment}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select subtype" />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-background">
-                          {(subtypeOptions as readonly string[]).map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {field.value && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-10 px-2"
-                          onClick={() => field.onChange(undefined)}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                    </div>
+                    <ClearableSelect
+                      value={field.value ?? undefined}
+                      onChange={field.onChange}
+                      options={(subtypeOptions as readonly string[]).map(s => ({ value: s, label: s }))}
+                      placeholder="Select subtype"
+                      allowClear={true}
+                      disabled={!segment}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -439,31 +402,13 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Budget (Sale)</FormLabel>
                 <FormControl>
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select sale budget" />
-                      </SelectTrigger>
-                      <SelectContent className="z-50 bg-background">
-                        {["under AED1M", "AED1M – AED2M", "AED2M – AED5M", "AED5M – AED10M", "AED10M - AED15M", "Above AED15M"].map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-2"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
+                  <ClearableSelect
+                    value={field.value ?? undefined}
+                    onChange={field.onChange}
+                    options={["under AED1M", "AED1M – AED2M", "AED2M – AED5M", "AED5M – AED10M", "AED10M - AED15M", "Above AED15M"].map(b => ({ value: b, label: b }))}
+                    placeholder="Select sale budget"
+                    allowClear={true}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -478,31 +423,13 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Budget (Rent)</FormLabel>
                 <FormControl>
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select rent budget" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {["under AED100K", "AED100K – AED200K", "AED200K – AED300K", "AED300K – AED500K", "AED500K – AED1M", "Above AED1M"].map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-2"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
+                  <ClearableSelect
+                    value={field.value ?? undefined}
+                    onChange={field.onChange}
+                    options={["under AED100K", "AED100K – AED200K", "AED200K – AED300K", "AED300K – AED500K", "AED500K – AED1M", "Above AED1M"].map(b => ({ value: b, label: b }))}
+                    placeholder="Select rent budget"
+                    allowClear={true}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -517,33 +444,15 @@ export default function LeadForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Bedroom Count</FormLabel>
-                <FormControl>
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select bedrooms" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bedroomOptions.map((b) => (
-                          <SelectItem key={b} value={b}>
-                            {b}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-2"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
-                </FormControl>
+                  <FormControl>
+                    <ClearableSelect
+                      value={field.value ?? undefined}
+                      onChange={field.onChange}
+                      options={bedroomOptions.map(b => ({ value: b, label: b }))}
+                      placeholder="Select bedrooms"
+                      allowClear={true}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -558,31 +467,13 @@ export default function LeadForm({
               <FormItem>
                 <FormLabel>Size (sqft)</FormLabel>
                 <FormControl>
-                  <div className="flex items-center gap-2">
-                    <Select onValueChange={(v) => field.onChange(v)} value={field.value}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sizeBands.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.value && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 px-2"
-                        onClick={() => field.onChange(undefined)}
-                      >
-                        Clear
-                      </Button>
-                    )}
-                  </div>
+                  <ClearableSelect
+                    value={field.value ?? undefined}
+                    onChange={field.onChange}
+                    options={sizeBands.map(s => ({ value: s, label: s }))}
+                    placeholder="Select size"
+                    allowClear={true}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

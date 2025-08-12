@@ -16,6 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { LeadMeta } from '@/components/leads/LeadMeta';
 import { supabase } from '@/integrations/supabase/client';
 import { deleteLead } from '@/services/leads';
+import ClearableSelect from '@/components/ui/ClearableSelect';
+import { asOptional } from '@/lib/schema-utils';
 
 type StatusFilter = 'all' | ContactStatus;
 type InterestFilter = 'all' | 'buyer' | 'seller' | 'landlord' | 'tenant' | 'investor';
@@ -61,18 +63,18 @@ export default function Contacts() {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // URL-driven state
+  // URL-driven state (normalize empty strings to undefined)
   const page = Number(searchParams.get('page')) || 1;
   const pageSize = Number(searchParams.get('pageSize')) || 25;
   const q = searchParams.get('q') || '';
   const status = (searchParams.get('status') || 'all') as StatusFilter;
   const interestType = (searchParams.get('interest_type') || 'all') as InterestFilter;
-  const source = searchParams.get('source') || '';
-  const segment = searchParams.get('segment') || '';
-  const subtype = searchParams.get('subtype') || '';
-  const bedrooms = searchParams.get('bedrooms') || '';
-  const sizeBand = searchParams.get('size_band') || '';
-  const location = searchParams.get('location') || '';
+  const source = searchParams.get('source') || undefined;
+  const segment = searchParams.get('segment') || undefined;
+  const subtype = searchParams.get('subtype') || undefined;
+  const bedrooms = searchParams.get('bedrooms') || undefined;
+  const sizeBand = searchParams.get('size_band') || undefined;
+  const location = searchParams.get('location') || undefined;
   
   // Local state
   const [searchInput, setSearchInput] = useState(q);
@@ -91,8 +93,8 @@ export default function Contacts() {
   const dupes = useMemo(() => potentialDuplicates(rows), [rows, potentialDuplicates]);
   const columns = getColumnsByInterestType(interestType);
 
-  // Update URL params
-  const updateUrlParam = (key: string, value: string | number) => {
+  // Update URL params (avoid empty strings)
+  const updateUrlParam = (key: string, value: string | number | undefined) => {
     const params = new URLSearchParams(searchParams);
     if (value && value !== 'all' && value !== '') {
       params.set(key, String(value));
@@ -262,53 +264,53 @@ export default function Contacts() {
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium">Source</label>
-                  <Select value={source} onValueChange={(value) => updateUrlParam('source', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All sources" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All sources</SelectItem>
-                      <SelectItem value="website">Website</SelectItem>
-                      <SelectItem value="referral">Referral</SelectItem>
-                      <SelectItem value="email_campaign">Email Campaign</SelectItem>
-                      <SelectItem value="whatsapp_campaign">WhatsApp Campaign</SelectItem>
-                      <SelectItem value="property_finder">Property Finder</SelectItem>
-                      <SelectItem value="bayut_dubizzle">Bayut/Dubizzle</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <ClearableSelect
+                    value={source}
+                    onChange={(value) => updateUrlParam('source', value)}
+                    options={[
+                      { value: "website", label: "Website" },
+                      { value: "referral", label: "Referral" },
+                      { value: "email_campaign", label: "Email Campaign" },
+                      { value: "whatsapp_campaign", label: "WhatsApp Campaign" },
+                      { value: "property_finder", label: "Property Finder" },
+                      { value: "bayut_dubizzle", label: "Bayut/Dubizzle" }
+                    ]}
+                    placeholder="All sources"
+                    allowClear={true}
+                  />
                 </div>
                 
                 <div>
                   <label className="text-sm font-medium">Property Type</label>
-                  <Select value={segment} onValueChange={(value) => updateUrlParam('segment', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
-                      <SelectItem value="residential">Residential</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <ClearableSelect
+                    value={segment}
+                    onChange={(value) => updateUrlParam('segment', value)}
+                    options={[
+                      { value: "residential", label: "Residential" },
+                      { value: "commercial", label: "Commercial" }
+                    ]}
+                    placeholder="All types"
+                    allowClear={true}
+                  />
                 </div>
                 
                 <div>
                   <label className="text-sm font-medium">Bedrooms</label>
-                  <Select value={bedrooms} onValueChange={(value) => updateUrlParam('bedrooms', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All bedrooms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All bedrooms</SelectItem>
-                      <SelectItem value="Studio">Studio</SelectItem>
-                      <SelectItem value="1BR">1BR</SelectItem>
-                      <SelectItem value="2BR">2BR</SelectItem>
-                      <SelectItem value="3BR">3BR</SelectItem>
-                      <SelectItem value="4BR">4BR</SelectItem>
-                      <SelectItem value="5BR">5BR</SelectItem>
-                      <SelectItem value="6+ BR">6+ BR</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <ClearableSelect
+                    value={bedrooms}
+                    onChange={(value) => updateUrlParam('bedrooms', value)}
+                    options={[
+                      { value: "Studio", label: "Studio" },
+                      { value: "1BR", label: "1BR" },
+                      { value: "2BR", label: "2BR" },
+                      { value: "3BR", label: "3BR" },
+                      { value: "4BR", label: "4BR" },
+                      { value: "5BR", label: "5BR" },
+                      { value: "6+ BR", label: "6+ BR" }
+                    ]}
+                    placeholder="All bedrooms"
+                    allowClear={true}
+                  />
                 </div>
                 
                 <div>
