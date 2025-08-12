@@ -42,7 +42,7 @@ export async function createLead(input: CreateLeadInput) {
     (payload as any).source = input.source;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from("leads")
     .insert([payload])
     .select("*, profiles!leads_agent_id_fkey(name,email)")
@@ -51,26 +51,96 @@ export async function createLead(input: CreateLeadInput) {
   return { data, error } as const;
 }
 
-export async function listLeads(params: {
-  search?: string;
-  status?: string;
-  source?: string;
-  limit?: number;
+export async function listLeads(opts: {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status_category?: string; // maps to contact_status
+  interest_type?: string;   // maps to interest_tags contains (Buyer/Seller/etc.)
+  source?: string;          // enum, omit 'all'
+  filters?: Partial<{
+    segment: string;
+    subtype: string;
+    bedrooms: string;
+    size_band: string;
+    location_address: string; // ilike
+  }>;
+  includeProfile?: boolean;
 } = {}) {
-  const { search, status, source, limit = 200 } = params;
+  const {
+    page = 1,
+    pageSize = 25,
+    q,
+    status_category,
+    interest_type,
+    source,
+    filters = {},
+    includeProfile = true,
+  } = opts;
 
-  let query = supabase
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let selectCols = "*";
+  if (includeProfile) selectCols += ", profiles!leads_agent_id_fkey(name,email)";
+
+  let query = (supabase as any)
     .from("leads")
-    .select("*, profiles!leads_agent_id_fkey(name,email)")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .select(selectCols, { count: "exact" })
+    .order("updated_at", { ascending: false });
 
-  if (status && status !== "all") query = query.eq("status", status);
-  if (source && source !== "all") query = query.eq("source", source);
-  if (search && search.trim()) {
-    const like = `%${search.trim()}%`;
+  // Top-level filters
+  if (status_category && status_category !== "all") {
+    query = query.eq("contact_status", status_category);
+  }
+
+  if (interest_type && interest_type !== "all") {
+    // DB stores interest_tags with capitalized values from LeadForm (e.g., "Buyer")
+    const tag = interest_type.charAt(0).toUpperCase() + interest_type.slice(1);
+    query = query.contains("interest_tags", [tag]);
+  }
+
+  if (source && source !== "all") {
+    query = query.eq("source", source);
+  }
+
+  if (q && q.trim()) {
+    const like = `%${q.trim()}%`;
     query = query.or(`name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
   }
 
-  return await query;
+  // Advanced filters
+  if (filters.segment) query = query.eq("segment", filters.segment);
+  if (filters.subtype) query = query.eq("subtype", filters.subtype);
+  if (filters.bedrooms) query = query.eq("bedrooms", filters.bedrooms);
+  if (filters.size_band) query = query.eq("size_band", filters.size_band);
+  if (filters.location_address) {
+    const like = `%${filters.location_address}%`;
+    query = query.ilike("location_address", like);
+  }
+
+  const { data, error, count } = await query.range(from, to);
+  return { rows: data || [], total: count || 0, error } as const;
+}
+
+export async function updateLead(id: string, patch: Partial<TablesInsert<"leads">>) {
+  const payload: Record<string, any> = { ...patch };
+  // Never send null/empty source; omit to preserve DB default
+  if ("source" in payload && (!payload.source || String(payload.source).trim() === "")) {
+    delete payload.source;
+  }
+
+  const { data, error } = await (supabase as any)
+    .from("leads")
+    .update(payload)
+    .eq("id", id)
+    .select("*, profiles!leads_agent_id_fkey(name,email)")
+    .maybeSingle();
+
+  return { data, error } as const;
+}
+
+export async function deleteLead(id: string) {
+  const { error } = await (supabase as any).from("leads").delete().eq("id", id);
+  return { error } as const;
 }

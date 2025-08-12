@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useContacts, type ContactStatus } from '@/hooks/useContacts';
 import { useAuth } from '@/contexts/AuthContext';
+import LeadForm from '@/components/leads/LeadForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,6 +26,7 @@ export default function Contacts() {
   const [selected, setSelected] = useState<string[]>([]);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   
   const dupes = useMemo(() => potentialDuplicates(rows), [rows, potentialDuplicates]);
 
@@ -117,6 +119,10 @@ export default function Contacts() {
         </div>
         
         <div className="flex items-center gap-2">
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Contact
+          </Button>
           <Button variant="outline" onClick={onExport} disabled={!rows.length}>
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -306,6 +312,22 @@ export default function Contacts() {
         />
       )}
 
+      {/* New Contact Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>New Contact</DialogTitle>
+          </DialogHeader>
+          <LeadForm
+            context={profile?.role === 'admin' ? 'admin' : 'agent'}
+            onSuccess={async () => {
+              await fetchRows();
+              setAddOpen(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Deduplication Dialog */}
       {showDuplicates && (
         <DeduplicateDialog 
@@ -376,12 +398,15 @@ function ContactDrawer({ id, onClose, onUpdate }: {
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">{contact.name}</h2>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <DeleteLeadButton id={contact.id} onDeleted={() => { onUpdate(); onClose(); }} />
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-6">
             {/* Contact Info */}
             <section className="space-y-4">
               <h3 className="font-medium">Contact Information</h3>
@@ -616,3 +641,31 @@ function DeduplicateDialog({
 
 // Import supabase client for drawer functionality
 import { supabase } from '@/integrations/supabase/client';
+import { deleteLead } from '@/services/leads';
+
+function DeleteLeadButton({ id, onDeleted }: { id: string; onDeleted: () => void }) {
+  const { profile } = useAuth();
+  const { toast } = useToast();
+  const isAdmin = profile?.role === 'admin';
+  if (!isAdmin) return null;
+  return (
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={async () => {
+        const confirmed = window.confirm('Delete this lead permanently?');
+        if (!confirmed) return;
+        const { error } = await deleteLead(id);
+        if (error) {
+          toast({ title: 'Delete failed', description: error.message, variant: 'destructive' });
+        } else {
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('leads:changed'));
+          toast({ title: 'Lead deleted', description: 'The lead has been removed.' });
+          onDeleted();
+        }
+      }}
+    >
+      Delete
+    </Button>
+  );
+}

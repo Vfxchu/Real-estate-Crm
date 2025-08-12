@@ -22,14 +22,15 @@ export function useContacts() {
 
     // Prefer shared service for consistent listing
     const { listLeads } = await import("@/services/leads");
-    const { data, error } = await listLeads({
-      search: q,
-      status: status === 'all' ? undefined : status,
-      limit,
+    const { rows, error } = await listLeads({
+      q,
+      status_category: status === 'all' ? undefined : status,
+      page: 1,
+      pageSize: limit,
     });
 
-    // Filter tags client-side (service doesn't support tags)
-    const filtered = (data || []).filter((row: any) => {
+    // Filter tags client-side (service doesn't support tags natively yet)
+    const filtered = (rows || []).filter((row: any) => {
       if (!tags.length) return true;
       const rowTags: string[] = row.tags || [];
       return tags.every(t => rowTags.includes(t));

@@ -302,7 +302,7 @@ export default function LeadForm({
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select source (optional)" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-50 bg-background">
                         {leadSourceOptions.map((s) => (
                           <SelectItem key={s} value={s}>
                             {leadSourceLabels[s]}
@@ -366,7 +366,7 @@ export default function LeadForm({
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Residential or Commercial" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-50 bg-background">
                           <SelectItem value="residential">Residential</SelectItem>
                           <SelectItem value="commercial">Commercial</SelectItem>
                         </SelectContent>
@@ -404,7 +404,7 @@ export default function LeadForm({
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Select subtype" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-50 bg-background">
                           {(subtypeOptions as readonly string[]).map((s) => (
                             <SelectItem key={s} value={s}>
                               {s}
@@ -444,7 +444,7 @@ export default function LeadForm({
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select sale budget" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-50 bg-background">
                         {["under AED1M", "AED1M – AED2M", "AED2M – AED5M", "AED5M – AED10M", "AED10M - AED15M", "Above AED15M"].map((b) => (
                           <SelectItem key={b} value={b}>
                             {b}
