@@ -45,6 +45,13 @@ export default function Contacts() {
     fetchRows();
   }, [q, status, tags.join('|')]);
 
+  // Refresh when any part of the app creates/updates leads
+  useEffect(() => {
+    const handler = () => fetchRows();
+    window.addEventListener('leads:changed', handler as EventListener);
+    return () => window.removeEventListener('leads:changed', handler as EventListener);
+  }, []);
+
   const onExport = () => {
     const csv = toCSV(rows);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
