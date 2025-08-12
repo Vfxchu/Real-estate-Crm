@@ -3,27 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface Lead {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  status: 'new' | 'contacted' | 'qualified' | 'negotiating' | 'won' | 'lost';
-  priority: 'low' | 'medium' | 'high';
-  source: 'website' | 'referral' | 'social' | 'advertising' | 'cold_call' | 'email';
-  agent_id?: string;
-  interested_in?: string;
-  budget_range?: string;
-  follow_up_date?: string;
-  notes?: string;
-  score: number;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    name: string;
-    email: string;
-  };
-}
+import type { Lead } from "@/types";
+export type { Lead } from "@/types";
 
 export const useLeads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -70,7 +51,7 @@ export const useLeads = () => {
     try {
       const { data, error } = await supabase
         .from('leads')
-        .insert([leadData])
+        .insert([leadData as any])
         .select(`
           *,
           profiles!leads_agent_id_fkey (

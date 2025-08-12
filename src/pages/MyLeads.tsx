@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
-import { AddLeadForm } from '@/components/forms/AddLeadForm';
+import LeadForm from '@/components/leads/LeadForm';
 import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
 import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
 import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
@@ -32,7 +32,7 @@ import {
 export const MyLeads = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { leads, loading } = useLeads();
+  const { leads, loading, createLead } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
