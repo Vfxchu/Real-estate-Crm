@@ -43,6 +43,12 @@ export const LeadsManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [contactStatusFilter, setContactStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [agentFilter, setAgentFilter] = useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [dateRangeFilter, setDateRangeFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -101,11 +107,27 @@ export const LeadsManager = () => {
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.phone.includes(searchTerm);
+                         lead.phone?.includes(searchTerm) ||
+                         lead.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+    
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
+    const matchesContactStatus = contactStatusFilter === 'all' || lead.contact_status === contactStatusFilter;
+    const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
+    const matchesCategory = categoryFilter === 'all' || lead.category === categoryFilter;
+    const matchesAgent = agentFilter === 'all' || lead.profiles?.name === agentFilter;
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    // Date range filter
+    let matchesDateRange = true;
+    if (dateRangeFilter.from && dateRangeFilter.to) {
+      const leadDate = new Date(lead.created_at);
+      const fromDate = new Date(dateRangeFilter.from);
+      const toDate = new Date(dateRangeFilter.to);
+      matchesDateRange = leadDate >= fromDate && leadDate <= toDate;
+    }
+    
+    return matchesSearch && matchesStatus && matchesPriority && matchesContactStatus && 
+           matchesSource && matchesCategory && matchesAgent && matchesDateRange;
   });
 
   const getStatusColor = (status: Lead['status']) => {
@@ -211,51 +233,148 @@ export const LeadsManager = () => {
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="low">Low</SelectItem>
                 </SelectContent>
-              </Select>
+               </Select>
 
-              <Button variant="outline">
-                <Filter className="w-4 h-4 mr-2" />
-                More Filters
-              </Button>
+               <Button 
+                 variant="outline" 
+                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+               >
+                 <Filter className="w-4 h-4 mr-2" />
+                 {showAdvancedFilters ? 'Hide Filters' : 'More Filters'}
+               </Button>
 
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
-          </div>
+               <Button variant="outline">
+                 <Download className="w-4 h-4 mr-2" />
+                 Export
+               </Button>
+             </div>
+           </div>
 
-          {/* Bulk Actions */}
-          {selectedLeads.length > 0 && (
-            <div className="mt-4 p-3 bg-muted/30 rounded-lg flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''} selected
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkAction('assign')}
-                >
-                  Assign Agent
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkAction('status')}
-                >
-                  Change Status
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkAction('delete')}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
+           {/* Advanced Filters */}
+           {showAdvancedFilters && (
+             <div className="mt-4 p-4 border rounded-lg bg-muted/20">
+               <h4 className="font-medium mb-3">Advanced Filters</h4>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                 {/* Contact Status Filter */}
+                 <div>
+                   <Label className="text-sm font-medium">Contact Status</Label>
+                   <Select value={contactStatusFilter} onValueChange={setContactStatusFilter}>
+                     <SelectTrigger className="w-full">
+                       <SelectValue placeholder="Contact Status" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Contact Status</SelectItem>
+                       <SelectItem value="lead">Not Contacted</SelectItem>
+                       <SelectItem value="contacted">Contacted</SelectItem>
+                       <SelectItem value="active_client">Active Client</SelectItem>
+                       <SelectItem value="past_client">Past Client</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 {/* Source Filter */}
+                 <div>
+                   <Label className="text-sm font-medium">Source</Label>
+                   <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                     <SelectTrigger className="w-full">
+                       <SelectValue placeholder="Source" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Sources</SelectItem>
+                       <SelectItem value="website">Website</SelectItem>
+                       <SelectItem value="referral">Referral</SelectItem>
+                       <SelectItem value="social">Social Media</SelectItem>
+                       <SelectItem value="advertising">Advertising</SelectItem>
+                       <SelectItem value="cold_call">Cold Call</SelectItem>
+                       <SelectItem value="email">Email</SelectItem>
+                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                       <SelectItem value="instagram">Instagram</SelectItem>
+                       <SelectItem value="facebook_ads">Facebook Ads</SelectItem>
+                       <SelectItem value="google_ads">Google Ads</SelectItem>
+                       <SelectItem value="walk_in">Walk In</SelectItem>
+                       <SelectItem value="portal">Portal</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 {/* Category Filter */}
+                 <div>
+                   <Label className="text-sm font-medium">Category</Label>
+                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                     <SelectTrigger className="w-full">
+                       <SelectValue placeholder="Category" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Categories</SelectItem>
+                       <SelectItem value="property">Property</SelectItem>
+                       <SelectItem value="requirement">Requirement</SelectItem>
+                       <SelectItem value="both">Both</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 {/* Agent Filter */}
+                 <div>
+                   <Label className="text-sm font-medium">Agent</Label>
+                   <Select value={agentFilter} onValueChange={setAgentFilter}>
+                     <SelectTrigger className="w-full">
+                       <SelectValue placeholder="Agent" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Agents</SelectItem>
+                       {[...new Set(leads.map(lead => lead.profiles?.name).filter(Boolean))].map(agentName => (
+                         <SelectItem key={agentName} value={agentName!}>
+                           {agentName}
+                         </SelectItem>
+                       ))}
+                       <SelectItem value="Unassigned">Unassigned</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+
+                 {/* Date Range Filter */}
+                 <div>
+                   <Label className="text-sm font-medium">From Date</Label>
+                   <Input
+                     type="date"
+                     value={dateRangeFilter.from}
+                     onChange={(e) => setDateRangeFilter(prev => ({ ...prev, from: e.target.value }))}
+                     className="w-full"
+                   />
+                 </div>
+
+                 <div>
+                   <Label className="text-sm font-medium">To Date</Label>
+                   <Input
+                     type="date"
+                     value={dateRangeFilter.to}
+                     onChange={(e) => setDateRangeFilter(prev => ({ ...prev, to: e.target.value }))}
+                     className="w-full"
+                   />
+                 </div>
+
+                 {/* Clear Filters Button */}
+                 <div className="flex items-end">
+                   <Button 
+                     variant="outline" 
+                     className="w-full"
+                     onClick={() => {
+                       setStatusFilter('all');
+                       setPriorityFilter('all');
+                       setContactStatusFilter('all');
+                       setSourceFilter('all');
+                       setCategoryFilter('all');
+                       setAgentFilter('all');
+                       setDateRangeFilter({ from: '', to: '' });
+                       setSearchTerm('');
+                     }}
+                   >
+                     Clear All Filters
+                   </Button>
+                 </div>
+               </div>
+             </div>
+           )}
         </CardContent>
       </Card>
 
