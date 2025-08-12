@@ -59,64 +59,106 @@ export type Database = {
       leads: {
         Row: {
           agent_id: string | null
+          bedrooms: string | null
           budget_range: string | null
+          budget_rent_band: string | null
+          budget_sale_band: string | null
+          category: string | null
+          contact_pref: string[] | null
           contact_status: string | null
           created_at: string
           custom_fields: Json | null
           email: string
           follow_up_date: string | null
           id: string
+          interest_tags: string[] | null
           interested_in: string | null
+          lead_source: string | null
+          location_address: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_place_id: string | null
           merged_into_id: string | null
           name: string
           notes: string | null
           phone: string | null
           priority: string
           score: number | null
-          source: string
+          segment: string | null
+          size_band: string | null
+          source: Database["public"]["Enums"]["lead_source_enum"]
           status: string
+          subtype: string | null
           tags: string[] | null
           updated_at: string
         }
         Insert: {
           agent_id?: string | null
+          bedrooms?: string | null
           budget_range?: string | null
+          budget_rent_band?: string | null
+          budget_sale_band?: string | null
+          category?: string | null
+          contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string
           custom_fields?: Json | null
           email: string
           follow_up_date?: string | null
           id?: string
+          interest_tags?: string[] | null
           interested_in?: string | null
+          lead_source?: string | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_place_id?: string | null
           merged_into_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
           priority?: string
           score?: number | null
-          source?: string
+          segment?: string | null
+          size_band?: string | null
+          source?: Database["public"]["Enums"]["lead_source_enum"]
           status?: string
+          subtype?: string | null
           tags?: string[] | null
           updated_at?: string
         }
         Update: {
           agent_id?: string | null
+          bedrooms?: string | null
           budget_range?: string | null
+          budget_rent_band?: string | null
+          budget_sale_band?: string | null
+          category?: string | null
+          contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string
           custom_fields?: Json | null
           email?: string
           follow_up_date?: string | null
           id?: string
+          interest_tags?: string[] | null
           interested_in?: string | null
+          lead_source?: string | null
+          location_address?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_place_id?: string | null
           merged_into_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           priority?: string
           score?: number | null
-          source?: string
+          segment?: string | null
+          size_band?: string | null
+          source?: Database["public"]["Enums"]["lead_source_enum"]
           status?: string
+          subtype?: string | null
           tags?: string[] | null
           updated_at?: string
         }
@@ -267,6 +309,68 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          amount: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          id_expiry: string | null
+          id_number: string | null
+          id_type: string | null
+          lead_id: string
+          nationality: string | null
+          notes: string | null
+          pep: boolean
+          source_of_funds: string | null
+          status: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          id_expiry?: string | null
+          id_number?: string | null
+          id_type?: string | null
+          lead_id: string
+          nationality?: string | null
+          notes?: string | null
+          pep?: boolean
+          source_of_funds?: string | null
+          status?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          id_expiry?: string | null
+          id_number?: string | null
+          id_type?: string | null
+          lead_id?: string
+          nationality?: string | null
+          notes?: string | null
+          pep?: boolean
+          source_of_funds?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       leads_per_agent_per_month: {
@@ -295,9 +399,25 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      map_status_to_contact_status: {
+        Args: { lead_status: string }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      lead_source_enum:
+        | "website"
+        | "referral"
+        | "social"
+        | "advertising"
+        | "cold_call"
+        | "email"
+        | "whatsapp"
+        | "instagram"
+        | "facebook_ads"
+        | "google_ads"
+        | "walk_in"
+        | "portal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -424,6 +544,21 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      lead_source_enum: [
+        "website",
+        "referral",
+        "social",
+        "advertising",
+        "cold_call",
+        "email",
+        "whatsapp",
+        "instagram",
+        "facebook_ads",
+        "google_ads",
+        "walk_in",
+        "portal",
+      ],
+    },
   },
 } as const
