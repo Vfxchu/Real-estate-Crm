@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
 
 export const LeadsManager = () => {
-  const { leads, loading, updateLead, addActivity, deleteLead, createLead } = useLeads();
+  const { leads, loading, updateLead, addActivity, deleteLead, fetchLeads } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -422,10 +422,9 @@ export const LeadsManager = () => {
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
           <LeadForm
-            mode="create"
             context="admin"
-            onSubmit={async (payload) => {
-              await createLead(payload as any);
+            onSuccess={async () => {
+              await fetchLeads();
               setShowAddForm(false);
             }}
           />

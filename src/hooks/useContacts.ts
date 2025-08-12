@@ -19,35 +19,23 @@ export function useContacts() {
     includeMerged?: boolean;
   } = {}) => {
     const { q, status = 'all', tags = [], limit = 50, includeMerged = false } = opts;
-    
-    let query = supabase
-      .from('leads')
-      .select('*, profiles(name, email)')
-      .order('updated_at', { ascending: false })
-      .limit(limit);
-    
-    // Filter out merged contacts unless explicitly requested
-    if (!includeMerged) {
-      query = query.is('merged_into_id', null);
-    }
-    
-    // Filter by contact status
-    if (status !== 'all') {
-      query = query.eq('contact_status', status);
-    }
-    
-    // Search query across name, email, phone
-    if (q && q.trim()) {
-      const like = `%${q.trim()}%`;
-      query = query.or(`name.ilike.${like},email.ilike.${like},phone.ilike.${like}`);
-    }
-    
-    // Filter by tags using array contains operator
-    if (tags.length) {
-      query = query.contains('tags', tags);
-    }
-    
-    return await query;
+
+    // Prefer shared service for consistent listing
+    const { listLeads } = await import("@/services/leads");
+    const { data, error } = await listLeads({
+      search: q,
+      status: status === 'all' ? undefined : status,
+      limit,
+    });
+
+    // Filter tags client-side (service doesn't support tags)
+    const filtered = (data || []).filter((row: any) => {
+      if (!tags.length) return true;
+      const rowTags: string[] = row.tags || [];
+      return tags.every(t => rowTags.includes(t));
+    });
+
+    return { data: filtered, error } as const;
   }, []);
 
   const updateContact = useCallback(async (id: string, patch: Partial<{

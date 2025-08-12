@@ -32,7 +32,7 @@ import {
 export const MyLeads = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { leads, loading, createLead } = useLeads();
+  const { leads, loading, fetchLeads } = useLeads();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -390,10 +390,9 @@ export const MyLeads = () => {
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
           <LeadForm
-            mode="create"
             context="agent"
-            onSubmit={async (payload) => {
-              await createLead(payload as any);
+            onSuccess={async () => {
+              await fetchLeads();
               setAddLeadFormOpen(false);
             }}
           />

@@ -26,7 +26,7 @@ import {
 
 export const Dashboard = () => {
   const { user, profile } = useAuth();
-  const { leads, loading, createLead } = useLeads();
+  const { leads, loading, fetchLeads } = useLeads();
   const isAdmin = profile?.role === 'admin';
   const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -288,10 +288,9 @@ export const Dashboard = () => {
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
           <LeadForm
-            mode="create"
             context="admin"
-            onSubmit={async (payload) => {
-              await createLead(payload as any);
+            onSuccess={async () => {
+              await fetchLeads();
               setAddLeadFormOpen(false);
             }}
           />

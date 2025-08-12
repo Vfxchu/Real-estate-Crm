@@ -49,9 +49,21 @@ export const useLeads = () => {
 
   const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
+      // Enforce rules: set agent_id to current user, omit null/empty source
+      const payload: any = { ...leadData };
+      // Always attribute to current user for RLS
+      if (user?.id) payload.agent_id = user.id;
+      // Handle source enum default: omit if empty or null
+      if (payload.source == null || String(payload.source).trim() === '') {
+        delete payload.source;
+      }
+      // Ensure email is at least empty string because DB column is not nullable
+      if (payload.email == null) payload.email = '';
+      if (payload.status == null) payload.status = 'new';
+
       const { data, error } = await supabase
         .from('leads')
-        .insert([leadData as any])
+        .insert([payload])
         .select(`
           *,
           profiles!leads_agent_id_fkey (
