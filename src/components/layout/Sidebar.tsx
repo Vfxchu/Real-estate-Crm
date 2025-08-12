@@ -32,6 +32,12 @@ const navigation: NavItem[] = [
     roles: ['admin', 'agent'],
   },
   {
+    title: 'Contacts',
+    href: '/contacts',
+    icon: Users,
+    roles: ['admin', 'agent'],
+  },
+  {
     title: 'Leads Manager',
     href: '/leads',
     icon: Target,
@@ -77,12 +83,6 @@ const navigation: NavItem[] = [
     title: 'Properties',
     href: '/properties',
     icon: Home,
-    roles: ['admin', 'agent'],
-  },
-  {
-    title: 'Contacts',
-    href: '/contacts',
-    icon: Users,
     roles: ['admin', 'agent'],
   },
   {
