@@ -50,7 +50,16 @@ export const LeadsManager = () => {
   const { toast } = useToast();
 
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
-    await updateLead(leadId, { status: newStatus });
+    const updateData: Partial<Lead> = { status: newStatus };
+    
+    // Auto-update contact_status based on lead status
+    if (newStatus === 'contacted' || newStatus === 'qualified' || newStatus === 'negotiating' || newStatus === 'won') {
+      updateData.contact_status = 'contacted';
+    } else if (newStatus === 'new' || newStatus === 'lost') {
+      updateData.contact_status = 'lead';
+    }
+    
+    await updateLead(leadId, updateData);
     await addActivity(leadId, 'status_change', `Status changed to ${newStatus}`);
   };
 
