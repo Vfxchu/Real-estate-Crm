@@ -32,7 +32,7 @@ const propertySchema = z.object({
   bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   area_sqft: z.number().min(0).optional(),
-  status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
+  status: z.enum(['available', 'pending', 'sold', 'off_market', 'vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
@@ -83,7 +83,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       bedrooms: 0,
       bathrooms: 0,
       area_sqft: 0,
-      status: 'vacant',
+      status: 'available',
       permit_number: '',
       owner_contact_id: '',
       agent_id: user?.id || '',
@@ -189,65 +189,56 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const onSubmit = async (data: PropertyFormData) => {
     try {
       setLoading(true);
-      console.log('Form data submitted:', data);
-      console.log('Current user:', user);
-      console.log('User profile:', profile);
 
       // Ensure user is authenticated
       if (!user?.id) {
         throw new Error('User not authenticated. Please log in and try again.');
       }
 
-      // Prepare property data for the RPC function
-      const propertyData = {
-        title: data.title,
-        segment: data.segment,
-        subtype: data.subtype,
-        property_type: data.subtype, // Use subtype as property_type
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        zip_code: data.zip_code || null,
-        unit_number: data.unit_number || null,
-        bedrooms: data.bedrooms || null,
-        bathrooms: data.bathrooms || null,
-        area_sqft: data.area_sqft || null,
-        status: data.status,
-        offer_type: data.offer_type,
-        price: data.price,
-        description: data.description || null,
-        permit_number: data.permit_number || null,
-        owner_contact_id: data.owner_contact_id,
-        agent_id: data.agent_id || user.id,
-        featured: data.featured,
-        location_place_id: data.location || null,
-        location_lat: null,
-        location_lng: null,
-      };
+      // Determine agent_id based on user role
+      const agent_id = profile?.role === 'admin' && data.agent_id 
+        ? data.agent_id 
+        : user.id;
 
-      console.log('Property data being sent:', propertyData);
-      
-      const { data: result, error } = await supabase
-        .rpc('create_property_with_files', {
-          property_data: propertyData,
-          files_data: []
-        });
+      // Insert property directly using Supabase client
+      const { data: propertyData, error } = await supabase
+        .from('properties')
+        .insert([{
+          title: data.title,
+          segment: data.segment,
+          subtype: data.subtype,
+          property_type: data.subtype, // Use subtype as property_type
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zip_code: data.zip_code || null,
+          unit_number: data.unit_number || null,
+          bedrooms: data.bedrooms || null,
+          bathrooms: data.bathrooms || null,
+          area_sqft: data.area_sqft || null,
+          status: data.status,
+          offer_type: data.offer_type,
+          price: data.price,
+          description: data.description || null,
+          permit_number: data.permit_number || null,
+          owner_contact_id: data.owner_contact_id,
+          agent_id,
+          featured: data.featured || false,
+          location_place_id: data.location || null,
+        }])
+        .select('*')
+        .single();
 
-      console.log('RPC result:', result);
-      console.log('RPC error:', error);
-
-      if (error) throw error;
-
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response from property creation');
+      if (error) {
+        console.error('Property insert error:', error);
+        throw error;
       }
 
-      const resultObj = result as Record<string, any>;
-      if (!('property_id' in resultObj)) {
-        throw new Error('Property ID not returned from creation');
+      if (!propertyData) {
+        throw new Error('Failed to create property - RLS may have blocked the insert. Check agent_id assignment.');
       }
 
-      const propertyId = resultObj.property_id as string;
+      const propertyId = propertyData.id;
 
       // Upload files if any
       if (uploadedFiles.length > 0) {
@@ -310,9 +301,16 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
     } catch (error: any) {
       console.error('Property creation error:', error);
+      
+      // Provide specific error message for RLS issues
+      let errorMessage = error.message || 'Please check all required fields and try again.';
+      if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
+        errorMessage = 'Permission denied: You can only create properties assigned to yourself.';
+      }
+      
       toast({
         title: 'Error creating property',
-        description: error.message || 'Please check all required fields and try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -651,6 +649,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="available">Available</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="sold">Sold</SelectItem>
+                          <SelectItem value="off_market">Off Market</SelectItem>
                           <SelectItem value="vacant">Vacant</SelectItem>
                           <SelectItem value="rented">Rented</SelectItem>
                           <SelectItem value="in_development">In Development</SelectItem>

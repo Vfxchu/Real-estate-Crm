@@ -20,10 +20,10 @@ export interface Property {
   bathrooms?: number;
   area_sqft?: number;
   status: 'available' | 'pending' | 'sold' | 'off_market' | 'vacant' | 'rented' | 'in_development';
-  offer_type?: 'rent' | 'sale';
+  offer_type: 'rent' | 'sale'; // Required field
   featured?: boolean;
   images?: string[];
-  agent_id?: string;
+  agent_id: string; // Required field
   permit_number?: string;
   owner_contact_id?: string;
   location_place_id?: string;
@@ -81,10 +81,16 @@ export const useProperties = () => {
   const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
       const { data, error } = await supabase
-        .rpc('create_property_with_files', {
-          property_data: propertyData,
-          files_data: []
-        });
+        .from('properties')
+        .insert([propertyData])
+        .select(`
+          *,
+          profiles!properties_agent_id_fkey (
+            name,
+            email
+          )
+        `)
+        .single();
 
       if (error) throw error;
 

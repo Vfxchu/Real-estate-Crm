@@ -289,7 +289,7 @@ export type Database = {
       properties: {
         Row: {
           address: string
-          agent_id: string | null
+          agent_id: string
           area_sqft: number | null
           bathrooms: number | null
           bedrooms: number | null
@@ -302,7 +302,7 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           location_place_id: string | null
-          offer_type: string | null
+          offer_type: string
           owner_contact_id: string | null
           permit_number: string | null
           price: number
@@ -318,7 +318,7 @@ export type Database = {
         }
         Insert: {
           address: string
-          agent_id?: string | null
+          agent_id?: string
           area_sqft?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
@@ -331,7 +331,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           location_place_id?: string | null
-          offer_type?: string | null
+          offer_type: string
           owner_contact_id?: string | null
           permit_number?: string | null
           price: number
@@ -347,7 +347,7 @@ export type Database = {
         }
         Update: {
           address?: string
-          agent_id?: string | null
+          agent_id?: string
           area_sqft?: number | null
           bathrooms?: number | null
           bedrooms?: number | null
@@ -360,7 +360,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           location_place_id?: string | null
-          offer_type?: string | null
+          offer_type?: string
           owner_contact_id?: string | null
           permit_number?: string | null
           price?: number
