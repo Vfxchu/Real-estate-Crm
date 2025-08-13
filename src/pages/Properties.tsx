@@ -374,7 +374,8 @@ export const Properties = () => {
       {/* Add Property Form */}
       <AddPropertyForm 
         open={showAddProperty} 
-        onOpenChange={setShowAddProperty} 
+        onOpenChange={setShowAddProperty}
+        onSuccess={() => window.location.reload()}
       />
     </div>
   );

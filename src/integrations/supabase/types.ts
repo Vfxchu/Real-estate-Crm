@@ -56,6 +56,54 @@ export type Database = {
           },
         ]
       }
+      contact_files: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          name: string
+          path: string
+          property_id: string | null
+          source: string
+          type: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          name: string
+          path: string
+          property_id?: string | null
+          source?: string
+          type: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          path?: string
+          property_id?: string | null
+          source?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_files_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           agent_id: string | null
@@ -251,11 +299,20 @@ export type Database = {
           featured: boolean | null
           id: string
           images: string[] | null
+          location_lat: number | null
+          location_lng: number | null
+          location_place_id: string | null
+          offer_type: string | null
+          owner_contact_id: string | null
+          permit_number: string | null
           price: number
           property_type: string
+          segment: string | null
           state: string
           status: string
+          subtype: string | null
           title: string
+          unit_number: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -271,11 +328,20 @@ export type Database = {
           featured?: boolean | null
           id?: string
           images?: string[] | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_place_id?: string | null
+          offer_type?: string | null
+          owner_contact_id?: string | null
+          permit_number?: string | null
           price: number
           property_type: string
+          segment?: string | null
           state: string
           status?: string
+          subtype?: string | null
           title: string
+          unit_number?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -291,11 +357,20 @@ export type Database = {
           featured?: boolean | null
           id?: string
           images?: string[] | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_place_id?: string | null
+          offer_type?: string | null
+          owner_contact_id?: string | null
+          permit_number?: string | null
           price?: number
           property_type?: string
+          segment?: string | null
           state?: string
           status?: string
+          subtype?: string | null
           title?: string
+          unit_number?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -306,6 +381,51 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "properties_owner_contact_id_fkey"
+            columns: ["owner_contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_files: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          path: string
+          property_id: string
+          size: number | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          path: string
+          property_id: string
+          size?: number | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          path?: string
+          property_id?: string
+          size?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -391,6 +511,10 @@ export type Database = {
       }
     }
     Functions: {
+      create_property_with_files: {
+        Args: { property_data: Json; files_data?: Json[] }
+        Returns: Json
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string

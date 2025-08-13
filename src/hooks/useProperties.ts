@@ -8,18 +8,27 @@ export interface Property {
   title: string;
   description?: string;
   property_type: string;
+  segment?: 'residential' | 'commercial';
+  subtype?: string;
   address: string;
   city: string;
   state: string;
   zip_code?: string;
+  unit_number?: string;
   price: number;
   bedrooms?: number;
   bathrooms?: number;
   area_sqft?: number;
-  status: 'available' | 'pending' | 'sold' | 'off_market';
+  status: 'available' | 'pending' | 'sold' | 'off_market' | 'vacant' | 'rented' | 'in_development';
+  offer_type?: 'rent' | 'sale';
   featured?: boolean;
   images?: string[];
   agent_id?: string;
+  permit_number?: string;
+  owner_contact_id?: string;
+  location_place_id?: string;
+  location_lat?: number;
+  location_lng?: number;
   created_at: string;
   updated_at: string;
   profiles?: {
@@ -72,14 +81,16 @@ export const useProperties = () => {
   const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
       const { data, error } = await supabase
-        .from('properties')
-        .insert([propertyData])
-        .select()
-        .single();
+        .rpc('create_property_with_files', {
+          property_data: propertyData,
+          files_data: []
+        });
 
       if (error) throw error;
 
-      setProperties(prev => [data as Property, ...prev]);
+      // Refresh properties list
+      await fetchProperties();
+      
       toast({
         title: 'Property created',
         description: 'New property has been added successfully.',
