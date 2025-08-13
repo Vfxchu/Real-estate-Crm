@@ -88,19 +88,20 @@ export const useProperties = () => {
 
       if (error) throw error;
 
-      // Refresh properties list
+      // Refresh properties list immediately
       await fetchProperties();
       
       toast({
-        title: 'Property created',
-        description: 'New property has been added successfully.',
+        title: 'Property created successfully',
+        description: 'New property has been added to your listings.',
       });
 
       return { data, error: null };
     } catch (error: any) {
+      console.error('Property creation error:', error);
       toast({
         title: 'Error creating property',
-        description: error.message,
+        description: error.message || 'Please check all required fields and try again.',
         variant: 'destructive',
       });
       return { data: null, error };

@@ -187,13 +187,34 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   };
 
   const onSubmit = async (data: PropertyFormData) => {
-    setLoading(true);
-
     try {
-      // Create property using the Supabase RPC function
+      setLoading(true);
+
+      // Prepare property data for the RPC function
       const propertyData = {
-        ...data,
-        agent_id: profile?.role === 'admin' && data.agent_id ? data.agent_id : user?.id,
+        title: data.title,
+        segment: data.segment,
+        subtype: data.subtype,
+        property_type: data.subtype, // Use subtype as property_type
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip_code: data.zip_code || null,
+        unit_number: data.unit_number || null,
+        bedrooms: data.bedrooms || null,
+        bathrooms: data.bathrooms || null,
+        area_sqft: data.area_sqft || null,
+        status: data.status,
+        offer_type: data.offer_type,
+        price: data.price,
+        description: data.description || null,
+        permit_number: data.permit_number || null,
+        owner_contact_id: data.owner_contact_id,
+        agent_id: data.agent_id || user?.id,
+        featured: data.featured,
+        location_place_id: data.location || null,
+        location_lat: null,
+        location_lng: null,
       };
 
       const { data: result, error } = await supabase
@@ -256,8 +277,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       }
 
       toast({
-        title: 'Property created',
-        description: 'New property has been added successfully.',
+        title: 'Property created successfully',
+        description: 'New property has been added to your listings.',
       });
 
       form.reset();
@@ -266,9 +287,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       onSuccess?.();
 
     } catch (error: any) {
+      console.error('Property creation error:', error);
       toast({
         title: 'Error creating property',
-        description: error.message,
+        description: error.message || 'Please check all required fields and try again.',
         variant: 'destructive',
       });
     } finally {
@@ -401,14 +423,20 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price *</FormLabel>
+                      <FormLabel>Price (AED) *</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="Enter price" 
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                            AED
+                          </span>
+                          <Input 
+                            type="number" 
+                            placeholder="Enter price in AED" 
+                            className="pl-12"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
