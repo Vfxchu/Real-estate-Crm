@@ -1,18 +1,17 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 
 const propertySchema = z.object({
@@ -45,22 +44,11 @@ interface PropertyFormProps {
   onSuccess?: () => void;
 }
 
-interface FileUpload {
-  file: File;
-  preview?: string;
-  type: 'image' | 'layout' | 'document';
-  progress?: number;
-}
-
 export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, onSuccess }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const { leads } = useLeads();
   const [loading, setLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<FileUpload[]>([]);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const layoutInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -109,77 +97,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         { value: 'warehouse', label: 'Warehouse' },
       ];
     }
-  };
-
-  const handleFileUpload = useCallback(async (files: FileList, type: 'image' | 'layout' | 'document') => {
-    const maxSize = 20 * 1024 * 1024; // 20MB
-    const allowedMimes = {
-      image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-      layout: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
-      document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-    };
-
-    const validFiles: FileUpload[] = [];
-
-    for (const file of Array.from(files)) {
-      if (file.size > maxSize) {
-        toast({
-          title: 'File too large',
-          description: `${file.name} exceeds 20MB limit`,
-          variant: 'destructive',
-        });
-        continue;
-      }
-
-      if (!allowedMimes[type].includes(file.type)) {
-        toast({
-          title: 'Invalid file type',
-          description: `${file.name} is not a supported ${type} file`,
-          variant: 'destructive',
-        });
-        continue;
-      }
-
-      const fileUpload: FileUpload = { file, type };
-
-      if (type === 'image' || (type === 'layout' && file.type.startsWith('image/'))) {
-        fileUpload.preview = URL.createObjectURL(file);
-      }
-
-      validFiles.push(fileUpload);
-    }
-
-    setUploadedFiles(prev => [...prev, ...validFiles]);
-  }, [toast]);
-
-  const removeFile = useCallback((index: number) => {
-    setUploadedFiles(prev => {
-      const updated = prev.filter((_, i) => i !== index);
-      const removedFile = prev[index];
-      if (removedFile.preview) {
-        URL.revokeObjectURL(removedFile.preview);
-      }
-      return updated;
-    });
-  }, []);
-
-  const uploadFileToStorage = async (file: File, type: 'image' | 'layout' | 'document', propertyId: string) => {
-    const bucket = type === 'image' ? 'property-images' : type === 'layout' ? 'property-layouts' : 'property-docs';
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${propertyId}/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(filePath, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(filePath);
-
-    return { path: filePath, url: publicUrl, name: file.name, size: file.size };
   };
 
   const onSubmit = async (data: PropertyFormData) => {
@@ -678,113 +595,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   />
                 )}
               </div>
-            </div>
-
-            {/* File Uploads */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Files & Documents</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Images */}
-                <div>
-                  <Label>Property Images</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full mt-1"
-                    onClick={() => imageInputRef.current?.click()}
-                  >
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    Upload Images
-                  </Button>
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files, 'image')}
-                    className="hidden"
-                  />
-                </div>
-
-                {/* Layout */}
-                <div>
-                  <Label>Property Layout</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full mt-1"
-                    onClick={() => layoutInputRef.current?.click()}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Upload Layout
-                  </Button>
-                  <input
-                    ref={layoutInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files, 'layout')}
-                    className="hidden"
-                  />
-                </div>
-
-                {/* Documents */}
-                <div>
-                  <Label>Documents</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full mt-1"
-                    onClick={() => documentInputRef.current?.click()}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Documents
-                  </Button>
-                  <input
-                    ref={documentInputRef}
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files, 'document')}
-                    className="hidden"
-                  />
-                </div>
-              </div>
-
-              {/* File Previews */}
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Uploaded Files ({uploadedFiles.length})</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {uploadedFiles.map((fileUpload, index) => (
-                      <div key={index} className="relative group border rounded-lg p-3 bg-card">
-                        {fileUpload.preview ? (
-                          <img 
-                            src={fileUpload.preview} 
-                            alt={fileUpload.file.name}
-                            className="w-full h-20 object-cover rounded mb-2"
-                          />
-                        ) : (
-                          <div className="w-full h-20 bg-muted rounded mb-2 flex items-center justify-center">
-                            <FileText className="w-8 h-8 text-muted-foreground" />
-                          </div>
-                        )}
-                        <p className="text-xs truncate">{fileUpload.file.name}</p>
-                        <p className="text-xs text-muted-foreground">{fileUpload.type}</p>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 p-0"
-                          onClick={() => removeFile(index)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="flex gap-2 pt-4">
