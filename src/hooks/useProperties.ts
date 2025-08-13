@@ -49,7 +49,8 @@ export const useProperties = () => {
       let query = supabase
         .from('properties')
         .select(`
-          *,
+          id,title,segment,subtype,address,city,state,zip_code,status,offer_type,price,
+          bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,
           profiles!properties_agent_id_fkey (
             name,
             email
@@ -80,6 +81,7 @@ export const useProperties = () => {
 
   const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
+      // Direct insert - simplified, no RPC
       const { data, error } = await supabase
         .from('properties')
         .insert([propertyData])

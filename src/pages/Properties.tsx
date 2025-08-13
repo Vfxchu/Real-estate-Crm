@@ -27,6 +27,16 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// AED formatting utility
+const formatAED = (amount: number) => {
+  return new Intl.NumberFormat('en-AE', { 
+    style: 'currency', 
+    currency: 'AED',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
 export const Properties = () => {
   const { properties, loading, deleteProperty } = useProperties();
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,7 +154,7 @@ export const Properties = () => {
               <DollarSign className="w-8 h-8 text-info" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Avg Price</p>
-                <p className="text-2xl font-bold">${(avgPrice / 1000).toFixed(0)}K</p>
+                <p className="text-2xl font-bold">{formatAED(avgPrice)}</p>
               </div>
             </div>
           </CardContent>
@@ -223,7 +233,7 @@ export const Properties = () => {
                   <span className="text-sm capitalize">{property.property_type}</span>
                 </div>
                 <div className="text-lg font-bold text-primary">
-                  ${(property.price / 1000).toFixed(0)}K
+                  {formatAED(property.price)}
                 </div>
               </div>
 
@@ -279,7 +289,7 @@ export const Properties = () => {
                           <div>
                             <Label>Price</Label>
                             <p className="mt-1 text-2xl font-bold text-primary">
-                              ${selectedProperty.price.toLocaleString()}
+                              {formatAED(selectedProperty.price)}
                             </p>
                           </div>
                           <div>

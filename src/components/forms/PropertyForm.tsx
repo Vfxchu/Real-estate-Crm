@@ -186,101 +186,48 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     try {
       setLoading(true);
 
-      // Ensure user is authenticated
-      if (!user?.id) {
-        throw new Error('User not authenticated. Please log in and try again.');
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Please sign in to continue');
       }
 
-      // Determine agent_id based on user role
-      const agent_id = profile?.role === 'admin' && data.agent_id 
-        ? data.agent_id 
-        : user.id;
+      // Check if admin for agent assignment
+      const isAdmin = profile?.role === 'admin';
+      
+      // Prepare payload for direct insert
+      const payload = {
+        title: data.title,
+        segment: data.segment.toLowerCase(),
+        subtype: data.subtype,
+        property_type: data.subtype, // Use subtype as property_type
+        address: data.address,
+        city: data.city,
+        state: 'UAE', // All UAE properties
+        zip_code: null, // Not using zip codes
+        unit_number: data.unit_number || null,
+        bedrooms: data.bedrooms ?? null,
+        bathrooms: data.bathrooms ?? null,
+        area_sqft: data.area_sqft ?? null,
+        status: data.status.toLowerCase(),
+        offer_type: data.offer_type.toLowerCase(),
+        price: Number(data.price),
+        description: data.description || null,
+        permit_number: data.permit_number || null,
+        owner_contact_id: data.owner_contact_id || null,
+        agent_id: isAdmin && data.agent_id ? data.agent_id : user.id,
+      };
 
-      // Insert property directly using Supabase client
+      // Direct insert to properties table
       const { data: propertyData, error } = await supabase
         .from('properties')
-        .insert([{
-          title: data.title,
-          segment: data.segment,
-          subtype: data.subtype,
-          property_type: data.subtype, // Use subtype as property_type
-          address: data.address,
-          city: data.city,
-          state: 'UAE', // All properties are in UAE
-          unit_number: data.unit_number || null,
-          bedrooms: data.bedrooms || null,
-          bathrooms: data.bathrooms || null,
-          area_sqft: data.area_sqft || null,
-          status: data.status,
-          offer_type: data.offer_type,
-          price: data.price,
-          description: data.description || null,
-          permit_number: data.permit_number || null,
-          owner_contact_id: data.owner_contact_id,
-          agent_id,
-          location_place_id: data.location || null,
-        }])
+        .insert([payload])
         .select('*')
         .single();
 
       if (error) {
-        console.error('Property insert error:', error);
+        console.error('Create property error:', error);
         throw error;
-      }
-
-      if (!propertyData) {
-        throw new Error('Failed to create property - RLS may have blocked the insert. Check agent_id assignment.');
-      }
-
-      const propertyId = propertyData.id;
-
-      // Upload files if any
-      if (uploadedFiles.length > 0) {
-        const uploadPromises = uploadedFiles.map(async (fileUpload) => {
-          const uploadResult = await uploadFileToStorage(fileUpload.file, fileUpload.type, propertyId);
-          
-          // Insert file record
-          const { error: fileError } = await supabase
-            .from('property_files')
-            .insert({
-              property_id: propertyId,
-              type: fileUpload.type,
-              path: uploadResult.path,
-              name: uploadResult.name,
-              size: uploadResult.size,
-            });
-
-          if (fileError) throw fileError;
-
-          // If it's a document and owner_contact_id exists, sync to contact_files
-          if (fileUpload.type === 'document' && data.owner_contact_id) {
-            const { error: contactFileError } = await supabase
-              .from('contact_files')
-              .insert({
-                contact_id: data.owner_contact_id,
-                source: 'property',
-                property_id: propertyId,
-                path: uploadResult.path,
-                name: uploadResult.name,
-                type: 'document',
-              });
-
-            if (contactFileError) throw contactFileError;
-          }
-
-          return uploadResult.url;
-        });
-
-        const imageUrls = await Promise.all(uploadPromises);
-        const imageUrlsOnly = imageUrls.filter((_, index) => uploadedFiles[index].type === 'image');
-
-        // Update property with image URLs
-        if (imageUrlsOnly.length > 0) {
-          await supabase
-            .from('properties')
-            .update({ images: imageUrlsOnly })
-            .eq('id', propertyId);
-        }
       }
 
       toast({
@@ -289,14 +236,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       });
 
       form.reset();
-      setUploadedFiles([]);
       onOpenChange(false);
       onSuccess?.();
 
     } catch (error: any) {
       console.error('Property creation error:', error);
       
-      // Provide specific error message for RLS issues
       let errorMessage = error.message || 'Please check all required fields and try again.';
       if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
         errorMessage = 'Permission denied: You can only create properties assigned to yourself.';
