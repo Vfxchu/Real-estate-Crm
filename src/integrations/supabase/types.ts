@@ -491,6 +491,30 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       leads_per_agent_per_month: {
@@ -525,12 +549,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_role_secure: {
+        Args: { user_uuid?: string }
+        Returns: string
+      }
       map_status_to_contact_status: {
         Args: { lead_status: string }
         Returns: string
       }
     }
     Enums: {
+      app_role: "admin" | "agent"
       lead_source_enum:
         | "website"
         | "referral"
@@ -671,6 +700,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "agent"],
       lead_source_enum: [
         "website",
         "referral",
