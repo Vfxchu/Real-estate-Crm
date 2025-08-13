@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,26 +11,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
-import { useLeads } from "@/hooks/useLeads";
+import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } from "lucide-react";
+import { useContacts } from "@/hooks/useContacts";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
   segment: z.enum(['residential', 'commercial'], { required_error: "Property segment is required" }),
   subtype: z.string().min(1, "Property subtype is required"),
-  property_type: z.string().min(1, "Property type is required"),
   offer_type: z.enum(['rent', 'sale'], { required_error: "Offer type is required" }),
   price: z.number().min(0, "Price must be greater than 0"),
   description: z.string().optional(),
-  location: z.string().optional(),
+  location: z.string().min(1, "General location is required"),
   address: z.string().min(1, "Address is required"),
-  city: z.string().min(1, "City is required"),
+  city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
   bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   plot_area_sqft: z.number().min(0).optional(),
-  status: z.enum(['available', 'pending', 'sold', 'off_market', 'vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
+  status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
@@ -47,10 +46,14 @@ interface PropertyFormProps {
 export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, onSuccess }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { leads } = useLeads();
+  const contacts = useContacts();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [contactsList, setContactsList] = useState<any[]>([]);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -58,19 +61,18 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       title: '',
       segment: 'residential',
       subtype: '',
-      property_type: '',
       offer_type: 'sale',
       price: 0,
       description: '',
       location: '',
       address: '',
-      city: '',
+      city: 'Dubai',
       unit_number: '',
-      bedrooms: 0,
-      bathrooms: 0,
+      bedrooms: 1,
+      bathrooms: 1,
       area_sqft: 0,
       plot_area_sqft: 0,
-      status: 'available',
+      status: 'vacant',
       permit_number: '',
       owner_contact_id: '',
       agent_id: user?.id || '',
@@ -101,11 +103,17 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     }
   };
 
-  const handleImageUpload = async (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null, type: 'images' | 'layouts' | 'documents') => {
     if (!files || files.length === 0) return;
     
-    setUploadingImages(true);
-    const newImages: string[] = [];
+    setUploadingFiles(true);
+    const newFiles: string[] = [];
+    
+    const bucketMap = {
+      images: 'property-images',
+      layouts: 'property-layouts', 
+      documents: 'property-docs'
+    };
     
     try {
       for (let i = 0; i < files.length; i++) {
@@ -115,62 +123,118 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         const filePath = `temp/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('property-images')
+          .from(bucketMap[type])
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('property-images')
+          .from(bucketMap[type])
           .getPublicUrl(filePath);
 
-        newImages.push(publicUrl);
+        newFiles.push(publicUrl);
       }
       
-      setUploadedImages(prev => [...prev, ...newImages]);
+      if (type === 'images') {
+        setUploadedImages(prev => [...prev, ...newFiles]);
+      } else if (type === 'layouts') {
+        setUploadedLayouts(prev => [...prev, ...newFiles]);
+      } else {
+        setUploadedDocuments(prev => [...prev, ...newFiles]);
+      }
+      
       toast({
-        title: 'Images uploaded',
-        description: `${newImages.length} image(s) uploaded successfully`,
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} uploaded`,
+        description: `${newFiles.length} file(s) uploaded successfully`,
       });
     } catch (error: any) {
-      console.error('Image upload error:', error);
+      console.error(`${type} upload error:`, error);
       toast({
-        title: 'Error uploading images',
+        title: `Error uploading ${type}`,
         description: error.message,
         variant: 'destructive',
       });
     } finally {
-      setUploadingImages(false);
+      setUploadingFiles(false);
     }
   };
 
-  const removeImage = async (imageUrl: string) => {
+  const removeFile = async (fileUrl: string, type: 'images' | 'layouts' | 'documents') => {
     try {
-      // Extract file path from URL for deletion
-      const urlParts = imageUrl.split('/');
+      const urlParts = fileUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
       const filePath = `temp/${fileName}`;
       
-      // Remove from storage
+      const bucketMap = {
+        images: 'property-images',
+        layouts: 'property-layouts',
+        documents: 'property-docs'
+      };
+      
       await supabase.storage
-        .from('property-images')
+        .from(bucketMap[type])
         .remove([filePath]);
       
-      // Remove from state
-      setUploadedImages(prev => prev.filter(url => url !== imageUrl));
+      if (type === 'images') {
+        setUploadedImages(prev => prev.filter(url => url !== fileUrl));
+      } else if (type === 'layouts') {
+        setUploadedLayouts(prev => prev.filter(url => url !== fileUrl));
+      } else {
+        setUploadedDocuments(prev => prev.filter(url => url !== fileUrl));
+      }
       
       toast({
-        title: 'Image removed',
-        description: 'Image has been removed successfully',
+        title: `${type.slice(0, -1)} removed`,
+        description: 'File has been removed successfully',
       });
     } catch (error: any) {
-      console.error('Error removing image:', error);
+      console.error(`Error removing ${type}:`, error);
       toast({
-        title: 'Error removing image',
+        title: `Error removing ${type}`,
         description: error.message,
         variant: 'destructive',
       });
     }
+  };
+
+  // Helper function to move files
+  const moveFiles = async (fileUrls: string[], propertyId: string, bucket: string, fileType: string) => {
+    const movedFiles: string[] = [];
+    
+    for (const fileUrl of fileUrls) {
+      try {
+        const urlParts = fileUrl.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const tempPath = `temp/${fileName}`;
+        const propertyPath = `${propertyId}/${fileName}`;
+        
+        const { data: fileData } = await supabase.storage
+          .from(bucket)
+          .download(tempPath);
+          
+        if (fileData) {
+          const { error: moveError } = await supabase.storage
+            .from(bucket)
+            .upload(propertyPath, fileData);
+            
+          if (!moveError) {
+            await supabase.storage
+              .from(bucket)
+              .remove([tempPath]);
+              
+            const { data: { publicUrl } } = supabase.storage
+              .from(bucket)
+              .getPublicUrl(propertyPath);
+              
+            movedFiles.push(publicUrl);
+          }
+        }
+      } catch (error) {
+        console.error(`Error moving ${fileType}:`, error);
+      }
+    }
+    
+    return movedFiles;
   };
 
   const onSubmit = async (data: PropertyFormData) => {
@@ -189,19 +253,19 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       // Prepare payload for direct insert
       const payload = {
         title: data.title,
-        segment: data.segment.toLowerCase(),
+        segment: data.segment,
         subtype: data.subtype,
-        property_type: data.subtype, // Use subtype as property_type
+        property_type: data.subtype,
         address: data.address,
         city: data.city,
-        state: 'UAE', // All UAE properties
-        zip_code: null, // Not using zip codes
+        state: 'UAE',
+        zip_code: null,
         unit_number: data.unit_number || null,
         bedrooms: data.bedrooms ?? null,
         bathrooms: data.bathrooms ?? null,
         area_sqft: data.area_sqft ?? null,
-        status: data.status.toLowerCase(),
-        offer_type: data.offer_type.toLowerCase(),
+        status: data.status,
+        offer_type: data.offer_type,
         price: Number(data.price),
         description: data.description || null,
         permit_number: data.permit_number || null,
@@ -222,53 +286,45 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         throw error;
       }
 
-      // Move images from temp to property folder if property created successfully
-      if (uploadedImages.length > 0 && propertyData) {
-        const movedImages: string[] = [];
+      // Move all files and update contact records
+      if (propertyData) {
+        const fileOperations = [];
         
-        for (const imageUrl of uploadedImages) {
-          try {
-            const urlParts = imageUrl.split('/');
-            const fileName = urlParts[urlParts.length - 1];
-            const tempPath = `temp/${fileName}`;
-            const propertyPath = `${propertyData.id}/${fileName}`;
-            
-            // Copy file to property folder
-            const { data: fileData } = await supabase.storage
-              .from('property-images')
-              .download(tempPath);
+        // Handle images
+        if (uploadedImages.length > 0) {
+          fileOperations.push(moveFiles(uploadedImages, propertyData.id, 'property-images', 'image'));
+        }
+        
+        // Handle layouts
+        if (uploadedLayouts.length > 0) {
+          fileOperations.push(moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout'));
+        }
+        
+        // Handle documents and update contact files
+        if (uploadedDocuments.length > 0) {
+          fileOperations.push(moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document'));
+          
+          // Update contact files for documents
+          if (data.owner_contact_id) {
+            for (const docUrl of uploadedDocuments) {
+              const urlParts = docUrl.split('/');
+              const fileName = urlParts[urlParts.length - 1];
               
-            if (fileData) {
-              const { error: moveError } = await supabase.storage
-                .from('property-images')
-                .upload(propertyPath, fileData);
-                
-              if (!moveError) {
-                // Remove from temp
-                await supabase.storage
-                  .from('property-images')
-                  .remove([tempPath]);
-                  
-                // Get new URL
-                const { data: { publicUrl } } = supabase.storage
-                  .from('property-images')
-                  .getPublicUrl(propertyPath);
-                  
-                movedImages.push(publicUrl);
-              }
+              await supabase
+                .from('contact_files')
+                .insert({
+                  contact_id: data.owner_contact_id,
+                  source: 'property',
+                  property_id: propertyData.id,
+                  path: docUrl,
+                  name: fileName,
+                  type: 'document'
+                });
             }
-          } catch (error) {
-            console.error('Error moving image:', error);
           }
         }
         
-        // Update property with moved image URLs
-        if (movedImages.length > 0) {
-          await supabase
-            .from('properties')
-            .update({ images: movedImages })
-            .eq('id', propertyData.id);
-        }
+        await Promise.all(fileOperations);
       }
 
       toast({
@@ -278,6 +334,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       form.reset();
       setUploadedImages([]);
+      setUploadedLayouts([]);
+      setUploadedDocuments([]);
       onOpenChange(false);
       onSuccess?.();
 
@@ -299,26 +357,34 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     }
   };
 
-  // Filter leads/contacts for owner selection
-  const contactOptions = leads.filter(lead => lead.name && lead.email);
+  // Load contacts and agents
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const { data } = await contacts.list({ q: '', page: 1, pageSize: 1000 });
+        setContactsList(data || []);
+      } catch (error) {
+        console.error('Error loading contacts:', error);
+      }
+    };
 
-  // Get agents for admin selection
-  const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
+    const loadAgents = async () => {
+      if (profile?.role === 'admin') {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id, name, email')
+          .eq('role', 'agent')
+          .eq('status', 'active');
+          
+        if (data) {
+          setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+        }
+      }
+    };
 
-  React.useEffect(() => {
-    if (profile?.role === 'admin') {
-      supabase
-        .from('profiles')
-        .select('user_id, name, email')
-        .eq('role', 'agent')
-        .eq('status', 'active')
-        .then(({ data }) => {
-          if (data) {
-            setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
-          }
-        });
-    }
-  }, [profile?.role]);
+    loadContacts();
+    loadAgents();
+  }, [profile?.role, contacts]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -469,9 +535,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   name="location"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Location</FormLabel>
+                      <FormLabel>General Location *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter general location/area" {...field} />
+                        <Input placeholder="e.g., Downtown Dubai, Marina, Business Bay" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -485,7 +551,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                     <FormItem className="md:col-span-2">
                       <FormLabel>Address *</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Enter street address" rows={2} {...field} />
+                        <Textarea 
+                          placeholder="Enter full address details..." 
+                          rows={3} 
+                          {...field} 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -510,6 +580,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           <SelectItem value="Ras Al Khaimah">Ras Al Khaimah</SelectItem>
                           <SelectItem value="Sharjah">Sharjah</SelectItem>
                           <SelectItem value="Umm Al Quwain">Umm Al Quwain</SelectItem>
+                          <SelectItem value="Ajman">Ajman</SelectItem>
                           <SelectItem value="Fujairah">Fujairah</SelectItem>
                         </SelectContent>
                       </Select>
@@ -525,7 +596,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                     <FormItem>
                       <FormLabel>Unit Number</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter unit number" {...field} />
+                        <Input placeholder="e.g., 1A, 2304, Villa 5" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -609,7 +680,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                         <Input 
                           type="number" 
                           min="0"
-                          placeholder="Plot area in square feet" 
+                          placeholder="Plot area (optional)" 
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
@@ -634,10 +705,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="available">Available</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="sold">Sold</SelectItem>
-                          <SelectItem value="off_market">Off Market</SelectItem>
                           <SelectItem value="vacant">Vacant</SelectItem>
                           <SelectItem value="rented">Rented</SelectItem>
                           <SelectItem value="in_development">In Development</SelectItem>
@@ -681,7 +748,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {contactOptions.map((contact) => (
+                          {contactsList.map((contact) => (
                             <SelectItem key={contact.id} value={contact.id}>
                               {contact.name} ({contact.email})
                             </SelectItem>
@@ -722,71 +789,178 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
               </div>
             </div>
 
-            {/* Property Images */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Property Images</h3>
-              
-              {/* Upload Area */}
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    Click to upload or drag and drop property images
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    PNG, JPG, GIF up to 10MB each
-                  </p>
+            {/* File Uploads */}
+            <div className="space-y-6">
+              {/* Property Images */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Property Images</h3>
+                
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center bg-muted/10">
+                  <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Click to upload or drag and drop property images
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG, GIF up to 10MB each
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handleFileUpload(e.target.files, 'images')}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => document.getElementById('image-upload')?.click()}
+                    disabled={uploadingFiles}
+                  >
+                    {uploadingFiles ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Images
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e.target.files)}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                  disabled={uploadingImages}
-                >
-                  {uploadingImages ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Choose Images
-                    </>
-                  )}
-                </Button>
+
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {uploadedImages.map((imageUrl, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={imageUrl}
+                          alt={`Property image ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeFile(imageUrl, 'images')}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Uploaded Images Preview */}
-              {uploadedImages.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {uploadedImages.map((imageUrl, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={imageUrl}
-                        alt={`Property image ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(imageUrl)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+              {/* Property Layouts */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Property Layouts</h3>
+                
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center bg-muted/10">
+                  <LayoutDashboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Upload floor plans and layout diagrams
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, PNG, JPG up to 10MB each
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => handleFileUpload(e.target.files, 'layouts')}
+                    className="hidden"
+                    id="layout-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => document.getElementById('layout-upload')?.click()}
+                    disabled={uploadingFiles}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Layouts
+                  </Button>
                 </div>
-              )}
+
+                {uploadedLayouts.length > 0 && (
+                  <div className="space-y-2">
+                    {uploadedLayouts.map((layoutUrl, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                        <span className="text-sm">Layout {index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(layoutUrl, 'layouts')}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Property Documents */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Property Documents</h3>
+                
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center bg-muted/10">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Upload contracts, deeds, and other documents
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, DOC, DOCX up to 10MB each
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx"
+                    onChange={(e) => handleFileUpload(e.target.files, 'documents')}
+                    className="hidden"
+                    id="document-upload"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => document.getElementById('document-upload')?.click()}
+                    disabled={uploadingFiles}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Documents
+                  </Button>
+                </div>
+
+                {uploadedDocuments.length > 0 && (
+                  <div className="space-y-2">
+                    {uploadedDocuments.map((docUrl, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                        <span className="text-sm">Document {index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(docUrl, 'documents')}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex gap-2 pt-4">
