@@ -26,17 +26,15 @@ const propertySchema = z.object({
   location: z.string().optional(),
   address: z.string().min(1, "Address is required"),
   city: z.string().min(1, "City is required"),
-  state: z.string().min(1, "State is required"),
-  zip_code: z.string().optional(),
   unit_number: z.string().optional(),
   bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   area_sqft: z.number().min(0).optional(),
+  plot_area_sqft: z.number().min(0).optional(),
   status: z.enum(['available', 'pending', 'sold', 'off_market', 'vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
-  featured: z.boolean().default(false),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -77,17 +75,15 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       location: '',
       address: '',
       city: '',
-      state: '',
-      zip_code: '',
       unit_number: '',
       bedrooms: 0,
       bathrooms: 0,
       area_sqft: 0,
+      plot_area_sqft: 0,
       status: 'available',
       permit_number: '',
       owner_contact_id: '',
       agent_id: user?.id || '',
-      featured: false,
     },
   });
 
@@ -210,8 +206,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
           property_type: data.subtype, // Use subtype as property_type
           address: data.address,
           city: data.city,
-          state: data.state,
-          zip_code: data.zip_code || null,
+          state: 'UAE', // All properties are in UAE
           unit_number: data.unit_number || null,
           bedrooms: data.bedrooms || null,
           bathrooms: data.bathrooms || null,
@@ -223,7 +218,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
           permit_number: data.permit_number || null,
           owner_contact_id: data.owner_contact_id,
           agent_id,
-          featured: data.featured || false,
           location_place_id: data.location || null,
         }])
         .select('*')
@@ -517,37 +511,21 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>City *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter city" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="state"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>State *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter state" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="zip_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ZIP Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter ZIP code" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select city" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Dubai">Dubai</SelectItem>
+                          <SelectItem value="Abu Dhabi">Abu Dhabi</SelectItem>
+                          <SelectItem value="Ras Al Khaimah">Ras Al Khaimah</SelectItem>
+                          <SelectItem value="Sharjah">Sharjah</SelectItem>
+                          <SelectItem value="Umm Al Quwain">Umm Al Quwain</SelectItem>
+                          <SelectItem value="Fujairah">Fujairah</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -572,7 +550,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
             {/* Property Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Property Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="bedrooms"
@@ -625,6 +603,26 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           type="number" 
                           min="0"
                           placeholder="Area in square feet" 
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="plot_area_sqft"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Plot Area (sq ft)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="0"
+                          placeholder="Plot area in square feet" 
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
@@ -734,26 +732,6 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                     )}
                   />
                 )}
-
-                <FormField
-                  control={form.control}
-                  name="featured"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-8">
-                      <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="rounded"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>Featured Property</FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
               </div>
             </div>
 
