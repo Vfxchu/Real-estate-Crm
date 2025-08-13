@@ -2,94 +2,90 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type UserRole = 'admin' | 'agent';
 
-export interface UserRoleRecord {
-  id: string;
-  user_id: string;
-  role: UserRole;
-  assigned_by?: string;
-  assigned_at: string;
-}
-
 /**
- * Get the current user's role from the secure user_roles table
+ * Gets the current user's role from the secure user_roles table
+ * Falls back to profiles table for backward compatibility
  */
 export async function getCurrentUserRole(): Promise<UserRole> {
-  const { data, error } = await supabase.rpc('get_current_user_role');
-  
-  if (error) {
-    console.error('Error fetching user role:', error);
-    return 'agent'; // Default to agent on error
-  }
-  
-  return data as UserRole || 'agent';
-}
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return 'agent';
 
-/**
- * Get user role for a specific user (admin only)
- */
-export async function getUserRole(userId: string): Promise<UserRole> {
-  const { data, error } = await supabase.rpc('get_user_role_secure', { user_uuid: userId });
-  
-  if (error) {
+    // First try the new secure user_roles table
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!roleError && roleData) {
+      return roleData.role as UserRole;
+    }
+
+    // Fallback to profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profileError && profileData) {
+      return profileData.role as UserRole;
+    }
+
+    return 'agent'; // Default role
+  } catch (error) {
     console.error('Error fetching user role:', error);
     return 'agent';
   }
-  
-  return data as UserRole || 'agent';
 }
 
 /**
- * Check if current user has a specific role
+ * Assigns a role to a user (admin only)
  */
-export async function hasRole(role: UserRole): Promise<boolean> {
-  const userRole = await getCurrentUserRole();
-  return userRole === role;
-}
-
-/**
- * Check if current user is admin
- */
-export async function isAdmin(): Promise<boolean> {
-  return hasRole('admin');
-}
-
-/**
- * Assign role to user (admin only)
- */
-export async function assignUserRole(userId: string, role: UserRole): Promise<{ success: boolean; error?: string }> {
+export async function assignUserRole(userId: string, role: UserRole): Promise<{ error?: any }> {
   try {
     const { error } = await supabase
       .from('user_roles')
       .upsert({
         user_id: userId,
-        role: role
+        role,
+        assigned_by: (await supabase.auth.getUser()).data.user?.id,
+        assigned_at: new Date().toISOString()
       });
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: 'Failed to assign role' };
+    return { error };
+  } catch (error) {
+    return { error };
   }
 }
 
 /**
- * Get all user roles (admin only)
+ * Gets all user roles (admin only)
  */
 export async function getAllUserRoles() {
-  const { data, error } = await supabase
+  return await supabase
     .from('user_roles')
     .select(`
       *,
       profiles!user_roles_user_id_fkey(name, email)
     `)
     .order('assigned_at', { ascending: false });
+}
 
-  if (error) {
-    throw error;
+/**
+ * Removes a role from a user (admin only)
+ */
+export async function removeUserRole(userId: string, role: UserRole): Promise<{ error?: any }> {
+  try {
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('role', role);
+
+    return { error };
+  } catch (error) {
+    return { error };
   }
-
-  return data;
 }
