@@ -190,6 +190,13 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     try {
       setLoading(true);
       console.log('Form data submitted:', data);
+      console.log('Current user:', user);
+      console.log('User profile:', profile);
+
+      // Ensure user is authenticated
+      if (!user?.id) {
+        throw new Error('User not authenticated. Please log in and try again.');
+      }
 
       // Prepare property data for the RPC function
       const propertyData = {
@@ -211,7 +218,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         description: data.description || null,
         permit_number: data.permit_number || null,
         owner_contact_id: data.owner_contact_id,
-        agent_id: data.agent_id || user?.id,
+        agent_id: data.agent_id || user.id,
         featured: data.featured,
         location_place_id: data.location || null,
         location_lat: null,
@@ -231,7 +238,16 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       if (error) throw error;
 
-      const propertyId = (result as { property_id: string }).property_id;
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response from property creation');
+      }
+
+      const resultObj = result as Record<string, any>;
+      if (!('property_id' in resultObj)) {
+        throw new Error('Property ID not returned from creation');
+      }
+
+      const propertyId = resultObj.property_id as string;
 
       // Upload files if any
       if (uploadedFiles.length > 0) {

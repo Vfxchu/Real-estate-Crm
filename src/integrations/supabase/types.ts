@@ -512,8 +512,10 @@ export type Database = {
     }
     Functions: {
       create_property_with_files: {
-        Args: { property_data: Json; files_data?: Json[] }
-        Returns: Json
+        Args:
+          | { p_title: string; p_description: string; p_file_urls: string[] }
+          | { property_data: Json; files_data?: Json[] }
+        Returns: string
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
