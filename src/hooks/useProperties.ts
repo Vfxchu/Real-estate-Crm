@@ -50,7 +50,7 @@ export const useProperties = () => {
         .from('properties')
         .select(`
           id,title,segment,subtype,address,city,state,zip_code,status,offer_type,price,
-          bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,
+          bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,images,
           profiles!properties_agent_id_fkey (
             name,
             email
@@ -96,8 +96,9 @@ export const useProperties = () => {
 
       if (error) throw error;
 
-      // Refresh properties list immediately
-      await fetchProperties();
+      // Add to state immediately for instant UI update
+      const newProperty = { ...data, profiles: data.profiles } as Property;
+      setProperties(prev => [newProperty, ...prev]);
       
       toast({
         title: 'Property created successfully',

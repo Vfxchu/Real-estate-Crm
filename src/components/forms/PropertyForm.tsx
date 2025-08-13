@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useLeads } from "@/hooks/useLeads";
 
 const propertySchema = z.object({
@@ -49,6 +49,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const { toast } = useToast();
   const { leads } = useLeads();
   const [loading, setLoading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -99,6 +101,78 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     }
   };
 
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    setUploadingImages(true);
+    const newImages: string[] = [];
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${i}.${fileExt}`;
+        const filePath = `temp/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('property-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        newImages.push(publicUrl);
+      }
+      
+      setUploadedImages(prev => [...prev, ...newImages]);
+      toast({
+        title: 'Images uploaded',
+        description: `${newImages.length} image(s) uploaded successfully`,
+      });
+    } catch (error: any) {
+      console.error('Image upload error:', error);
+      toast({
+        title: 'Error uploading images',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeImage = async (imageUrl: string) => {
+    try {
+      // Extract file path from URL for deletion
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      const filePath = `temp/${fileName}`;
+      
+      // Remove from storage
+      await supabase.storage
+        .from('property-images')
+        .remove([filePath]);
+      
+      // Remove from state
+      setUploadedImages(prev => prev.filter(url => url !== imageUrl));
+      
+      toast({
+        title: 'Image removed',
+        description: 'Image has been removed successfully',
+      });
+    } catch (error: any) {
+      console.error('Error removing image:', error);
+      toast({
+        title: 'Error removing image',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
   const onSubmit = async (data: PropertyFormData) => {
     try {
       setLoading(true);
@@ -133,6 +207,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         permit_number: data.permit_number || null,
         owner_contact_id: data.owner_contact_id || null,
         agent_id: isAdmin && data.agent_id ? data.agent_id : user.id,
+        images: uploadedImages.length > 0 ? uploadedImages : null,
       };
 
       // Direct insert to properties table
@@ -147,12 +222,62 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         throw error;
       }
 
+      // Move images from temp to property folder if property created successfully
+      if (uploadedImages.length > 0 && propertyData) {
+        const movedImages: string[] = [];
+        
+        for (const imageUrl of uploadedImages) {
+          try {
+            const urlParts = imageUrl.split('/');
+            const fileName = urlParts[urlParts.length - 1];
+            const tempPath = `temp/${fileName}`;
+            const propertyPath = `${propertyData.id}/${fileName}`;
+            
+            // Copy file to property folder
+            const { data: fileData } = await supabase.storage
+              .from('property-images')
+              .download(tempPath);
+              
+            if (fileData) {
+              const { error: moveError } = await supabase.storage
+                .from('property-images')
+                .upload(propertyPath, fileData);
+                
+              if (!moveError) {
+                // Remove from temp
+                await supabase.storage
+                  .from('property-images')
+                  .remove([tempPath]);
+                  
+                // Get new URL
+                const { data: { publicUrl } } = supabase.storage
+                  .from('property-images')
+                  .getPublicUrl(propertyPath);
+                  
+                movedImages.push(publicUrl);
+              }
+            }
+          } catch (error) {
+            console.error('Error moving image:', error);
+          }
+        }
+        
+        // Update property with moved image URLs
+        if (movedImages.length > 0) {
+          await supabase
+            .from('properties')
+            .update({ images: movedImages })
+            .eq('id', propertyData.id);
+        }
+      }
+
       toast({
         title: 'Property created successfully',
         description: 'New property has been added to your listings.',
       });
 
       form.reset();
+      setUploadedImages([]);
       onOpenChange(false);
       onSuccess?.();
 
@@ -595,6 +720,73 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   />
                 )}
               </div>
+            </div>
+
+            {/* Property Images */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Property Images</h3>
+              
+              {/* Upload Area */}
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    Click to upload or drag and drop property images
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    PNG, JPG, GIF up to 10MB each
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e.target.files)}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  disabled={uploadingImages}
+                >
+                  {uploadingImages ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Choose Images
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Uploaded Images Preview */}
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {uploadedImages.map((imageUrl, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={imageUrl}
+                        alt={`Property image ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(imageUrl)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 pt-4">
