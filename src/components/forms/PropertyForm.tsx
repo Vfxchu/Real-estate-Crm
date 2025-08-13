@@ -189,6 +189,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const onSubmit = async (data: PropertyFormData) => {
     try {
       setLoading(true);
+      console.log('Form data submitted:', data);
 
       // Prepare property data for the RPC function
       const propertyData = {
@@ -217,11 +218,16 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         location_lng: null,
       };
 
+      console.log('Property data being sent:', propertyData);
+      
       const { data: result, error } = await supabase
         .rpc('create_property_with_files', {
           property_data: propertyData,
           files_data: []
         });
+
+      console.log('RPC result:', result);
+      console.log('RPC error:', error);
 
       if (error) throw error;
 
