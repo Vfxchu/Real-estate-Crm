@@ -54,3 +54,36 @@ export const validatePhone = (phone: string): string => {
   
   return sanitized;
 };
+
+/**
+ * Sanitizes general text input
+ * @param input - Text input to sanitize
+ * @returns Sanitized text
+ */
+export const sanitizeTextInput = (input: string): string => {
+  // Remove potentially dangerous characters
+  return input.replace(/[<>"\';&#]/g, '').trim();
+};
+
+/**
+ * Validates file upload
+ * @param file - File to validate
+ * @param maxSize - Maximum file size in bytes (default 10MB)
+ * @param allowedTypes - Array of allowed MIME types
+ * @returns Validation result
+ */
+export const validateFileUpload = (
+  file: File, 
+  maxSize: number = 10485760, // 10MB
+  allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+): { isValid: boolean; error?: string } => {
+  if (file.size > maxSize) {
+    return { isValid: false, error: 'File size exceeds maximum limit of 10MB' };
+  }
+  
+  if (!allowedTypes.includes(file.type)) {
+    return { isValid: false, error: 'File type not allowed' };
+  }
+  
+  return { isValid: true };
+};

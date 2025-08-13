@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUserRole, type UserRole } from '@/services/user-roles';
+import { formatErrorForUser } from '@/lib/error-handler';
 
-export type UserRole = 'admin' | 'agent';
+// Re-export UserRole for backward compatibility
+export type { UserRole };
 
 export interface UserProfile {
   id: string;
@@ -57,21 +60,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         if (session?.user) {
           // Use setTimeout to prevent authentication deadlock
-          setTimeout(() => {
-            supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single()
-              .then(({ data: profileData, error }) => {
-                if (error) {
-                  console.error('Error fetching profile:', error);
-                  setProfile(null);
-                } else {
-                  setProfile(profileData as UserProfile);
-                }
-                setIsLoading(false);
-              });
+          setTimeout(async () => {
+            try {
+              // Fetch profile and role securely
+              const [profileResult, userRole] = await Promise.all([
+                supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('user_id', session.user.id)
+                  .single(),
+                getCurrentUserRole()
+              ]);
+
+              if (profileResult.error) {
+                console.error('Error fetching profile:', profileResult.error);
+                setProfile(null);
+              } else {
+                // Use secure role from user_roles table
+                setProfile({
+                  ...profileResult.data,
+                  role: userRole
+                } as UserProfile);
+              }
+            } catch (error) {
+              console.error('Error during profile fetch:', formatErrorForUser(error, 'profile fetch'));
+              setProfile(null);
+            } finally {
+              setIsLoading(false);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -87,20 +103,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (session?.user) {
         // Fetch user profile with error handling
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single()
-          .then(({ data: profileData, error }) => {
-            if (error) {
-              console.error('Error fetching profile:', error);
-              setProfile(null);
-            } else {
-              setProfile(profileData as UserProfile);
-            }
-            setIsLoading(false);
-          });
+        Promise.all([
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single(),
+          getCurrentUserRole()
+        ]).then(([profileResult, userRole]) => {
+          if (profileResult.error) {
+            console.error('Error fetching profile:', profileResult.error);
+            setProfile(null);
+          } else {
+            // Use secure role from user_roles table
+            setProfile({
+              ...profileResult.data,
+              role: userRole
+            } as UserProfile);
+          }
+          setIsLoading(false);
+        }).catch(error => {
+          console.error('Error during initial profile fetch:', formatErrorForUser(error, 'initial profile fetch'));
+          setProfile(null);
+          setIsLoading(false);
+        });
       } else {
         setIsLoading(false);
       }
