@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { AddPropertyForm } from "@/components/forms/AddPropertyForm";
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import ClearableSelect from "@/components/ui/ClearableSelect";
 import { useProperties, Property } from "@/hooks/useProperties";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Search,
   Plus,
@@ -24,28 +29,237 @@ import {
   Filter,
   Star,
   Trash2,
+  X,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  Coins,
+  Settings,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'react-router-dom';
 
-// AED formatting utility
-const formatAED = (amount: number) => {
-  return new Intl.NumberFormat('en-AE', { 
+// Currency formatting with dirham symbol
+const formatCurrency = (amount: number, currency = 'AED') => {
+  if (currency === 'AED') {
+    return new Intl.NumberFormat('en-AE', { 
+      style: 'currency', 
+      currency: 'AED',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+  return new Intl.NumberFormat('en-US', { 
     style: 'currency', 
-    currency: 'AED',
+    currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(amount);
 };
 
+// Filter state interface
+interface FilterState {
+  search: string;
+  propertyType: string;
+  subtype: string;
+  offerType: string;
+  status: string;
+  segment: string;
+  minPrice: string;
+  maxPrice: string;
+  minBedrooms: string;
+  maxBedrooms: string;
+  minBathrooms: string;
+  maxBathrooms: string;
+  minArea: string;
+  maxArea: string;
+  city: string;
+  state: string;
+  featured: string;
+}
+
+// Property stats interface
+interface PropertyStats {
+  total: number;
+  availableForSale: number;
+  availableForRent: number;
+  totalValue: number;
+  avgPrice: number;
+  loading: boolean;
+}
+
+// Debounce hook
+const useDebounce = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 export const Properties = () => {
   const { properties, loading, deleteProperty } = useProperties();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('residential');
+  const [currency, setCurrency] = useState('AED');
+  const [stats, setStats] = useState<PropertyStats>({
+    total: 0,
+    availableForSale: 0,
+    availableForRent: 0,
+    totalValue: 0,
+    avgPrice: 0,
+    loading: true
+  });
+
   const { toast } = useToast();
+
+  // Initialize filters from URL params
+  const [filters, setFilters] = useState<FilterState>({
+    search: searchParams.get('search') || '',
+    propertyType: searchParams.get('propertyType') || '',
+    subtype: searchParams.get('subtype') || '',
+    offerType: searchParams.get('offerType') || '',
+    status: searchParams.get('status') || '',
+    segment: searchParams.get('segment') || '',
+    minPrice: searchParams.get('minPrice') || '',
+    maxPrice: searchParams.get('maxPrice') || '',
+    minBedrooms: searchParams.get('minBedrooms') || '',
+    maxBedrooms: searchParams.get('maxBedrooms') || '',
+    minBathrooms: searchParams.get('minBathrooms') || '',
+    maxBathrooms: searchParams.get('maxBathrooms') || '',
+    minArea: searchParams.get('minArea') || '',
+    maxArea: searchParams.get('maxArea') || '',
+    city: searchParams.get('city') || '',
+    state: searchParams.get('state') || '',
+    featured: searchParams.get('featured') || '',
+  });
+
+  const debouncedSearch = useDebounce(filters.search, 300);
+
+  // Update URL params when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    setSearchParams(params);
+  }, [filters, setSearchParams]);
+
+  // Fetch aggregated stats from Supabase
+  const fetchStats = useCallback(async () => {
+    try {
+      setStats(prev => ({ ...prev, loading: true }));
+      
+      let query = supabase
+        .from('properties')
+        .select('price, offer_type, status, segment');
+
+      // Apply filters to stats query
+      if (filters.segment) {
+        query = query.eq('segment', filters.segment);
+      }
+      if (filters.propertyType) {
+        query = query.eq('property_type', filters.propertyType);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.offerType) {
+        query = query.eq('offer_type', filters.offerType);
+      }
+      if (debouncedSearch) {
+        query = query.or(`title.ilike.%${debouncedSearch}%,address.ilike.%${debouncedSearch}%,permit_number.ilike.%${debouncedSearch}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const total = data?.length || 0;
+      const availableForSale = data?.filter(p => p.status === 'available' && p.offer_type === 'sale').length || 0;
+      const availableForRent = data?.filter(p => p.status === 'available' && p.offer_type === 'rent').length || 0;
+      const totalValue = data?.reduce((sum, p) => sum + (p.price || 0), 0) || 0;
+      const avgPrice = total > 0 ? totalValue / total : 0;
+
+      setStats({
+        total,
+        availableForSale,
+        availableForRent,
+        totalValue,
+        avgPrice,
+        loading: false
+      });
+    } catch (error: any) {
+      console.error('Error fetching stats:', error);
+      toast({
+        title: 'Error fetching statistics',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setStats(prev => ({ ...prev, loading: false }));
+    }
+  }, [filters, debouncedSearch, toast]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Filter properties based on current filters and active tab
+  const filteredProperties = useMemo(() => {
+    return properties.filter(property => {
+      // Tab filtering
+      const tabMatch = activeTab === 'residential' 
+        ? property.segment === 'residential' || !property.segment
+        : property.segment === 'commercial';
+
+      if (!tabMatch) return false;
+
+      // Search filtering
+      if (debouncedSearch) {
+        const searchLower = debouncedSearch.toLowerCase();
+        const matchesSearch = 
+          property.title?.toLowerCase().includes(searchLower) ||
+          property.address?.toLowerCase().includes(searchLower) ||
+          property.permit_number?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Basic filters
+      if (filters.propertyType && property.property_type !== filters.propertyType) return false;
+      if (filters.subtype && property.subtype !== filters.subtype) return false;
+      if (filters.offerType && property.offer_type !== filters.offerType) return false;
+      if (filters.status && property.status !== filters.status) return false;
+
+      // Advanced filters
+      if (isAdvancedMode) {
+        if (filters.minPrice && property.price < parseFloat(filters.minPrice)) return false;
+        if (filters.maxPrice && property.price > parseFloat(filters.maxPrice)) return false;
+        if (filters.minBedrooms && (property.bedrooms || 0) < parseInt(filters.minBedrooms)) return false;
+        if (filters.maxBedrooms && (property.bedrooms || 0) > parseInt(filters.maxBedrooms)) return false;
+        if (filters.minBathrooms && (property.bathrooms || 0) < parseInt(filters.minBathrooms)) return false;
+        if (filters.maxBathrooms && (property.bathrooms || 0) > parseInt(filters.maxBathrooms)) return false;
+        if (filters.minArea && (property.area_sqft || 0) < parseInt(filters.minArea)) return false;
+        if (filters.maxArea && (property.area_sqft || 0) > parseInt(filters.maxArea)) return false;
+        if (filters.city && !property.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
+        if (filters.state && !property.state?.toLowerCase().includes(filters.state.toLowerCase())) return false;
+        if (filters.featured && ((property.featured ? 'yes' : 'no') !== filters.featured)) return false;
+      }
+
+      return true;
+    });
+  }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab]);
 
   const handleDeleteProperty = async (propertyId: string) => {
     if (!confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
@@ -55,19 +269,41 @@ export const Properties = () => {
     setDeleting(propertyId);
     try {
       await deleteProperty(propertyId);
+      await fetchStats(); // Refresh stats after deletion
     } finally {
       setDeleting(null);
     }
   };
 
-  const filteredProperties = properties.filter(property => {
-    const matchesSearch = property.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.address.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || property.property_type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || property.status === statusFilter;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  const updateFilter = (key: keyof FilterState, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      propertyType: '',
+      subtype: '',
+      offerType: '',
+      status: '',
+      segment: '',
+      minPrice: '',
+      maxPrice: '',
+      minBedrooms: '',
+      maxBedrooms: '',
+      minBathrooms: '',
+      maxBathrooms: '',
+      minArea: '',
+      maxArea: '',
+      city: '',
+      state: '',
+      featured: '',
+    });
+  };
+
+  const getActiveFilterCount = () => {
+    return Object.values(filters).filter(value => value !== '').length;
+  };
 
   const getStatusColor = (status: Property['status']) => {
     switch (status) {
@@ -75,6 +311,9 @@ export const Properties = () => {
       case 'pending': return 'bg-warning text-warning-foreground';
       case 'sold': return 'bg-info text-info-foreground';
       case 'off_market': return 'bg-muted text-muted-foreground';
+      case 'rented': return 'bg-info text-info-foreground';
+      case 'vacant': return 'bg-muted text-muted-foreground';
+      case 'in_development': return 'bg-warning text-warning-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -89,10 +328,34 @@ export const Properties = () => {
     }
   };
 
-  const totalProperties = properties.length;
-  const availableProperties = properties.filter(p => p.status === 'available').length;
-  const pendingProperties = properties.filter(p => p.status === 'pending').length;
-  const avgPrice = properties.reduce((sum, p) => sum + p.price, 0) / properties.length;
+  // Property type options for subtype filtering
+  const getSubtypeOptions = (propertyType: string) => {
+    switch (propertyType) {
+      case 'house':
+        return [
+          { value: 'villa', label: 'Villa' },
+          { value: 'townhouse', label: 'Townhouse' },
+          { value: 'penthouse', label: 'Penthouse' },
+        ];
+      case 'apartment':
+        return [
+          { value: 'studio', label: 'Studio' },
+          { value: '1br', label: '1 Bedroom' },
+          { value: '2br', label: '2 Bedroom' },
+          { value: '3br', label: '3 Bedroom' },
+          { value: '4br+', label: '4+ Bedroom' },
+        ];
+      case 'commercial':
+        return [
+          { value: 'office', label: 'Office' },
+          { value: 'retail', label: 'Retail' },
+          { value: 'warehouse', label: 'Warehouse' },
+          { value: 'restaurant', label: 'Restaurant' },
+        ];
+      default:
+        return [];
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -104,279 +367,637 @@ export const Properties = () => {
             Manage your property listings and inventory
           </p>
         </div>
-        <Button className="btn-primary" onClick={() => setShowAddProperty(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Property
-        </Button>
+        <div className="flex gap-2">
+          <Select value={currency} onValueChange={setCurrency}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="AED">AED</SelectItem>
+              <SelectItem value="USD">USD</SelectItem>
+              <SelectItem value="EUR">EUR</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button className="btn-primary" onClick={() => setShowAddProperty(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Property
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Home className="w-8 h-8 text-primary" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Properties</p>
-                <p className="text-2xl font-bold">{totalProperties}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <Star className="w-8 h-8 text-success" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Available</p>
-                <p className="text-2xl font-bold">{availableProperties}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-warning" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{pendingProperties}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-info" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Avg Price</p>
-                <p className="text-2xl font-bold">{formatAED(avgPrice)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <StatsCard
+          title="Total Properties"
+          value={stats.loading ? "..." : stats.total.toString()}
+          icon={Home}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Available for Sale"
+          value={stats.loading ? "..." : stats.availableForSale.toString()}
+          icon={Star}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Available for Rent"
+          value={stats.loading ? "..." : stats.availableForRent.toString()}
+          icon={Coins}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Total Portfolio Value"
+          value={stats.loading ? "..." : formatCurrency(stats.totalValue, currency)}
+          icon={TrendingUp}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Average Price"
+          value={stats.loading ? "..." : formatCurrency(stats.avgPrice, currency)}
+          icon={DollarSign}
+          className="card-elevated"
+        />
       </div>
 
       {/* Filters */}
       <Card className="card-elevated">
         <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search properties by title or address..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="space-y-4">
+            {/* Basic Filters */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Search by title, address, or permit number..."
+                  value={filters.search}
+                  onChange={(e) => updateFilter('search', e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <ClearableSelect
+                  value={filters.propertyType}
+                  onChange={(value) => {
+                    updateFilter('propertyType', value || '');
+                    updateFilter('subtype', ''); // Clear subtype when property type changes
+                  }}
+                  options={[
+                    { value: 'house', label: 'House' },
+                    { value: 'apartment', label: 'Apartment' },
+                    { value: 'condo', label: 'Condo' },
+                    { value: 'commercial', label: 'Commercial' },
+                  ]}
+                  placeholder="Property Type"
+                  className="w-40"
+                />
+                
+                <ClearableSelect
+                  value={filters.subtype}
+                  onChange={(value) => updateFilter('subtype', value || '')}
+                  options={getSubtypeOptions(filters.propertyType)}
+                  placeholder="Subtype"
+                  className="w-40"
+                  disabled={!filters.propertyType}
+                />
+                
+                <ClearableSelect
+                  value={filters.offerType}
+                  onChange={(value) => updateFilter('offerType', value || '')}
+                  options={[
+                    { value: 'sale', label: 'Sale' },
+                    { value: 'rent', label: 'Rent' },
+                  ]}
+                  placeholder="Offer Type"
+                  className="w-32"
+                />
+                
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={isAdvancedMode}
+                    onCheckedChange={setIsAdvancedMode}
+                    id="advanced-mode"
+                  />
+                  <Label htmlFor="advanced-mode" className="text-sm">Advanced</Label>
+                </div>
+                
+                {getActiveFilterCount() > 0 && (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    <X className="w-4 h-4 mr-1" />
+                    Clear ({getActiveFilterCount()})
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="condo">Condo</SelectItem>
-                  <SelectItem value="apartment">Apartment</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                  <SelectItem value="off-market">Off Market</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
+            {/* Advanced Filters */}
+            {isAdvancedMode && (
+              <div className="border-t pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Status</Label>
+                    <ClearableSelect
+                      value={filters.status}
+                      onChange={(value) => updateFilter('status', value || '')}
+                      options={[
+                        { value: 'available', label: 'Available' },
+                        { value: 'pending', label: 'Pending' },
+                        { value: 'sold', label: 'Sold' },
+                        { value: 'rented', label: 'Rented' },
+                        { value: 'off_market', label: 'Off Market' },
+                        { value: 'vacant', label: 'Vacant' },
+                        { value: 'in_development', label: 'In Development' },
+                      ]}
+                      placeholder="Any Status"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Price Range</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minPrice}
+                        onChange={(e) => updateFilter('minPrice', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxPrice}
+                        onChange={(e) => updateFilter('maxPrice', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Bedrooms</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minBedrooms}
+                        onChange={(e) => updateFilter('minBedrooms', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxBedrooms}
+                        onChange={(e) => updateFilter('maxBedrooms', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Area (sq ft)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minArea}
+                        onChange={(e) => updateFilter('minArea', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxArea}
+                        onChange={(e) => updateFilter('maxArea', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">City</Label>
+                    <Input
+                      placeholder="Enter city"
+                      value={filters.city}
+                      onChange={(e) => updateFilter('city', e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">State</Label>
+                    <Input
+                      placeholder="Enter state"
+                      value={filters.state}
+                      onChange={(e) => updateFilter('state', e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Featured</Label>
+                    <ClearableSelect
+                      value={filters.featured}
+                      onChange={(value) => updateFilter('featured', value || '')}
+                      options={[
+                        { value: 'yes', label: 'Featured Only' },
+                        { value: 'no', label: 'Non-Featured' },
+                      ]}
+                      placeholder="Any"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Properties Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProperties.map((property) => (
-          <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
-            <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center">
-              <Home className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold line-clamp-1">{property.title}</h3>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3" />
-                    {property.address}
-                  </p>
-                </div>
-                <Badge className={getStatusColor(property.status)}>
-                  {property.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  {getTypeIcon(property.property_type)}
-                  <span className="text-sm capitalize">{property.property_type}</span>
-                </div>
-                <div className="text-lg font-bold text-primary">
-                  {formatAED(property.price)}
-                </div>
-              </div>
+      {/* Property Gallery with Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-fit grid-cols-2">
+            <TabsTrigger value="residential">
+              Residential ({properties.filter(p => p.segment === 'residential' || !p.segment).length})
+            </TabsTrigger>
+            <TabsTrigger value="commercial">
+              Commercial ({properties.filter(p => p.segment === 'commercial').length})
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredProperties.length} properties
+          </div>
+        </div>
 
-              {property.property_type !== 'commercial' && (
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Bed className="w-4 h-4" />
-                    <span>{property.bedrooms || 0}</span>
+        <TabsContent value="residential" className="space-y-6">
+          {/* Properties Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map((property) => (
+              <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
+                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
+                  {property.images && property.images.length > 0 ? (
+                    <img 
+                      src={property.images[0]} 
+                      alt={property.title}
+                      className="w-full h-full object-cover rounded-t-lg"
+                    />
+                  ) : (
+                    <Home className="w-12 h-12 text-muted-foreground" />
+                  )}
+                  {property.featured && (
+                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                      Featured
+                    </Badge>
+                  )}
+                </div>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold line-clamp-1">{property.title}</h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3" />
+                        {property.address}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Badge className={getStatusColor(property.status)}>
+                        {property.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {property.offer_type}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Bath className="w-4 h-4" />
-                    <span>{property.bathrooms || 0}</span>
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      {getTypeIcon(property.property_type)}
+                      <span className="text-sm capitalize">{property.property_type}</span>
+                      {property.subtype && (
+                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                      )}
+                    </div>
+                    <div className="text-lg font-bold text-primary">
+                      {formatCurrency(property.price, currency)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Square className="w-4 h-4" />
-                    <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+
+                  {property.property_type !== 'commercial' && (
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Bed className="w-4 h-4" />
+                        <span>{property.bedrooms || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Bath className="w-4 h-4" />
+                        <span>{property.bathrooms || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Square className="w-4 h-4" />
+                        <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-sm text-muted-foreground">
+                    Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
                   </div>
-                </div>
-              )}
 
-              <div className="text-sm text-muted-foreground">
-                Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
-              </div>
-
-              <div className="flex gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setSelectedProperty(property)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{selectedProperty?.title}</DialogTitle>
-                    </DialogHeader>
-                    {selectedProperty && (
-                      <div className="space-y-6">
-                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                          <Home className="w-16 h-16 text-muted-foreground" />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Address</Label>
-                            <p className="mt-1">{selectedProperty.address}</p>
-                          </div>
-                          <div>
-                            <Label>Price</Label>
-                            <p className="mt-1 text-2xl font-bold text-primary">
-                              {formatAED(selectedProperty.price)}
-                            </p>
-                          </div>
-                          <div>
-                            <Label>Type</Label>
-                            <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
-                          </div>
-                          <div>
-                            <Label>Status</Label>
-                            <Badge className={getStatusColor(selectedProperty.status)}>
-                              {selectedProperty.status}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        {selectedProperty.property_type !== 'commercial' && (
-                          <div className="grid grid-cols-3 gap-4">
-                            <div>
-                              <Label>Bedrooms</Label>
-                              <p className="mt-1">{selectedProperty.bedrooms}</p>
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setSelectedProperty(property)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
+                        </DialogHeader>
+                        {selectedProperty && (
+                          <div className="space-y-6">
+                            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                              {selectedProperty.images && selectedProperty.images.length > 0 ? (
+                                <img 
+                                  src={selectedProperty.images[0]} 
+                                  alt={selectedProperty.title}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <Home className="w-16 h-16 text-muted-foreground" />
+                              )}
                             </div>
-                            <div>
-                              <Label>Bathrooms</Label>
-                              <p className="mt-1">{selectedProperty.bathrooms}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Address</Label>
+                                <p className="mt-1">{selectedProperty.address}</p>
+                              </div>
+                              <div>
+                                <Label>Price</Label>
+                                <p className="mt-1 text-2xl font-bold text-primary">
+                                  {formatCurrency(selectedProperty.price, currency)}
+                                </p>
+                              </div>
+                              <div>
+                                <Label>Type</Label>
+                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <Badge className={getStatusColor(selectedProperty.status)}>
+                                  {selectedProperty.status}
+                                </Badge>
+                              </div>
                             </div>
+
+                            {selectedProperty.property_type !== 'commercial' && (
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <Label>Bedrooms</Label>
+                                  <p className="mt-1">{selectedProperty.bedrooms}</p>
+                                </div>
+                                <div>
+                                  <Label>Bathrooms</Label>
+                                  <p className="mt-1">{selectedProperty.bathrooms}</p>
+                                </div>
+                                <div>
+                                  <Label>Square Feet</Label>
+                                  <p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p>
+                                </div>
+                              </div>
+                            )}
+
                             <div>
-                              <Label>Square Feet</Label>
-                              <p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p>
+                              <Label>Description</Label>
+                              <p className="mt-1 text-muted-foreground">{selectedProperty.description}</p>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button className="btn-primary">Edit Property</Button>
+                              <Button variant="outline">Share Listing</Button>
+                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                variant="destructive" 
+                                onClick={() => handleDeleteProperty(selectedProperty.id)}
+                                disabled={deleting === selectedProperty.id}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Property
+                              </Button>
                             </div>
                           </div>
                         )}
+                      </DialogContent>
+                    </Dialog>
+                    <Button size="sm" variant="ghost">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteProperty(property.id)}
+                      disabled={deleting === property.id}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
 
-                        <div>
-                          <Label>Description</Label>
-                          <p className="mt-1 text-muted-foreground">{selectedProperty.description}</p>
-                        </div>
+        <TabsContent value="commercial" className="space-y-6">
+          {/* Properties Grid - Same structure but filtered for commercial */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProperties.map((property) => (
+              <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
+                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
+                  {property.images && property.images.length > 0 ? (
+                    <img 
+                      src={property.images[0]} 
+                      alt={property.title}
+                      className="w-full h-full object-cover rounded-t-lg"
+                    />
+                  ) : (
+                    <Building className="w-12 h-12 text-muted-foreground" />
+                  )}
+                  {property.featured && (
+                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                      Featured
+                    </Badge>
+                  )}
+                </div>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold line-clamp-1">{property.title}</h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3" />
+                        {property.address}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Badge className={getStatusColor(property.status)}>
+                        {property.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {property.offer_type}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      {getTypeIcon(property.property_type)}
+                      <span className="text-sm capitalize">{property.property_type}</span>
+                      {property.subtype && (
+                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                      )}
+                    </div>
+                    <div className="text-lg font-bold text-primary">
+                      {formatCurrency(property.price, currency)}
+                    </div>
+                  </div>
 
-                        <div>
-                          <Label>Features</Label>
-                          <p className="mt-1 text-muted-foreground">Custom features can be added in future updates</p>
-                        </div>
+                  {property.area_sqft && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Square className="w-4 h-4" />
+                      <span>{property.area_sqft.toLocaleString()} sq ft</span>
+                    </div>
+                  )}
 
-                        <div className="flex gap-2">
-                          <Button className="btn-primary">Edit Property</Button>
-                          <Button variant="outline">Share Listing</Button>
-                          <Button variant="outline">Schedule Viewing</Button>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => handleDeleteProperty(selectedProperty.id)}
-                            disabled={deleting === selectedProperty.id}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Property
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
-                <Button size="sm" variant="ghost">
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDeleteProperty(property.id)}
-                  disabled={deleting === property.id}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  <div className="text-sm text-muted-foreground">
+                    Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
+                  </div>
 
-      {filteredProperties.length === 0 && (
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setSelectedProperty(property)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
+                        </DialogHeader>
+                        {selectedProperty && (
+                          <div className="space-y-6">
+                            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                              {selectedProperty.images && selectedProperty.images.length > 0 ? (
+                                <img 
+                                  src={selectedProperty.images[0]} 
+                                  alt={selectedProperty.title}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <Building className="w-16 h-16 text-muted-foreground" />
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <Label>Address</Label>
+                                <p className="mt-1">{selectedProperty.address}</p>
+                              </div>
+                              <div>
+                                <Label>Price</Label>
+                                <p className="mt-1 text-2xl font-bold text-primary">
+                                  {formatCurrency(selectedProperty.price, currency)}
+                                </p>
+                              </div>
+                              <div>
+                                <Label>Type</Label>
+                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <Badge className={getStatusColor(selectedProperty.status)}>
+                                  {selectedProperty.status}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div>
+                              <Label>Description</Label>
+                              <p className="mt-1 text-muted-foreground">{selectedProperty.description}</p>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <Button className="btn-primary">Edit Property</Button>
+                              <Button variant="outline">Share Listing</Button>
+                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                variant="destructive" 
+                                onClick={() => handleDeleteProperty(selectedProperty.id)}
+                                disabled={deleting === selectedProperty.id}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Property
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                    <Button size="sm" variant="ghost">
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteProperty(property.id)}
+                      disabled={deleting === property.id}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Empty State */}
+      {filteredProperties.length === 0 && !loading && (
         <Card className="card-elevated">
           <CardContent className="p-12 text-center">
-            <Home className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No properties found</h3>
+            {activeTab === 'residential' ? (
+              <Home className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            ) : (
+              <Building className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            )}
+            <h3 className="text-lg font-semibold mb-2">No {activeTab} properties found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || typeFilter !== 'all' || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Start by adding your first property'
+              {getActiveFilterCount() > 0
+                ? 'Try adjusting your filters or search terms'
+                : `Start by adding your first ${activeTab} property`
               }
             </p>
+            {getActiveFilterCount() > 0 && (
+              <Button variant="outline" onClick={clearFilters} className="mt-4">
+                Clear all filters
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -385,7 +1006,9 @@ export const Properties = () => {
       <AddPropertyForm 
         open={showAddProperty} 
         onOpenChange={setShowAddProperty}
-        onSuccess={() => window.location.reload()}
+        onSuccess={() => {
+          fetchStats();
+        }}
       />
     </div>
   );
