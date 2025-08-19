@@ -6,13 +6,17 @@ export type TransactionPayload = {
   currency?: string;
   status?: string;
   notes?: string;
-  // KYC
+  // KYC fields
   source_of_funds?: string;
   nationality?: string;
   id_type?: string;
   id_number?: string;
   id_expiry?: string; // ISO date
   pep?: boolean;
+  // New CRM linking fields
+  agent_id?: string;
+  property_id?: string;
+  deal_id?: string;
 };
 
 export async function listTransactions(lead_id: string) {
@@ -24,9 +28,19 @@ export async function listTransactions(lead_id: string) {
 }
 
 export async function createTransaction(lead_id: string, payload: TransactionPayload) {
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  
+  // Auto-set agent_id if not provided
+  const transactionData = {
+    ...payload,
+    lead_id,
+    agent_id: payload.agent_id || user?.id,
+  };
+
   const { data, error } = await (supabase as any)
     .from("transactions")
-    .insert([{ ...payload, lead_id }])
+    .insert([transactionData])
     .select("*")
     .single();
   return { data, error } as const;

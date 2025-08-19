@@ -11,6 +11,20 @@ export function normalizePhone(p?: string) {
 export function useContacts() {
   const { user, profile } = useAuth();
 
+  // Create new contact with round-robin assignment
+  const createContact = useCallback(async (contactData: any) => {
+    const { data, error } = await supabase
+      .from('leads')
+      .insert([contactData]) // Auto-assignment happens via trigger
+      .select(`
+        *,
+        profiles!leads_agent_id_fkey(name, email)
+      `)
+      .single();
+    
+    return { data, error };
+  }, []);
+
   const list = useCallback(async (opts: {
     q?: string;
     status_category?: 'all' | ContactStatus;
@@ -150,6 +164,7 @@ export function useContacts() {
 
   return {
     list,
+    createContact,
     updateContact,
     mergeContacts,
     potentialDuplicates,

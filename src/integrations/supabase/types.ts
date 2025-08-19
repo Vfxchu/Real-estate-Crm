@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -97,6 +97,72 @@ export type Database = {
           },
           {
             foreignKeyName: "contact_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          agent_id: string
+          close_date: string | null
+          contact_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          probability: number | null
+          property_id: string | null
+          source: string | null
+          status: string
+          title: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          agent_id: string
+          close_date?: string | null
+          contact_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          source?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          agent_id?: string
+          close_date?: string | null
+          contact_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          probability?: number | null
+          property_id?: string | null
+          source?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -431,9 +497,11 @@ export type Database = {
       }
       transactions: {
         Row: {
+          agent_id: string | null
           amount: number | null
           created_at: string
           currency: string | null
+          deal_id: string | null
           id: string
           id_expiry: string | null
           id_number: string | null
@@ -442,15 +510,18 @@ export type Database = {
           nationality: string | null
           notes: string | null
           pep: boolean
+          property_id: string | null
           source_of_funds: string | null
           status: string | null
           type: string
           updated_at: string
         }
         Insert: {
+          agent_id?: string | null
           amount?: number | null
           created_at?: string
           currency?: string | null
+          deal_id?: string | null
           id?: string
           id_expiry?: string | null
           id_number?: string | null
@@ -459,15 +530,18 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           pep?: boolean
+          property_id?: string | null
           source_of_funds?: string | null
           status?: string | null
           type: string
           updated_at?: string
         }
         Update: {
+          agent_id?: string | null
           amount?: number | null
           created_at?: string
           currency?: string | null
+          deal_id?: string | null
           id?: string
           id_expiry?: string | null
           id_number?: string | null
@@ -476,6 +550,7 @@ export type Database = {
           nationality?: string | null
           notes?: string | null
           pep?: boolean
+          property_id?: string | null
           source_of_funds?: string | null
           status?: string | null
           type?: string
@@ -483,10 +558,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "transactions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -537,8 +626,13 @@ export type Database = {
     Functions: {
       create_property_with_files: {
         Args:
-          | { p_title: string; p_description: string; p_file_urls: string[] }
-          | { property_data: Json; files_data?: Json[] }
+          | { files_data?: Json[]; property_data: Json }
+          | {
+              p_agent_id?: string
+              p_description: string
+              p_file_paths: string[]
+              p_property_name: string
+            }
         Returns: string
       }
       get_current_user_role: {
