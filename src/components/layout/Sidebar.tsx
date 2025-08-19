@@ -56,8 +56,8 @@ const navigation: NavItem[] = [
     roles: ['agent'],
   },
   {
-    title: 'Agent Manager',
-    href: '/agents',
+    title: 'Team Management',
+    href: '/team',
     icon: UserCheck,
     roles: ['admin'],
   },

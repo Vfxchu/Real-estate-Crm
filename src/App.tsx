@@ -12,6 +12,7 @@ import { Dashboard } from "@/pages/Dashboard";
 import { LeadsManager } from "@/pages/LeadsManager";
 import { MyLeads } from "@/pages/MyLeads";
 import { AgentManager } from "@/pages/AgentManager";
+import { TeamManagement } from "@/pages/TeamManagement";
 import { Communication } from "@/pages/Communication";
 import { Calendar } from "@/pages/Calendar";
 import { Analytics } from "@/pages/Analytics";
@@ -43,6 +44,7 @@ const App = () => {
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><LeadsManager /></ProtectedRoute>} />
         <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MyLeads /></ProtectedRoute>} />
+        <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><TeamManagement /></ProtectedRoute>} />
         <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin']}><AgentManager /></ProtectedRoute>} />
         <Route path="/communication" element={<ProtectedRoute><Communication /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
