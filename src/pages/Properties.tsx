@@ -32,6 +32,7 @@ import {
   X,
   TrendingUp,
   Coins,
+  Calendar,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -39,15 +40,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
   if (currency === 'AED') {
-    return new Intl.NumberFormat('en-AE', {
-      style: 'currency',
+    return new Intl.NumberFormat('en-AE', { 
+      style: 'currency', 
       currency: 'AED',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount);
   }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+  return new Intl.NumberFormat('en-US', { 
+    style: 'currency', 
     currency: currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
@@ -85,10 +86,17 @@ interface PropertyStats {
 // Debounce hook
 const useDebounce = (value: string, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
+
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(handler);
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [value, delay]);
+
   return debouncedValue;
 };
 
@@ -147,31 +155,41 @@ export const Properties = () => {
   const fetchStats = useCallback(async () => {
     try {
       setStats(prev => ({ ...prev, loading: true }));
-
+      
       let query = supabase
         .from('properties')
-        .select('price, offer_type, status, segment, title, address, permit_number');
+        .select('price, offer_type, status, segment');
 
       // Apply filters to stats query
-      if (filters.segment) query = query.eq('segment', filters.segment);
-      if (filters.status) query = query.eq('status', filters.status);
-      if (filters.offerType) query = query.eq('offer_type', filters.offerType);
+      if (filters.segment) {
+        query = query.eq('segment', filters.segment);
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.offerType) {
+        query = query.eq('offer_type', filters.offerType);
+      }
       if (debouncedSearch) {
-        query = query.or(
-          `title.ilike.%${debouncedSearch}%,address.ilike.%${debouncedSearch}%,permit_number.ilike.%${debouncedSearch}%`
-        );
+        query = query.or(`title.ilike.%${debouncedSearch}%,address.ilike.%${debouncedSearch}%,permit_number.ilike.%${debouncedSearch}%`);
       }
 
       const { data, error } = await query;
+
       if (error) throw error;
 
       const total = data?.length || 0;
       const availableForSale = data?.filter(p => p.status === 'available' && p.offer_type === 'sale').length || 0;
       const availableForRent = data?.filter(p => p.status === 'available' && p.offer_type === 'rent').length || 0;
-      // numeric comes back as string sometimes → coerce to number
-      const totalValue = data?.reduce((sum, p: any) => sum + Number(p.price ?? 0), 0) || 0;
+      const totalValue = data?.reduce((sum, p) => sum + (p.price || 0), 0) || 0;
 
-      setStats({ total, availableForSale, availableForRent, totalValue, loading: false });
+      setStats({
+        total,
+        availableForSale,
+        availableForRent,
+        totalValue,
+        loading: false
+      });
     } catch (error: any) {
       console.error('Error fetching stats:', error);
       toast({
@@ -191,22 +209,23 @@ export const Properties = () => {
   const filteredProperties = useMemo(() => {
     return properties.filter(property => {
       // Tab filtering
-      const tabMatch = activeTab === 'residential'
+      const tabMatch = activeTab === 'residential' 
         ? property.segment === 'residential' || !property.segment
         : property.segment === 'commercial';
+
       if (!tabMatch) return false;
 
       // Search filtering
       if (debouncedSearch) {
         const searchLower = debouncedSearch.toLowerCase();
-        const matchesSearch =
+        const matchesSearch = 
           property.title?.toLowerCase().includes(searchLower) ||
           property.address?.toLowerCase().includes(searchLower) ||
           property.permit_number?.toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
 
-      // Basic filters
+      // Basic filters - use segment instead of propertyType
       if (filters.segment && property.segment !== filters.segment) return false;
       if (filters.subtype && property.subtype !== filters.subtype) return false;
       if (filters.offerType && property.offer_type !== filters.offerType) return false;
@@ -214,8 +233,8 @@ export const Properties = () => {
 
       // Advanced filters
       if (isAdvancedMode) {
-        if (filters.minPrice && Number(property.price ?? 0) < parseFloat(filters.minPrice)) return false;
-        if (filters.maxPrice && Number(property.price ?? 0) > parseFloat(filters.maxPrice)) return false;
+        if (filters.minPrice && property.price < parseFloat(filters.minPrice)) return false;
+        if (filters.maxPrice && property.price > parseFloat(filters.maxPrice)) return false;
         if (filters.minBedrooms && (property.bedrooms || 0) < parseInt(filters.minBedrooms)) return false;
         if (filters.maxBedrooms && (property.bedrooms || 0) > parseInt(filters.maxBedrooms)) return false;
         if (filters.minBathrooms && (property.bathrooms || 0) < parseInt(filters.minBathrooms)) return false;
@@ -236,6 +255,7 @@ export const Properties = () => {
 
   const confirmDeleteProperty = async () => {
     if (!propertyToDelete) return;
+    
     setDeleting(propertyToDelete.id);
     try {
       await deleteProperty(propertyToDelete.id);
@@ -247,10 +267,12 @@ export const Properties = () => {
   };
 
   const handleEditProperty = (property: Property) => {
+    // Navigate to edit page or open edit form
     navigate(`/properties/edit/${property.id}`);
   };
 
   const handleScheduleViewing = (property: Property) => {
+    // Navigate to calendar with property pre-filled
     navigate(`/calendar?property=${property.id}&action=schedule-viewing`);
   };
 
@@ -305,13 +327,17 @@ export const Properties = () => {
     }
   };
 
+  // Remove local getSubtypeOptions function since we import it
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Property Manager</h1>
-          <p className="text-muted-foreground">Manage your property listings and inventory</p>
+          <p className="text-muted-foreground">
+            Manage your property listings and inventory
+          </p>
         </div>
         <div className="flex gap-2">
           <Select value={currency} onValueChange={setCurrency}>
@@ -331,12 +357,32 @@ export const Properties = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Removed Average Price */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <StatsCard title="Total Properties" value={stats.loading ? "..." : stats.total.toString()} icon={Home} className="card-elevated" />
-        <StatsCard title="Available for Sale" value={stats.loading ? "..." : stats.availableForSale.toString()} icon={Star} className="card-elevated" />
-        <StatsCard title="Available for Rent" value={stats.loading ? "..." : stats.availableForRent.toString()} icon={Coins} className="card-elevated" />
-        <StatsCard title="Total Portfolio Value" value={stats.loading ? "..." : formatCurrency(Number(stats.totalValue || 0), currency)} icon={TrendingUp} className="card-elevated" />
+        <StatsCard
+          title="Total Properties"
+          value={stats.loading ? "..." : stats.total.toString()}
+          icon={Home}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Available for Sale"
+          value={stats.loading ? "..." : stats.availableForSale.toString()}
+          icon={Star}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Available for Rent"
+          value={stats.loading ? "..." : stats.availableForRent.toString()}
+          icon={Coins}
+          className="card-elevated"
+        />
+        <StatsCard
+          title="Total Portfolio Value"
+          value={stats.loading ? "..." : formatCurrency(stats.totalValue, currency)}
+          icon={TrendingUp}
+          className="card-elevated"
+        />
       </div>
 
       {/* Filters */}
@@ -365,7 +411,7 @@ export const Properties = () => {
                   placeholder="Property Segment"
                   className="w-40"
                 />
-
+                
                 <ClearableSelect
                   value={filters.subtype}
                   onChange={(value) => updateFilter('subtype', value || '')}
@@ -374,7 +420,7 @@ export const Properties = () => {
                   className="w-40"
                   disabled={!filters.segment}
                 />
-
+                
                 <ClearableSelect
                   value={filters.offerType}
                   onChange={(value) => updateFilter('offerType', value || '')}
@@ -382,12 +428,16 @@ export const Properties = () => {
                   placeholder="Offer Type"
                   className="w-32"
                 />
-
+                
                 <div className="flex items-center gap-2">
-                  <Switch checked={isAdvancedMode} onCheckedChange={setIsAdvancedMode} id="advanced-mode" />
+                  <Switch
+                    checked={isAdvancedMode}
+                    onCheckedChange={setIsAdvancedMode}
+                    id="advanced-mode"
+                  />
                   <Label htmlFor="advanced-mode" className="text-sm">Advanced</Label>
                 </div>
-
+                
                 {getActiveFilterCount() > 0 && (
                   <Button variant="outline" size="sm" onClick={clearFilters}>
                     <X className="w-4 h-4 mr-1" />
@@ -410,36 +460,77 @@ export const Properties = () => {
                       placeholder="Any Status"
                     />
                   </div>
-
+                  
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Price Range</Label>
                     <div className="flex gap-2">
-                      <Input type="number" placeholder="Min" value={filters.minPrice} onChange={(e) => updateFilter('minPrice', e.target.value)} className="text-sm" />
-                      <Input type="number" placeholder="Max" value={filters.maxPrice} onChange={(e) => updateFilter('maxPrice', e.target.value)} className="text-sm" />
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minPrice}
+                        onChange={(e) => updateFilter('minPrice', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxPrice}
+                        onChange={(e) => updateFilter('maxPrice', e.target.value)}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
-
+                  
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Bedrooms</Label>
                     <div className="flex gap-2">
-                      <Input type="number" placeholder="Min" value={filters.minBedrooms} onChange={(e) => updateFilter('minBedrooms', e.target.value)} className="text-sm" />
-                      <Input type="number" placeholder="Max" value={filters.maxBedrooms} onChange={(e) => updateFilter('maxBedrooms', e.target.value)} className="text-sm" />
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minBedrooms}
+                        onChange={(e) => updateFilter('minBedrooms', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxBedrooms}
+                        onChange={(e) => updateFilter('maxBedrooms', e.target.value)}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
-
+                  
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Area (sq ft)</Label>
                     <div className="flex gap-2">
-                      <Input type="number" placeholder="Min" value={filters.minArea} onChange={(e) => updateFilter('minArea', e.target.value)} className="text-sm" />
-                      <Input type="number" placeholder="Max" value={filters.maxArea} onChange={(e) => updateFilter('maxArea', e.target.value)} className="text-sm" />
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minArea}
+                        onChange={(e) => updateFilter('minArea', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxArea}
+                        onChange={(e) => updateFilter('maxArea', e.target.value)}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
-
+                  
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
-                    <ClearableSelect value={filters.city} onChange={(value) => updateFilter('city', value || '')} options={CITIES} placeholder="Any City" />
+                    <ClearableSelect
+                      value={filters.city}
+                      onChange={(value) => updateFilter('city', value || '')}
+                      options={CITIES}
+                      placeholder="Any City"
+                    />
                   </div>
-
+                  
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Featured</Label>
                     <ClearableSelect
@@ -470,7 +561,10 @@ export const Properties = () => {
               Commercial ({properties.filter(p => p.segment === 'commercial').length})
             </TabsTrigger>
           </TabsList>
-          <div className="text-sm text-muted-foreground">Showing {filteredProperties.length} properties</div>
+          
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredProperties.length} properties
+          </div>
         </div>
 
         <TabsContent value="residential" className="space-y-6">
@@ -480,12 +574,18 @@ export const Properties = () => {
               <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
                 <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
                   {property.images && property.images.length > 0 ? (
-                    <img src={property.images[0]} alt={property.title} className="w-full h-full object-cover rounded-t-lg" />
+                    <img 
+                      src={property.images[0]} 
+                      alt={property.title}
+                      className="w-full h-full object-cover rounded-t-lg"
+                    />
                   ) : (
                     <Home className="w-12 h-12 text-muted-foreground" />
                   )}
                   {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">Featured</Badge>
+                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                      Featured
+                    </Badge>
                   )}
                 </div>
                 <CardHeader className="pb-3">
@@ -498,29 +598,44 @@ export const Properties = () => {
                       </p>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Badge className={getStatusColor(property.status)}>{property.status}</Badge>
-                      <Badge variant="outline" className="text-xs">{property.offer_type}</Badge>
+                      <Badge className={getStatusColor(property.status)}>
+                        {property.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {property.offer_type}
+                      </Badge>
                     </div>
                   </div>
                 </CardHeader>
-
+                
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       {getTypeIcon(property.property_type)}
                       <span className="text-sm capitalize">{property.property_type}</span>
-                      {property.subtype && <span className="text-xs text-muted-foreground">• {property.subtype}</span>}
+                      {property.subtype && (
+                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                      )}
                     </div>
                     <div className="text-lg font-bold text-primary">
-                      {formatCurrency(Number(property.price ?? 0), currency)}
+                      {formatCurrency(property.price, currency)}
                     </div>
                   </div>
 
                   {property.property_type !== 'commercial' && (
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1"><Bed className="w-4 h-4" /><span>{property.bedrooms || 0}</span></div>
-                      <div className="flex items-center gap-1"><Bath className="w-4 h-4" /><span>{property.bathrooms || 0}</span></div>
-                      <div className="flex items-center gap-1"><Square className="w-4 h-4" /><span>{property.area_sqft?.toLocaleString() || 'N/A'}</span></div>
+                      <div className="flex items-center gap-1">
+                        <Bed className="w-4 h-4" />
+                        <span>{property.bedrooms || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Bath className="w-4 h-4" />
+                        <span>{property.bathrooms || 0}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Square className="w-4 h-4" />
+                        <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+                      </div>
                     </div>
                   )}
 
@@ -531,35 +646,71 @@ export const Properties = () => {
                   <div className="flex gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelectedProperty(property)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setSelectedProperty(property)}
+                        >
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader><DialogTitle>{selectedProperty?.title}</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
+                        </DialogHeader>
                         {selectedProperty && (
                           <div className="space-y-6">
                             <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
                               {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                                <img src={selectedProperty.images[0]} alt={selectedProperty.title} className="w-full h-full object-cover rounded-lg" />
+                                <img 
+                                  src={selectedProperty.images[0]} 
+                                  alt={selectedProperty.title}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
                               ) : (
                                 <Home className="w-16 h-16 text-muted-foreground" />
                               )}
                             </div>
-
+                            
                             <div className="grid grid-cols-2 gap-4">
-                              <div><Label>Address</Label><p className="mt-1">{selectedProperty.address}</p></div>
-                              <div><Label>Price</Label><p className="mt-1 text-2xl font-bold text-primary">{formatCurrency(Number(selectedProperty.price ?? 0), currency)}</p></div>
-                              <div><Label>Type</Label><p className="mt-1 capitalize">{selectedProperty.property_type}</p></div>
-                              <div><Label>Status</Label><Badge className={getStatusColor(selectedProperty.status)}>{selectedProperty.status}</Badge></div>
+                              <div>
+                                <Label>Address</Label>
+                                <p className="mt-1">{selectedProperty.address}</p>
+                              </div>
+                              <div>
+                                <Label>Price</Label>
+                                <p className="mt-1 text-2xl font-bold text-primary">
+                                  {formatCurrency(selectedProperty.price, currency)}
+                                </p>
+                              </div>
+                              <div>
+                                <Label>Type</Label>
+                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <Badge className={getStatusColor(selectedProperty.status)}>
+                                  {selectedProperty.status}
+                                </Badge>
+                              </div>
                             </div>
 
                             {selectedProperty.property_type !== 'commercial' && (
                               <div className="grid grid-cols-3 gap-4">
-                                <div><Label>Bedrooms</Label><p className="mt-1">{selectedProperty.bedrooms}</p></div>
-                                <div><Label>Bathrooms</Label><p className="mt-1">{selectedProperty.bathrooms}</p></div>
-                                <div><Label>Square Feet</Label><p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p></div>
+                                <div>
+                                  <Label>Bedrooms</Label>
+                                  <p className="mt-1">{selectedProperty.bedrooms}</p>
+                                </div>
+                                <div>
+                                  <Label>Bathrooms</Label>
+                                  <p className="mt-1">{selectedProperty.bathrooms}</p>
+                                </div>
+                                <div>
+                                  <Label>Square Feet</Label>
+                                  <p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p>
+                                </div>
                               </div>
                             )}
 
@@ -569,10 +720,14 @@ export const Properties = () => {
                             </div>
 
                             <div className="flex gap-2">
-                              <Button className="btn-primary" onClick={() => handleEditProperty(selectedProperty)}>Edit Property</Button>
+                              <Button className="btn-primary">Edit Property</Button>
                               <Button variant="outline">Share Listing</Button>
-                              <Button variant="outline" onClick={() => handleScheduleViewing(selectedProperty)}>Schedule Viewing</Button>
-                              <Button variant="destructive" onClick={() => handleDeleteProperty(selectedProperty)} disabled={deleting === selectedProperty.id}>
+                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                variant="destructive" 
+                                onClick={() => handleDeleteProperty(selectedProperty)}
+                                disabled={deleting === selectedProperty.id}
+                              >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete Property
                               </Button>
@@ -581,12 +736,12 @@ export const Properties = () => {
                         )}
                       </DialogContent>
                     </Dialog>
-                    <Button size="sm" variant="ghost" onClick={() => handleEditProperty(property)}>
+                    <Button size="sm" variant="ghost">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
                       className="text-destructive hover:text-destructive"
                       onClick={() => handleDeleteProperty(property)}
                       disabled={deleting === property.id}
@@ -607,12 +762,18 @@ export const Properties = () => {
               <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
                 <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
                   {property.images && property.images.length > 0 ? (
-                    <img src={property.images[0]} alt={property.title} className="w-full h-full object-cover rounded-t-lg" />
+                    <img 
+                      src={property.images[0]} 
+                      alt={property.title}
+                      className="w-full h-full object-cover rounded-t-lg"
+                    />
                   ) : (
                     <Building className="w-12 h-12 text-muted-foreground" />
                   )}
                   {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">Featured</Badge>
+                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                      Featured
+                    </Badge>
                   )}
                 </div>
                 <CardHeader className="pb-3">
@@ -625,21 +786,27 @@ export const Properties = () => {
                       </p>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <Badge className={getStatusColor(property.status)}>{property.status}</Badge>
-                      <Badge variant="outline" className="text-xs">{property.offer_type}</Badge>
+                      <Badge className={getStatusColor(property.status)}>
+                        {property.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {property.offer_type}
+                      </Badge>
                     </div>
                   </div>
                 </CardHeader>
-
+                
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       {getTypeIcon(property.property_type)}
                       <span className="text-sm capitalize">{property.property_type}</span>
-                      {property.subtype && <span className="text-xs text-muted-foreground">• {property.subtype}</span>}
+                      {property.subtype && (
+                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                      )}
                     </div>
                     <div className="text-lg font-bold text-primary">
-                      {formatCurrency(Number(property.price ?? 0), currency)}
+                      {formatCurrency(property.price, currency)}
                     </div>
                   </div>
 
@@ -657,28 +824,55 @@ export const Properties = () => {
                   <div className="flex gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setSelectedProperty(property)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setSelectedProperty(property)}
+                        >
                           <Eye className="w-4 h-4 mr-1" />
                           View
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader><DialogTitle>{selectedProperty?.title}</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
+                        </DialogHeader>
                         {selectedProperty && (
                           <div className="space-y-6">
                             <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
                               {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                                <img src={selectedProperty.images[0]} alt={selectedProperty.title} className="w-full h-full object-cover rounded-lg" />
+                                <img 
+                                  src={selectedProperty.images[0]} 
+                                  alt={selectedProperty.title}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
                               ) : (
                                 <Building className="w-16 h-16 text-muted-foreground" />
                               )}
                             </div>
-
+                            
                             <div className="grid grid-cols-2 gap-4">
-                              <div><Label>Address</Label><p className="mt-1">{selectedProperty.address}</p></div>
-                              <div><Label>Price</Label><p className="mt-1 text-2xl font-bold text-primary">{formatCurrency(Number(selectedProperty.price ?? 0), currency)}</p></div>
-                              <div><Label>Type</Label><p className="mt-1 capitalize">{selectedProperty.property_type}</p></div>
-                              <div><Label>Status</Label><Badge className={getStatusColor(selectedProperty.status)}>{selectedProperty.status}</Badge></div>
+                              <div>
+                                <Label>Address</Label>
+                                <p className="mt-1">{selectedProperty.address}</p>
+                              </div>
+                              <div>
+                                <Label>Price</Label>
+                                <p className="mt-1 text-2xl font-bold text-primary">
+                                  {formatCurrency(selectedProperty.price, currency)}
+                                </p>
+                              </div>
+                              <div>
+                                <Label>Type</Label>
+                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <Badge className={getStatusColor(selectedProperty.status)}>
+                                  {selectedProperty.status}
+                                </Badge>
+                              </div>
                             </div>
 
                             <div>
@@ -687,10 +881,14 @@ export const Properties = () => {
                             </div>
 
                             <div className="flex gap-2">
-                              <Button className="btn-primary" onClick={() => handleEditProperty(selectedProperty)}>Edit Property</Button>
+                              <Button className="btn-primary">Edit Property</Button>
                               <Button variant="outline">Share Listing</Button>
-                              <Button variant="outline" onClick={() => handleScheduleViewing(selectedProperty)}>Schedule Viewing</Button>
-                              <Button variant="destructive" onClick={() => handleDeleteProperty(selectedProperty)} disabled={deleting === selectedProperty.id}>
+                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                variant="destructive" 
+                                onClick={() => handleDeleteProperty(selectedProperty)}
+                                disabled={deleting === selectedProperty.id}
+                              >
                                 <Trash2 className="w-4 h-4 mr-2" />
                                 Delete Property
                               </Button>
@@ -699,12 +897,12 @@ export const Properties = () => {
                         )}
                       </DialogContent>
                     </Dialog>
-                    <Button size="sm" variant="ghost" onClick={() => handleEditProperty(property)}>
+                    <Button size="sm" variant="ghost">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
                       className="text-destructive hover:text-destructive"
                       onClick={() => handleDeleteProperty(property)}
                       disabled={deleting === property.id}
@@ -745,19 +943,12 @@ export const Properties = () => {
       )}
 
       {/* Add Property Form */}
-      <AddPropertyForm
-        open={showAddProperty}
+      <AddPropertyForm 
+        open={showAddProperty} 
         onOpenChange={setShowAddProperty}
-        onSuccess={() => { fetchStats(); }}
-      />
-
-      {/* Delete confirmation (uses your existing dialog component) */}
-      <PropertyDeleteDialog
-        open={!!propertyToDelete}
-        onOpenChange={(open: boolean) => { if (!open) setPropertyToDelete(null); }}
-        onConfirm={confirmDeleteProperty}
-        loading={deleting === propertyToDelete?.id}
-        propertyTitle={propertyToDelete?.title}
+        onSuccess={() => {
+          fetchStats();
+        }}
       />
     </div>
   );
