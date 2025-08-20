@@ -6,14 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { AddPropertyForm } from "@/components/forms/AddPropertyForm";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import ClearableSelect from "@/components/ui/ClearableSelect";
+import { PropertyGallery } from "@/components/properties/PropertyGallery";
+import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
+import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
 import {
   Search,
   Plus,
@@ -23,21 +25,17 @@ import {
   Bed,
   Bath,
   Square,
-  DollarSign,
   Home,
   Building,
-  Filter,
   Star,
   Trash2,
   X,
-  ChevronDown,
-  ChevronUp,
   TrendingUp,
   Coins,
-  Settings,
+  Calendar,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -57,14 +55,13 @@ const formatCurrency = (amount: number, currency = 'AED') => {
   }).format(amount);
 };
 
-// Filter state interface
+// Filter state interface - aligned with PropertyForm schema
 interface FilterState {
   search: string;
-  propertyType: string;
+  segment: string;
   subtype: string;
   offerType: string;
   status: string;
-  segment: string;
   minPrice: string;
   maxPrice: string;
   minBedrooms: string;
@@ -74,17 +71,15 @@ interface FilterState {
   minArea: string;
   maxArea: string;
   city: string;
-  state: string;
   featured: string;
 }
 
-// Property stats interface
+// Property stats interface - removed avgPrice
 interface PropertyStats {
   total: number;
   availableForSale: number;
   availableForRent: number;
   totalValue: number;
-  avgPrice: number;
   loading: boolean;
 }
 
@@ -108,8 +103,10 @@ const useDebounce = (value: string, delay: number) => {
 export const Properties = () => {
   const { properties, loading, deleteProperty } = useProperties();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [activeTab, setActiveTab] = useState('residential');
@@ -119,20 +116,18 @@ export const Properties = () => {
     availableForSale: 0,
     availableForRent: 0,
     totalValue: 0,
-    avgPrice: 0,
     loading: true
   });
 
   const { toast } = useToast();
 
-  // Initialize filters from URL params
+  // Initialize filters from URL params - aligned with schema
   const [filters, setFilters] = useState<FilterState>({
     search: searchParams.get('search') || '',
-    propertyType: searchParams.get('propertyType') || '',
+    segment: searchParams.get('segment') || '',
     subtype: searchParams.get('subtype') || '',
     offerType: searchParams.get('offerType') || '',
     status: searchParams.get('status') || '',
-    segment: searchParams.get('segment') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
     minBedrooms: searchParams.get('minBedrooms') || '',
@@ -142,7 +137,6 @@ export const Properties = () => {
     minArea: searchParams.get('minArea') || '',
     maxArea: searchParams.get('maxArea') || '',
     city: searchParams.get('city') || '',
-    state: searchParams.get('state') || '',
     featured: searchParams.get('featured') || '',
   });
 
@@ -170,9 +164,6 @@ export const Properties = () => {
       if (filters.segment) {
         query = query.eq('segment', filters.segment);
       }
-      if (filters.propertyType) {
-        query = query.eq('property_type', filters.propertyType);
-      }
       if (filters.status) {
         query = query.eq('status', filters.status);
       }
@@ -191,14 +182,12 @@ export const Properties = () => {
       const availableForSale = data?.filter(p => p.status === 'available' && p.offer_type === 'sale').length || 0;
       const availableForRent = data?.filter(p => p.status === 'available' && p.offer_type === 'rent').length || 0;
       const totalValue = data?.reduce((sum, p) => sum + (p.price || 0), 0) || 0;
-      const avgPrice = total > 0 ? totalValue / total : 0;
 
       setStats({
         total,
         availableForSale,
         availableForRent,
         totalValue,
-        avgPrice,
         loading: false
       });
     } catch (error: any) {
@@ -236,8 +225,8 @@ export const Properties = () => {
         if (!matchesSearch) return false;
       }
 
-      // Basic filters
-      if (filters.propertyType && property.property_type !== filters.propertyType) return false;
+      // Basic filters - use segment instead of propertyType
+      if (filters.segment && property.segment !== filters.segment) return false;
       if (filters.subtype && property.subtype !== filters.subtype) return false;
       if (filters.offerType && property.offer_type !== filters.offerType) return false;
       if (filters.status && property.status !== filters.status) return false;
@@ -253,7 +242,6 @@ export const Properties = () => {
         if (filters.minArea && (property.area_sqft || 0) < parseInt(filters.minArea)) return false;
         if (filters.maxArea && (property.area_sqft || 0) > parseInt(filters.maxArea)) return false;
         if (filters.city && !property.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
-        if (filters.state && !property.state?.toLowerCase().includes(filters.state.toLowerCase())) return false;
         if (filters.featured && ((property.featured ? 'yes' : 'no') !== filters.featured)) return false;
       }
 
@@ -261,18 +249,31 @@ export const Properties = () => {
     });
   }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab]);
 
-  const handleDeleteProperty = async (propertyId: string) => {
-    if (!confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteProperty = async (property: Property) => {
+    setPropertyToDelete(property);
+  };
 
-    setDeleting(propertyId);
+  const confirmDeleteProperty = async () => {
+    if (!propertyToDelete) return;
+    
+    setDeleting(propertyToDelete.id);
     try {
-      await deleteProperty(propertyId);
+      await deleteProperty(propertyToDelete.id);
       await fetchStats(); // Refresh stats after deletion
+      setPropertyToDelete(null);
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleEditProperty = (property: Property) => {
+    // Navigate to edit page or open edit form
+    navigate(`/properties/edit/${property.id}`);
+  };
+
+  const handleScheduleViewing = (property: Property) => {
+    // Navigate to calendar with property pre-filled
+    navigate(`/calendar?property=${property.id}&action=schedule-viewing`);
   };
 
   const updateFilter = (key: keyof FilterState, value: string) => {
@@ -282,11 +283,10 @@ export const Properties = () => {
   const clearFilters = () => {
     setFilters({
       search: '',
-      propertyType: '',
+      segment: '',
       subtype: '',
       offerType: '',
       status: '',
-      segment: '',
       minPrice: '',
       maxPrice: '',
       minBedrooms: '',
@@ -296,7 +296,6 @@ export const Properties = () => {
       minArea: '',
       maxArea: '',
       city: '',
-      state: '',
       featured: '',
     });
   };
@@ -328,34 +327,7 @@ export const Properties = () => {
     }
   };
 
-  // Property type options for subtype filtering
-  const getSubtypeOptions = (propertyType: string) => {
-    switch (propertyType) {
-      case 'house':
-        return [
-          { value: 'villa', label: 'Villa' },
-          { value: 'townhouse', label: 'Townhouse' },
-          { value: 'penthouse', label: 'Penthouse' },
-        ];
-      case 'apartment':
-        return [
-          { value: 'studio', label: 'Studio' },
-          { value: '1br', label: '1 Bedroom' },
-          { value: '2br', label: '2 Bedroom' },
-          { value: '3br', label: '3 Bedroom' },
-          { value: '4br+', label: '4+ Bedroom' },
-        ];
-      case 'commercial':
-        return [
-          { value: 'office', label: 'Office' },
-          { value: 'retail', label: 'Retail' },
-          { value: 'warehouse', label: 'Warehouse' },
-          { value: 'restaurant', label: 'Restaurant' },
-        ];
-      default:
-        return [];
-    }
-  };
+  // Remove local getSubtypeOptions function since we import it
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -385,8 +357,8 @@ export const Properties = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      {/* KPI Cards - Removed Average Price */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatsCard
           title="Total Properties"
           value={stats.loading ? "..." : stats.total.toString()}
@@ -411,12 +383,6 @@ export const Properties = () => {
           icon={TrendingUp}
           className="card-elevated"
         />
-        <StatsCard
-          title="Average Price"
-          value={stats.loading ? "..." : formatCurrency(stats.avgPrice, currency)}
-          icon={DollarSign}
-          className="card-elevated"
-        />
       </div>
 
       {/* Filters */}
@@ -436,37 +402,29 @@ export const Properties = () => {
               </div>
               <div className="flex gap-2 flex-wrap">
                 <ClearableSelect
-                  value={filters.propertyType}
+                  value={filters.segment}
                   onChange={(value) => {
-                    updateFilter('propertyType', value || '');
-                    updateFilter('subtype', ''); // Clear subtype when property type changes
+                    updateFilter('segment', value || '');
+                    updateFilter('subtype', ''); // Clear subtype when segment changes
                   }}
-                  options={[
-                    { value: 'house', label: 'House' },
-                    { value: 'apartment', label: 'Apartment' },
-                    { value: 'condo', label: 'Condo' },
-                    { value: 'commercial', label: 'Commercial' },
-                  ]}
-                  placeholder="Property Type"
+                  options={PROPERTY_SEGMENTS}
+                  placeholder="Property Segment"
                   className="w-40"
                 />
                 
                 <ClearableSelect
                   value={filters.subtype}
                   onChange={(value) => updateFilter('subtype', value || '')}
-                  options={getSubtypeOptions(filters.propertyType)}
+                  options={getSubtypeOptions(filters.segment)}
                   placeholder="Subtype"
                   className="w-40"
-                  disabled={!filters.propertyType}
+                  disabled={!filters.segment}
                 />
                 
                 <ClearableSelect
                   value={filters.offerType}
                   onChange={(value) => updateFilter('offerType', value || '')}
-                  options={[
-                    { value: 'sale', label: 'Sale' },
-                    { value: 'rent', label: 'Rent' },
-                  ]}
+                  options={OFFER_TYPES}
                   placeholder="Offer Type"
                   className="w-32"
                 />
@@ -498,15 +456,7 @@ export const Properties = () => {
                     <ClearableSelect
                       value={filters.status}
                       onChange={(value) => updateFilter('status', value || '')}
-                      options={[
-                        { value: 'available', label: 'Available' },
-                        { value: 'pending', label: 'Pending' },
-                        { value: 'sold', label: 'Sold' },
-                        { value: 'rented', label: 'Rented' },
-                        { value: 'off_market', label: 'Off Market' },
-                        { value: 'vacant', label: 'Vacant' },
-                        { value: 'in_development', label: 'In Development' },
-                      ]}
+                      options={PROPERTY_STATUS}
                       placeholder="Any Status"
                     />
                   </div>
@@ -573,21 +523,11 @@ export const Properties = () => {
                   
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
-                    <Input
-                      placeholder="Enter city"
+                    <ClearableSelect
                       value={filters.city}
-                      onChange={(e) => updateFilter('city', e.target.value)}
-                      className="text-sm"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">State</Label>
-                    <Input
-                      placeholder="Enter state"
-                      value={filters.state}
-                      onChange={(e) => updateFilter('state', e.target.value)}
-                      className="text-sm"
+                      onChange={(value) => updateFilter('city', value || '')}
+                      options={CITIES}
+                      placeholder="Any City"
                     />
                   </div>
                   
@@ -785,7 +725,7 @@ export const Properties = () => {
                               <Button variant="outline">Schedule Viewing</Button>
                               <Button 
                                 variant="destructive" 
-                                onClick={() => handleDeleteProperty(selectedProperty.id)}
+                                onClick={() => handleDeleteProperty(selectedProperty)}
                                 disabled={deleting === selectedProperty.id}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -803,7 +743,7 @@ export const Properties = () => {
                       size="sm" 
                       variant="ghost" 
                       className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteProperty(property.id)}
+                      onClick={() => handleDeleteProperty(property)}
                       disabled={deleting === property.id}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -946,7 +886,7 @@ export const Properties = () => {
                               <Button variant="outline">Schedule Viewing</Button>
                               <Button 
                                 variant="destructive" 
-                                onClick={() => handleDeleteProperty(selectedProperty.id)}
+                                onClick={() => handleDeleteProperty(selectedProperty)}
                                 disabled={deleting === selectedProperty.id}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -964,7 +904,7 @@ export const Properties = () => {
                       size="sm" 
                       variant="ghost" 
                       className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteProperty(property.id)}
+                      onClick={() => handleDeleteProperty(property)}
                       disabled={deleting === property.id}
                     >
                       <Trash2 className="w-4 h-4" />
