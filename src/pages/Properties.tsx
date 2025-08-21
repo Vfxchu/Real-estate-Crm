@@ -572,18 +572,14 @@ export const Properties = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
-                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
-                  {property.images && property.images.length > 0 ? (
-                    <img 
-                      src={property.images[0]} 
-                      alt={property.title}
-                      className="w-full h-full object-cover rounded-t-lg"
-                    />
-                  ) : (
-                    <Home className="w-12 h-12 text-muted-foreground" />
-                  )}
+                <div className="relative">
+                  <PropertyGallery 
+                    images={property.images} 
+                    propertyId={property.id}
+                    propertyTitle={property.title}
+                  />
                   {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                    <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
                       Featured
                     </Badge>
                   )}
@@ -662,17 +658,11 @@ export const Properties = () => {
                         </DialogHeader>
                         {selectedProperty && (
                           <div className="space-y-6">
-                            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                              {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                                <img 
-                                  src={selectedProperty.images[0]} 
-                                  alt={selectedProperty.title}
-                                  className="w-full h-full object-cover rounded-lg"
-                                />
-                              ) : (
-                                <Home className="w-16 h-16 text-muted-foreground" />
-                              )}
-                            </div>
+                            <PropertyGallery 
+                              images={selectedProperty.images} 
+                              propertyId={selectedProperty.id}
+                              propertyTitle={selectedProperty.title}
+                            />
                             
                             <div className="grid grid-cols-2 gap-4">
                               <div>
@@ -720,9 +710,20 @@ export const Properties = () => {
                             </div>
 
                             <div className="flex gap-2">
-                              <Button className="btn-primary">Edit Property</Button>
-                              <Button variant="outline">Share Listing</Button>
-                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                className="btn-primary"
+                                onClick={() => handleEditProperty(selectedProperty)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Property
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => handleScheduleViewing(selectedProperty)}
+                              >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Schedule Viewing
+                              </Button>
                               <Button 
                                 variant="destructive" 
                                 onClick={() => handleDeleteProperty(selectedProperty)}
@@ -736,7 +737,11 @@ export const Properties = () => {
                         )}
                       </DialogContent>
                     </Dialog>
-                    <Button size="sm" variant="ghost">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => handleEditProperty(property)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button 
@@ -760,18 +765,14 @@ export const Properties = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
-                <div className="aspect-video bg-muted rounded-t-lg flex items-center justify-center relative">
-                  {property.images && property.images.length > 0 ? (
-                    <img 
-                      src={property.images[0]} 
-                      alt={property.title}
-                      className="w-full h-full object-cover rounded-t-lg"
-                    />
-                  ) : (
-                    <Building className="w-12 h-12 text-muted-foreground" />
-                  )}
+                <div className="relative">
+                  <PropertyGallery 
+                    images={property.images} 
+                    propertyId={property.id}
+                    propertyTitle={property.title}
+                  />
                   {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-warning text-warning-foreground">
+                    <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
                       Featured
                     </Badge>
                   )}
@@ -840,17 +841,11 @@ export const Properties = () => {
                         </DialogHeader>
                         {selectedProperty && (
                           <div className="space-y-6">
-                            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                              {selectedProperty.images && selectedProperty.images.length > 0 ? (
-                                <img 
-                                  src={selectedProperty.images[0]} 
-                                  alt={selectedProperty.title}
-                                  className="w-full h-full object-cover rounded-lg"
-                                />
-                              ) : (
-                                <Building className="w-16 h-16 text-muted-foreground" />
-                              )}
-                            </div>
+                            <PropertyGallery 
+                              images={selectedProperty.images} 
+                              propertyId={selectedProperty.id}
+                              propertyTitle={selectedProperty.title}
+                            />
                             
                             <div className="grid grid-cols-2 gap-4">
                               <div>
@@ -881,9 +876,20 @@ export const Properties = () => {
                             </div>
 
                             <div className="flex gap-2">
-                              <Button className="btn-primary">Edit Property</Button>
-                              <Button variant="outline">Share Listing</Button>
-                              <Button variant="outline">Schedule Viewing</Button>
+                              <Button 
+                                className="btn-primary"
+                                onClick={() => handleEditProperty(selectedProperty)}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Property
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                onClick={() => handleScheduleViewing(selectedProperty)}
+                              >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Schedule Viewing
+                              </Button>
                               <Button 
                                 variant="destructive" 
                                 onClick={() => handleDeleteProperty(selectedProperty)}
@@ -897,7 +903,11 @@ export const Properties = () => {
                         )}
                       </DialogContent>
                     </Dialog>
-                    <Button size="sm" variant="ghost">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => handleEditProperty(property)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                     <Button 
