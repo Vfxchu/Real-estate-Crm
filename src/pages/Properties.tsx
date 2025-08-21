@@ -13,6 +13,8 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import ClearableSelect from "@/components/ui/ClearableSelect";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
+import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar";
+import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
@@ -106,6 +108,9 @@ export const Properties = () => {
   const navigate = useNavigate();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [showAddProperty, setShowAddProperty] = useState(false);
+  const [showEditSidebar, setShowEditSidebar] = useState(false);
+  const [showDetailView, setShowDetailView] = useState(false);
+  const [propertyToEdit, setPropertyToEdit] = useState<Property | null>(null);
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
@@ -267,8 +272,13 @@ export const Properties = () => {
   };
 
   const handleEditProperty = (property: Property) => {
-    // Navigate to edit page or open edit form
-    navigate(`/properties/edit/${property.id}`);
+    setPropertyToEdit(property);
+    setShowEditSidebar(true);
+  };
+
+  const handleViewProperty = (property: Property) => {
+    setSelectedProperty(property);
+    setShowDetailView(true);
   };
 
   const handleScheduleViewing = (property: Property) => {
@@ -640,103 +650,15 @@ export const Properties = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => setSelectedProperty(property)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
-                        </DialogHeader>
-                        {selectedProperty && (
-                          <div className="space-y-6">
-                            <PropertyGallery 
-                              images={selectedProperty.images} 
-                              propertyId={selectedProperty.id}
-                              propertyTitle={selectedProperty.title}
-                            />
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Address</Label>
-                                <p className="mt-1">{selectedProperty.address}</p>
-                              </div>
-                              <div>
-                                <Label>Price</Label>
-                                <p className="mt-1 text-2xl font-bold text-primary">
-                                  {formatCurrency(selectedProperty.price, currency)}
-                                </p>
-                              </div>
-                              <div>
-                                <Label>Type</Label>
-                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
-                              </div>
-                              <div>
-                                <Label>Status</Label>
-                                <Badge className={getStatusColor(selectedProperty.status)}>
-                                  {selectedProperty.status}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            {selectedProperty.property_type !== 'commercial' && (
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <Label>Bedrooms</Label>
-                                  <p className="mt-1">{selectedProperty.bedrooms}</p>
-                                </div>
-                                <div>
-                                  <Label>Bathrooms</Label>
-                                  <p className="mt-1">{selectedProperty.bathrooms}</p>
-                                </div>
-                                <div>
-                                  <Label>Square Feet</Label>
-                                  <p className="mt-1">{selectedProperty.area_sqft?.toLocaleString() || 'N/A'}</p>
-                                </div>
-                              </div>
-                            )}
-
-                            <div>
-                              <Label>Description</Label>
-                              <p className="mt-1 text-muted-foreground">{selectedProperty.description}</p>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button 
-                                className="btn-primary"
-                                onClick={() => handleEditProperty(selectedProperty)}
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Property
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                onClick={() => handleScheduleViewing(selectedProperty)}
-                              >
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Schedule Viewing
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => handleDeleteProperty(selectedProperty)}
-                                disabled={deleting === selectedProperty.id}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Property
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleViewProperty(property)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="ghost"
@@ -823,86 +745,15 @@ export const Properties = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => setSelectedProperty(property)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{selectedProperty?.title}</DialogTitle>
-                        </DialogHeader>
-                        {selectedProperty && (
-                          <div className="space-y-6">
-                            <PropertyGallery 
-                              images={selectedProperty.images} 
-                              propertyId={selectedProperty.id}
-                              propertyTitle={selectedProperty.title}
-                            />
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <Label>Address</Label>
-                                <p className="mt-1">{selectedProperty.address}</p>
-                              </div>
-                              <div>
-                                <Label>Price</Label>
-                                <p className="mt-1 text-2xl font-bold text-primary">
-                                  {formatCurrency(selectedProperty.price, currency)}
-                                </p>
-                              </div>
-                              <div>
-                                <Label>Type</Label>
-                                <p className="mt-1 capitalize">{selectedProperty.property_type}</p>
-                              </div>
-                              <div>
-                                <Label>Status</Label>
-                                <Badge className={getStatusColor(selectedProperty.status)}>
-                                  {selectedProperty.status}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            <div>
-                              <Label>Description</Label>
-                              <p className="mt-1 text-muted-foreground">{selectedProperty.description}</p>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Button 
-                                className="btn-primary"
-                                onClick={() => handleEditProperty(selectedProperty)}
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Property
-                              </Button>
-                              <Button 
-                                variant="outline"
-                                onClick={() => handleScheduleViewing(selectedProperty)}
-                              >
-                                <Calendar className="w-4 h-4 mr-2" />
-                                Schedule Viewing
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => handleDeleteProperty(selectedProperty)}
-                                disabled={deleting === selectedProperty.id}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Property
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleViewProperty(property)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="ghost"
@@ -951,6 +802,35 @@ export const Properties = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Property Edit Sidebar */}
+      <PropertyEditSidebar
+        property={propertyToEdit}
+        open={showEditSidebar}
+        onOpenChange={setShowEditSidebar}
+        onSuccess={() => {
+          setPropertyToEdit(null);
+          fetchStats();
+        }}
+      />
+
+      {/* Property Detail View */}
+      <PropertyDetailView
+        property={selectedProperty}
+        open={showDetailView}
+        onOpenChange={setShowDetailView}
+        onEdit={handleEditProperty}
+        onScheduleViewing={handleScheduleViewing}
+      />
+
+      {/* Property Delete Dialog */}
+      <PropertyDeleteDialog
+        open={!!propertyToDelete}
+        onOpenChange={(open) => !open && setPropertyToDelete(null)}
+        onConfirm={confirmDeleteProperty}
+        propertyTitle={propertyToDelete?.title || ''}
+        isDeleting={!!deleting}
+      />
 
       {/* Add Property Form */}
       <AddPropertyForm 

@@ -32,14 +32,22 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
         
         for (const imageUrl of images) {
           try {
-            // Check if it's already a full URL or a storage path
+            // Check if it's already a full URL (starts with http)
             if (imageUrl.startsWith('http')) {
               urls.push(imageUrl);
             } else {
-              // Generate signed URL for storage paths
-              const path = imageUrl.startsWith(`${propertyId}/`) 
-                ? imageUrl 
-                : `${propertyId}/${imageUrl}`;
+              // For storage paths, try to create signed URL
+              let path = imageUrl;
+              
+              // Normalize the path - remove any 'property-images/' prefix if it exists
+              if (path.startsWith('property-images/')) {
+                path = path.substring('property-images/'.length);
+              }
+              
+              // Ensure proper path structure
+              if (!path.startsWith(`${propertyId}/`)) {
+                path = `${propertyId}/${path}`;
+              }
                 
               const { data, error } = await supabase.storage
                 .from('property-images')
@@ -47,7 +55,8 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
                 
               if (error) {
                 console.warn('Failed to create signed URL for:', path, error);
-                urls.push(imageUrl); // Fallback to original URL
+                // Try the original URL as fallback
+                urls.push(imageUrl);
               } else {
                 urls.push(data.signedUrl);
               }
