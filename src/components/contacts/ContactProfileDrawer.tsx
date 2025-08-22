@@ -92,7 +92,7 @@ export default function ContactProfileDrawer({ contact, open, onClose }: Contact
       const filePath = `documents/${user.id}/${contact.id}/general/${fileName}`;
 
       // Upload to storage
-      const { error: uploadError } = await uploadFile(filePath, file);
+      const { error: uploadError } = await uploadFile('documents', filePath, file);
       if (uploadError) throw uploadError;
 
       // Save to database
@@ -127,7 +127,7 @@ export default function ContactProfileDrawer({ contact, open, onClose }: Contact
 
   const handleFileDownload = async (file: ContactFile) => {
     try {
-      const { data: signedUrl, error } = await createSignedUrl(file.path, 300);
+      const { data: signedUrl, error } = await createSignedUrl('documents', file.path, 300);
       if (error) throw error;
       if (!signedUrl?.signedUrl) throw new Error('No signed URL received');
 
@@ -147,7 +147,7 @@ export default function ContactProfileDrawer({ contact, open, onClose }: Contact
 
     try {
       // Delete from storage
-      const { error: storageError } = await deleteFile(file.path);
+      const { error: storageError } = await deleteFile('documents', file.path);
       if (storageError) throw storageError;
 
       // Delete from database
