@@ -155,6 +155,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "deals_contact_id_fkey"
             columns: ["contact_id"]
             isOneToOne: false
@@ -636,7 +643,7 @@ export type Database = {
         Returns: string
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: Record<PropertyKey, never> | { uid?: string }
         Returns: string
       }
       get_least_busy_agent: {
