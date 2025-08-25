@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useProperties, Property } from "@/hooks/useProperties";
-import { useToast } from "@/hooks/use-toast";
-import { PropertyForm } from "@/components/forms/PropertyForm";
+import { Property } from "@/hooks/useProperties";
+import { PropertyEditForm } from "@/components/forms/PropertyEditForm";
 import { X } from 'lucide-react';
 
 interface PropertyEditSidebarProps {
@@ -19,10 +18,7 @@ export const PropertyEditSidebar: React.FC<PropertyEditSidebarProps> = ({
   onOpenChange,
   onSuccess
 }) => {
-  const { updateProperty } = useProperties();
-  const { toast } = useToast();
-
-  const handlePropertyFormClose = () => {
+  const handleSuccess = () => {
     onOpenChange(false);
     onSuccess?.();
   };
@@ -47,11 +43,9 @@ export const PropertyEditSidebar: React.FC<PropertyEditSidebarProps> = ({
 
         <div className="mt-6">
           {property && (
-            <PropertyForm
-              open={false}
-              onOpenChange={handlePropertyFormClose}
-              onSuccess={handlePropertyFormClose}
-              editProperty={property}
+            <PropertyEditForm
+              property={property}
+              onSuccess={handleSuccess}
             />
           )}
         </div>
