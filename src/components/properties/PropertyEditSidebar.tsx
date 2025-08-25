@@ -51,6 +51,7 @@ export const PropertyEditSidebar: React.FC<PropertyEditSidebarProps> = ({
               open={false}
               onOpenChange={handlePropertyFormClose}
               onSuccess={handlePropertyFormClose}
+              editProperty={property}
             />
           )}
         </div>

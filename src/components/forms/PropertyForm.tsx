@@ -41,9 +41,40 @@ interface PropertyFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  editProperty?: Property | null;
 }
 
-export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, onSuccess }) => {
+interface Property {
+  id: string;
+  title: string;
+  description?: string;
+  property_type: string;
+  segment?: 'residential' | 'commercial';
+  subtype?: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code?: string;
+  unit_number?: string;
+  price: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  area_sqft?: number;
+  status: 'available' | 'pending' | 'sold' | 'off_market' | 'vacant' | 'rented' | 'in_development';
+  offer_type: 'rent' | 'sale';
+  featured?: boolean;
+  images?: string[];
+  agent_id: string;
+  permit_number?: string;
+  owner_contact_id?: string;
+  location_place_id?: string;
+  location_lat?: number;
+  location_lng?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, onSuccess, editProperty }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const contacts = useContacts();
@@ -78,6 +109,61 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       agent_id: user?.id || '',
     },
   });
+
+  // Reset form when editProperty changes
+  useEffect(() => {
+    if (editProperty) {
+      form.reset({
+        title: editProperty.title || '',
+        segment: editProperty.segment || 'residential',
+        subtype: editProperty.subtype || '',
+        offer_type: editProperty.offer_type || 'sale',
+        price: editProperty.price || 0,
+        description: editProperty.description || '',
+        location: editProperty.address || '',
+        address: editProperty.address || '',
+        city: (editProperty.city as any) || 'Dubai',
+        unit_number: editProperty.unit_number || '',
+        bedrooms: editProperty.bedrooms || 1,
+        bathrooms: editProperty.bathrooms || 1,
+        area_sqft: editProperty.area_sqft || 0,
+        plot_area_sqft: 0,
+        status: editProperty.status === 'available' ? 'vacant' : editProperty.status as any || 'vacant',
+        permit_number: editProperty.permit_number || '',
+        owner_contact_id: editProperty.owner_contact_id || '',
+        agent_id: editProperty.agent_id || user?.id || '',
+      });
+      
+      // Set existing images
+      if (editProperty.images && editProperty.images.length > 0) {
+        setUploadedImages(editProperty.images);
+      }
+    } else {
+      form.reset({
+        title: '',
+        segment: 'residential',
+        subtype: '',
+        offer_type: 'sale',
+        price: 0,
+        description: '',
+        location: '',
+        address: '',
+        city: 'Dubai',
+        unit_number: '',
+        bedrooms: 1,
+        bathrooms: 1,
+        area_sqft: 0,
+        plot_area_sqft: 0,
+        status: 'vacant',
+        permit_number: '',
+        owner_contact_id: '',
+        agent_id: user?.id || '',
+      });
+      setUploadedImages([]);
+      setUploadedLayouts([]);
+      setUploadedDocuments([]);
+    }
+  }, [editProperty, form, user?.id]);
 
   const watchSegment = form.watch('segment');
 
@@ -250,7 +336,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       // Check if admin for agent assignment
       const isAdmin = profile?.role === 'admin';
       
-      // Prepare payload for direct insert
+      // Prepare payload
       const payload = {
         title: data.title,
         segment: data.segment,
@@ -274,16 +360,35 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         images: uploadedImages.length > 0 ? uploadedImages : null,
       };
 
-      // Direct insert to properties table
-      const { data: propertyData, error } = await supabase
-        .from('properties')
-        .insert([payload])
-        .select('*')
-        .single();
+      let propertyData;
 
-      if (error) {
-        console.error('Create property error:', error);
-        throw error;
+      if (editProperty) {
+        // Update existing property
+        const { data: updatedData, error } = await supabase
+          .from('properties')
+          .update(payload)
+          .eq('id', editProperty.id)
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Update property error:', error);
+          throw error;
+        }
+        propertyData = updatedData;
+      } else {
+        // Create new property
+        const { data: newData, error } = await supabase
+          .from('properties')
+          .insert([payload])
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Create property error:', error);
+          throw error;
+        }
+        propertyData = newData;
       }
 
       // Move all files and update contact records
@@ -328,8 +433,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       }
 
       toast({
-        title: 'Property created successfully',
-        description: 'New property has been added to your listings.',
+        title: editProperty ? 'Property updated successfully' : 'Property created successfully',
+        description: editProperty ? 'Property has been updated.' : 'New property has been added to your listings.',
       });
 
       form.reset();
@@ -348,7 +453,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       }
       
       toast({
-        title: 'Error creating property',
+        title: editProperty ? 'Error updating property' : 'Error creating property',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -390,7 +495,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Property</DialogTitle>
+          <DialogTitle>{editProperty ? 'Edit Property' : 'Add New Property'}</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -966,7 +1071,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="flex-1" disabled={loading}>
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {loading ? 'Creating...' : 'Create Property'}
+                {loading 
+                  ? (editProperty ? 'Updating...' : 'Creating...') 
+                  : (editProperty ? 'Update Property' : 'Create Property')
+                }
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
