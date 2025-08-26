@@ -11,7 +11,7 @@ import { Property } from "@/hooks/useProperties";
 import {
   MapPin, Bed, Bath, Square, Calendar, FileText, 
   Download, ExternalLink, Building, Home,
-  Edit, X
+  Edit, X, Share2
 } from 'lucide-react';
 
 interface PropertyDetailViewProps {
@@ -20,6 +20,7 @@ interface PropertyDetailViewProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: (property: Property) => void;
   onScheduleViewing?: (property: Property) => void;
+  onShare?: (property: Property) => void;
 }
 
 interface PropertyFile {
@@ -53,7 +54,8 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
   open,
   onOpenChange,
   onEdit,
-  onScheduleViewing
+  onScheduleViewing,
+  onShare
 }) => {
   const [files, setFiles] = useState<PropertyFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
@@ -132,6 +134,15 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
               </div>
             </div>
             <div className="flex gap-2">
+              {onShare && (
+                <Button
+                  variant="outline"
+                  onClick={() => onShare(property)}
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+              )}
               {onEdit && (
                 <Button
                   variant="outline"

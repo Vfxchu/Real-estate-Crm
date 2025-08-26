@@ -15,6 +15,7 @@ import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar";
 import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
+import { SharePropertyDialog } from "@/components/properties/SharePropertyDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
@@ -35,6 +36,7 @@ import {
   TrendingUp,
   Coins,
   Calendar,
+  Share2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -110,8 +112,10 @@ export const Properties = () => {
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [showEditSidebar, setShowEditSidebar] = useState(false);
   const [showDetailView, setShowDetailView] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [propertyToEdit, setPropertyToEdit] = useState<Property | null>(null);
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+  const [propertyToShare, setPropertyToShare] = useState<Property | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [activeTab, setActiveTab] = useState('residential');
@@ -279,6 +283,11 @@ export const Properties = () => {
   const handleViewProperty = (property: Property) => {
     setSelectedProperty(property);
     setShowDetailView(true);
+  };
+
+  const handleShareProperty = (property: Property) => {
+    setPropertyToShare(property);
+    setShowShareDialog(true);
   };
 
   const handleScheduleViewing = (property: Property) => {
@@ -659,22 +668,29 @@ export const Properties = () => {
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => handleEditProperty(property)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteProperty(property)}
-                      disabled={deleting === property.id}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost"
+                       onClick={() => handleShareProperty(property)}
+                     >
+                       <Share2 className="w-4 h-4" />
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost"
+                       onClick={() => handleEditProperty(property)}
+                     >
+                       <Edit className="w-4 h-4" />
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost" 
+                       className="text-destructive hover:text-destructive"
+                       onClick={() => handleDeleteProperty(property)}
+                       disabled={deleting === property.id}
+                     >
+                       <Trash2 className="w-4 h-4" />
+                     </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -754,22 +770,29 @@ export const Properties = () => {
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => handleEditProperty(property)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteProperty(property)}
-                      disabled={deleting === property.id}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost"
+                       onClick={() => handleShareProperty(property)}
+                     >
+                       <Share2 className="w-4 h-4" />
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost"
+                       onClick={() => handleEditProperty(property)}
+                     >
+                       <Edit className="w-4 h-4" />
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="ghost" 
+                       className="text-destructive hover:text-destructive"
+                       onClick={() => handleDeleteProperty(property)}
+                       disabled={deleting === property.id}
+                     >
+                       <Trash2 className="w-4 h-4" />
+                     </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -821,6 +844,14 @@ export const Properties = () => {
         onOpenChange={setShowDetailView}
         onEdit={handleEditProperty}
         onScheduleViewing={handleScheduleViewing}
+        onShare={handleShareProperty}
+      />
+
+      {/* Share Property Dialog */}
+      <SharePropertyDialog
+        property={propertyToShare}
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
       />
 
       {/* Property Delete Dialog */}
