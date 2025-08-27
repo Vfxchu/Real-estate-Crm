@@ -58,11 +58,7 @@ export const useProperties = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // If user is an agent, only show their properties
-      if (profile?.role === 'agent') {
-        query = query.eq('agent_id', user?.id);
-      }
-
+      // Agents and Admins should see all properties – no owner filter
       const { data, error } = await query;
 
       if (error) throw error;
