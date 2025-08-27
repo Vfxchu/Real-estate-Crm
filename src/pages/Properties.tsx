@@ -15,7 +15,7 @@ import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar";
 import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
-import { SharePropertyDialog } from "@/components/properties/SharePropertyDialog";
+import { ExportPropertyDialog } from "@/components/properties/ExportPropertyDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
@@ -847,8 +847,8 @@ export const Properties = () => {
         onShare={handleShareProperty}
       />
 
-      {/* Share Property Dialog */}
-      <SharePropertyDialog
+      {/* Export Property Dialog */}
+      <ExportPropertyDialog
         property={propertyToShare}
         open={showShareDialog}
         onOpenChange={setShowShareDialog}
