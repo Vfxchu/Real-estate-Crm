@@ -15,7 +15,7 @@ import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar";
 import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
-import { ExportPropertyDialog } from "@/components/properties/ExportPropertyDialog";
+import { ExportPropertyDialog } from "@/components/properties/PropertyExportDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
