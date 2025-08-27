@@ -17,6 +17,7 @@ import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar
 import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
 import { ExportPropertyDialog } from "@/components/properties/PropertyExportDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
 import {
@@ -106,6 +107,8 @@ const useDebounce = (value: string, delay: number) => {
 
 export const Properties = () => {
   const { properties, loading, deleteProperty } = useProperties();
+  const { user, profile } = useAuth();
+  const isAdmin = profile?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -259,6 +262,15 @@ export const Properties = () => {
   }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab]);
 
   const handleDeleteProperty = async (property: Property) => {
+    // Only allow deletion if user is admin or owns the property
+    if (!isAdmin && property.agent_id !== user?.id) {
+      toast({
+        title: 'Access denied',
+        description: 'You can only delete your own properties.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setPropertyToDelete(property);
   };
 
@@ -276,6 +288,15 @@ export const Properties = () => {
   };
 
   const handleEditProperty = (property: Property) => {
+    // Only allow editing if user is admin or owns the property
+    if (!isAdmin && property.agent_id !== user?.id) {
+      toast({
+        title: 'Access denied',
+        description: 'You can only edit your own properties.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setPropertyToEdit(property);
     setShowEditSidebar(true);
   };
@@ -679,18 +700,23 @@ export const Properties = () => {
                        size="sm" 
                        variant="ghost"
                        onClick={() => handleEditProperty(property)}
+                       disabled={!isAdmin && property.agent_id !== user?.id}
+                       title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
                      >
                        <Edit className="w-4 h-4" />
                      </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost" 
-                       className="text-destructive hover:text-destructive"
-                       onClick={() => handleDeleteProperty(property)}
-                       disabled={deleting === property.id}
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </Button>
+                     {isAdmin && (
+                       <Button 
+                         size="sm" 
+                         variant="ghost" 
+                         className="text-destructive hover:text-destructive"
+                         onClick={() => handleDeleteProperty(property)}
+                         disabled={deleting === property.id}
+                         title="Delete property"
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </Button>
+                     )}
                   </div>
                 </CardContent>
               </Card>
@@ -781,18 +807,23 @@ export const Properties = () => {
                        size="sm" 
                        variant="ghost"
                        onClick={() => handleEditProperty(property)}
+                       disabled={!isAdmin && property.agent_id !== user?.id}
+                       title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
                      >
                        <Edit className="w-4 h-4" />
                      </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost" 
-                       className="text-destructive hover:text-destructive"
-                       onClick={() => handleDeleteProperty(property)}
-                       disabled={deleting === property.id}
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </Button>
+                     {isAdmin && (
+                       <Button 
+                         size="sm" 
+                         variant="ghost" 
+                         className="text-destructive hover:text-destructive"
+                         onClick={() => handleDeleteProperty(property)}
+                         disabled={deleting === property.id}
+                         title="Delete property"
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </Button>
+                     )}
                   </div>
                 </CardContent>
               </Card>

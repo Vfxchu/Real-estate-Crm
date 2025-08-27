@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { LeadsChart } from '@/components/dashboard/LeadsChart';
+import { PropertiesOverview } from '@/components/dashboard/PropertiesOverview';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -187,6 +188,9 @@ export const Dashboard = () => {
           <RecentActivity />
         </div>
       </div>
+
+      {/* Properties Overview */}
+      <PropertiesOverview />
 
       {/* Recent Leads/Tasks */}
       <Card className="card-elevated">

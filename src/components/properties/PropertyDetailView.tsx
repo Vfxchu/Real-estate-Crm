@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PropertyGallery } from "./PropertyGallery";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Property } from "@/hooks/useProperties";
 import {
@@ -59,7 +60,13 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
 }) => {
   const [files, setFiles] = useState<PropertyFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const { user, profile } = useAuth();
   const { toast } = useToast();
+  
+  const isAdmin = profile?.role === 'admin';
+  const isOwner = property?.agent_id === user?.id;
+  const canEdit = isAdmin || isOwner;
+  const canShare = true; // All authenticated users can share/export
 
   useEffect(() => {
     if (property && open) {
@@ -134,7 +141,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
               </div>
             </div>
             <div className="flex gap-2">
-              {onShare && (
+              {onShare && canShare && (
                 <Button
                   variant="outline"
                   onClick={() => onShare(property)}
@@ -143,10 +150,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   Export
                 </Button>
               )}
-              {onEdit && (
+              {onEdit && canEdit && (
                 <Button
                   variant="outline"
                   onClick={() => onEdit(property)}
+                  title={canEdit ? "Edit property" : "You can only edit your own properties"}
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
