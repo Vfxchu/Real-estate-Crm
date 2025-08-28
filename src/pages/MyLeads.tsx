@@ -379,16 +379,20 @@ export const MyLeads = () => {
 
       {/* Add Lead Form */}
       <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
-          <div className="overflow-y-auto max-h-[calc(90vh-8rem)] pr-2">
+          <div className="flex-1 overflow-y-auto pr-2">
             <LeadForm
               context="agent"
               onSuccess={async () => {
                 await fetchLeads();
                 setAddLeadFormOpen(false);
+                toast({
+                  title: "Success!",
+                  description: "Lead has been created successfully.",
+                });
               }}
             />
           </div>
