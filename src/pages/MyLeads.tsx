@@ -379,11 +379,11 @@ export const MyLeads = () => {
 
       {/* Add Lead Form */}
       <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto pr-2">
+          <div className="flex-1 overflow-y-auto">
             <LeadForm
               context="agent"
               onSuccess={async () => {
