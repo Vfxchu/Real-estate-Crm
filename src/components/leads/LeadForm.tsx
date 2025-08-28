@@ -242,9 +242,9 @@ export default function LeadForm({
   };
 
   return (
-    <Card className="p-4 md:p-6">
+    <div className="w-full">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           {/* Full Name (required) */}
           <FormField
             control={form.control}
@@ -564,6 +564,6 @@ export default function LeadForm({
           </div>
         </form>
       </Form>
-    </Card>
+    </div>
   );
 }
