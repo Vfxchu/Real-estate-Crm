@@ -10,6 +10,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddAgentForm } from "@/components/forms/AddAgentForm";
 import { AgentLeadsTable } from "@/components/agents/AgentLeadsTable";
+import { AgentPerformanceView } from "@/components/agents/AgentPerformanceView";
+import { AgentLeadAssignment } from "@/components/agents/AgentLeadAssignment";
+import { AgentEditDialog } from "@/components/agents/AgentEditDialog";
 import {
   Table,
   TableBody,
@@ -37,12 +40,15 @@ import { useAgents, type Agent } from '@/hooks/useAgents';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const AgentManager = () => {
-  const { agents, loading, updateAgent, deleteAgent } = useAgents();
+  const { agents, loading, updateAgent, deleteAgent, fetchAgents } = useAgents();
   const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showPerformanceView, setShowPerformanceView] = useState(false);
+  const [showLeadAssignment, setShowLeadAssignment] = useState(false);
   const { toast } = useToast();
 
   const filteredAgents = agents.filter(agent => {
@@ -70,11 +76,55 @@ export const AgentManager = () => {
     }
   };
 
-  const handleAction = (action: string, agentId: string) => {
-    toast({
-      title: `${action} action`,
-      description: `${action} performed for agent ${agentId}`,
-    });
+  const handleAgentActivation = async (agent: Agent) => {
+    const newStatus = agent.status === 'active' ? 'inactive' : 'active';
+    
+    try {
+      await updateAgent(agent.user_id, { status: newStatus });
+      toast({
+        title: 'Agent status updated',
+        description: `${agent.name} is now ${newStatus}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error updating agent status',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteAgent = async (agent: Agent) => {
+    if (window.confirm(`Are you sure you want to deactivate ${agent.name}? This action will set their status to inactive.`)) {
+      try {
+        await deleteAgent(agent.user_id);
+        toast({
+          title: 'Agent deactivated',
+          description: `${agent.name} has been deactivated.`,
+        });
+      } catch (error: any) {
+        toast({
+          title: 'Error deactivating agent',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const openEditDialog = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setShowEditDialog(true);
+  };
+
+  const openPerformanceView = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setShowPerformanceView(true);
+  };
+
+  const openLeadAssignment = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setShowLeadAssignment(true);
   };
 
   const totalAgents = agents.length;
@@ -83,8 +133,7 @@ export const AgentManager = () => {
   const totalClosedDeals = agents.reduce((sum, a) => sum + a.closedDeals, 0);
 
   const handleAgentUpdate = () => {
-    // This will trigger a refresh of agents and their lead counts
-    window.location.reload();
+    fetchAgents();
   };
 
   return (
@@ -238,10 +287,21 @@ export const AgentManager = () => {
                           <div className="space-y-1">
                             <p className="text-sm">{agent.phone}</p>
                             <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0"
+                                onClick={() => agent.phone && window.open(`tel:${agent.phone}`)}
+                                disabled={!agent.phone}
+                              >
                                 <Phone className="w-3 h-3" />
                               </Button>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0"
+                                onClick={() => window.open(`mailto:${agent.email}`)}
+                              >
                                 <Mail className="w-3 h-3" />
                               </Button>
                             </div>
@@ -267,76 +327,48 @@ export const AgentManager = () => {
                         <TableCell>{new Date(agent.updated_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() => setSelectedAgent(agent)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-2xl">
-                                <DialogHeader>
-                                  <DialogTitle>Agent Details - {selectedAgent?.name}</DialogTitle>
-                                </DialogHeader>
-                                {selectedAgent && (
-                                  <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <Label>Name</Label>
-                                        <Input defaultValue={selectedAgent.name} className="mt-2" />
-                                      </div>
-                                      <div>
-                                        <Label>Email</Label>
-                                        <Input defaultValue={selectedAgent.email} className="mt-2" />
-                                      </div>
-                                      <div>
-                                        <Label>Phone</Label>
-                                        <Input defaultValue={selectedAgent.phone} className="mt-2" />
-                                      </div>
-                                      <div>
-                                        <Label>Role</Label>
-                                        <Select defaultValue={selectedAgent.role}>
-                                          <SelectTrigger className="mt-2">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="junior">Junior Agent</SelectItem>
-                                            <SelectItem value="senior">Senior Agent</SelectItem>
-                                            <SelectItem value="lead">Lead Agent</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div>
-                                        <Label>Status</Label>
-                                        <Select defaultValue={selectedAgent.status}>
-                                          <SelectTrigger className="mt-2">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <Button className="btn-primary">Save Changes</Button>
-                                      <Button variant="outline">View Performance</Button>
-                                      <Button variant="outline">Assign Leads</Button>
-                                    </div>
-                                  </div>
-                                )}
-                              </DialogContent>
-                            </Dialog>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => openEditDialog(agent)}
+                              title="Edit Agent"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => openPerformanceView(agent)}
+                              title="View Performance"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              onClick={() => openLeadAssignment(agent)}
+                              title="Assign Leads"
+                            >
+                              <Users className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className={`h-8 w-8 p-0 ${agent.status === 'active' ? 'text-warning' : 'text-success'}`}
+                              onClick={() => handleAgentActivation(agent)}
+                              title={agent.status === 'active' ? 'Deactivate Agent' : 'Activate Agent'}
+                            >
+                              <UserCheck className="w-4 h-4" />
+                            </Button>
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0 text-destructive"
-                              onClick={() => deleteAgent(agent.user_id)}
+                              onClick={() => handleDeleteAgent(agent)}
+                              title="Delete Agent"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -388,6 +420,35 @@ export const AgentManager = () => {
         onOpenChange={setShowAddForm}
         onAgentCreated={handleAgentUpdate}
       />
+
+      {/* Agent Edit Dialog */}
+      <AgentEditDialog
+        agent={selectedAgent}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onAgentUpdated={handleAgentUpdate}
+        onViewPerformance={openPerformanceView}
+        onAssignLeads={openLeadAssignment}
+      />
+
+      {/* Agent Performance View */}
+      {selectedAgent && (
+        <AgentPerformanceView
+          agent={selectedAgent}
+          open={showPerformanceView}
+          onOpenChange={setShowPerformanceView}
+        />
+      )}
+
+      {/* Agent Lead Assignment */}
+      {selectedAgent && (
+        <AgentLeadAssignment
+          agent={selectedAgent}
+          open={showLeadAssignment}
+          onOpenChange={setShowLeadAssignment}
+          onAssignmentComplete={handleAgentUpdate}
+        />
+      )}
     </div>
   );
 };
