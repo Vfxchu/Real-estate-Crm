@@ -35,18 +35,45 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
           try {
             // Check if it's already a full URL (starts with http)
             if (imageUrl.startsWith('http')) {
-              urls.push(imageUrl);
+              // If it's a Supabase Storage URL for property-images, convert to signed URL (bucket is private)
+              const publicMatch = imageUrl.match(/\/object\/public\/property-images\/(.+)$/);
+              const signMatch = imageUrl.match(/\/object\/sign\/property-images\/(.+)$/);
+              const directMatch = imageUrl.match(/\/object\/property-images\/(.+)$/);
+
+              if (signMatch) {
+                // Already a signed URL
+                urls.push(imageUrl);
+              } else if (publicMatch || directMatch) {
+                const pathFromUrl = (publicMatch?.[1] || directMatch?.[1]) as string;
+                try {
+                  const { data, error } = await supabase.storage
+                    .from('property-images')
+                    .createSignedUrl(pathFromUrl, 3600);
+                  if (error || !data) {
+                    console.warn('Failed to sign from URL path:', pathFromUrl, error);
+                    urls.push(imageUrl);
+                  } else {
+                    urls.push(data.signedUrl);
+                  }
+                } catch (err) {
+                  console.warn('Error signing from URL:', imageUrl, err);
+                  urls.push(imageUrl);
+                }
+              } else {
+                // External URL - use as is
+                urls.push(imageUrl);
+              }
             } else {
               // For storage paths, try to create signed URL
               let path = imageUrl;
-              
+
               // Normalize the path - remove any 'property-images/' prefix if it exists
               if (path.startsWith('property-images/')) {
                 path = path.substring('property-images/'.length);
               }
-              
-              // Ensure proper path structure
-              if (!path.startsWith(`${propertyId}/`)) {
+
+              // If path is under a shared folder like 'temp/', don't force propertyId prefix
+              if (!path.startsWith('temp/') && !path.startsWith(`${propertyId}/`)) {
                 path = `${propertyId}/${path}`;
               }
                 
@@ -54,7 +81,7 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
                 .from('property-images')
                 .createSignedUrl(path, 3600); // 1 hour expiry
                 
-              if (error) {
+              if (error || !data) {
                 console.warn('Failed to create signed URL for:', path, error);
                 // Try the original URL as fallback
                 urls.push(imageUrl);
@@ -115,9 +142,8 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
           src={displayImages[0]} 
           alt={propertyTitle}
           className="w-full h-full object-cover"
-          onError={(e) => {
+          onError={() => {
             console.warn('Image failed to load:', displayImages[0]);
-            e.currentTarget.style.display = 'none';
           }}
         />
       )}
