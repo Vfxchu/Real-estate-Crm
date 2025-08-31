@@ -50,8 +50,18 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
                     .from('property-images')
                     .createSignedUrl(pathFromUrl, 3600);
                   if (error || !data) {
-                    console.warn('Failed to sign from URL path:', pathFromUrl, error);
-                    urls.push(imageUrl);
+                    // Fallback: try propertyId/filename (files may have been moved from temp)
+                    const fileName = pathFromUrl.split('/').pop() as string;
+                    const altPath = `${propertyId}/${fileName}`;
+                    const { data: altData, error: altErr } = await supabase.storage
+                      .from('property-images')
+                      .createSignedUrl(altPath, 3600);
+                    if (altErr || !altData) {
+                      console.warn('Failed to sign from URL path:', pathFromUrl, error);
+                      urls.push(imageUrl);
+                    } else {
+                      urls.push(altData.signedUrl);
+                    }
                   } else {
                     urls.push(data.signedUrl);
                   }

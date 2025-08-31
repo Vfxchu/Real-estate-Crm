@@ -308,11 +308,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
               .from(bucket)
               .remove([tempPath]);
               
-            const { data: { publicUrl } } = supabase.storage
-              .from(bucket)
-              .getPublicUrl(propertyPath);
-              
-            movedFiles.push(publicUrl);
+            // Store storage path (not public URL) so frontend can always sign when needed
+            movedFiles.push(propertyPath);
           }
         }
       } catch (error) {
@@ -393,43 +390,44 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       // Move all files and update contact records
       if (propertyData) {
-        const fileOperations = [];
-        
-        // Handle images
+        // Move images first and update the property with storage paths
+        let movedImagePaths: string[] = [];
         if (uploadedImages.length > 0) {
-          fileOperations.push(moveFiles(uploadedImages, propertyData.id, 'property-images', 'image'));
+          movedImagePaths = await moveFiles(uploadedImages, propertyData.id, 'property-images', 'image');
+          if (movedImagePaths.length > 0) {
+            await supabase
+              .from('properties')
+              .update({ images: movedImagePaths })
+              .eq('id', propertyData.id);
+          }
         }
-        
-        // Handle layouts
+
+        // Move layouts
         if (uploadedLayouts.length > 0) {
-          fileOperations.push(moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout'));
+          await moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout');
         }
-        
-        // Handle documents and update contact files
+
+        // Move documents and update contact files
         if (uploadedDocuments.length > 0) {
-          fileOperations.push(moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document'));
-          
+          await moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document');
           // Update contact files for documents
           if (data.owner_contact_id) {
             for (const docUrl of uploadedDocuments) {
               const urlParts = docUrl.split('/');
               const fileName = urlParts[urlParts.length - 1];
-              
               await supabase
                 .from('contact_files')
                 .insert({
                   contact_id: data.owner_contact_id,
                   source: 'property',
                   property_id: propertyData.id,
-                  path: docUrl,
+                  path: `${propertyData.id}/${fileName}`,
                   name: fileName,
                   type: 'document'
                 });
             }
           }
         }
-        
-        await Promise.all(fileOperations);
       }
 
       toast({

@@ -122,11 +122,8 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('property-images')
-          .getPublicUrl(filePath);
-
-        newFiles.push(publicUrl);
+        // Store storage path instead of public URL for secure access
+        newFiles.push(filePath);
       }
       
       setUploadedImages(prev => [...prev, ...newFiles]);
