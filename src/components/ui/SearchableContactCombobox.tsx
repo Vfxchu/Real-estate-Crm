@@ -36,10 +36,19 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   const loadContacts = async (searchTerm = "") => {
     setLoading(true);
     try {
-      const { data } = await listContacts({
+      console.log('Loading contacts with search term:', searchTerm);
+      const { data, error } = await listContacts({
         q: searchTerm,
         pageSize: 50,
       });
+      
+      if (error) {
+        console.error('Error loading contacts:', error);
+        setContacts([]);
+        return;
+      }
+      
+      console.log('Loaded contacts:', data);
       setContacts(data || []);
     } catch (error) {
       console.error('Failed to load contacts:', error);
@@ -53,7 +62,18 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     if (open) {
       loadContacts(search);
     }
-  }, [open, search]);
+  }, [open]);
+
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    if (!open) return;
+    
+    const timeoutId = setTimeout(() => {
+      loadContacts(search);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [search, open]);
 
   // Listen for new contacts created
   useEffect(() => {
@@ -67,8 +87,12 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
 
   const selectedContact = contacts.find(c => c.id === value);
 
-  const handleAddContactSuccess = () => {
+  const handleAddContactSuccess = (newContact?: any) => {
     setShowAddContact(false);
+    // If a new contact was created, select it automatically
+    if (newContact?.id) {
+      onChange(newContact.id);
+    }
     loadContacts(search); // Refresh contacts list
   };
 
