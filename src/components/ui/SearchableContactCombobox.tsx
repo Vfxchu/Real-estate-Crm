@@ -127,9 +127,9 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
                   {contacts.map((contact) => (
                     <CommandItem
                       key={contact.id}
-                      value={contact.id}
-                      onSelect={(currentValue) => {
-                        onChange(currentValue === value ? undefined : currentValue);
+                      value={contact.name}
+                      onSelect={() => {
+                        onChange(contact.id === value ? undefined : contact.id);
                         setOpen(false);
                       }}
                     >
