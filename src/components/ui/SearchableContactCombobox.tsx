@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -123,37 +124,39 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
                 onValueChange={setSearch}
                 className="border-none focus:ring-0"
               />
-              <CommandList className="max-h-[300px] overflow-y-auto bg-background">
-                <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                  {loading ? "Loading..." : "No contacts found."}
-                </CommandEmpty>
-                <CommandGroup className="bg-background">
-                  {contacts.map((contact) => (
-                    <CommandItem
-                      key={contact.id}
-                      value={contact.name}
-                      onSelect={() => {
-                        onChange(contact.id === value ? undefined : contact.id);
-                        setOpen(false);
-                      }}
-                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground bg-background"
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === contact.id ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-medium">{contact.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {contact.email} {contact.phone && `• ${contact.phone}`}
-                        </span>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
+              <ScrollArea className="h-[300px]">
+                <CommandList className="bg-background">
+                  <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                    {loading ? "Loading..." : "No contacts found."}
+                  </CommandEmpty>
+                  <CommandGroup className="bg-background p-2">
+                    {contacts.map((contact) => (
+                      <CommandItem
+                        key={contact.id}
+                        value={contact.name}
+                        onSelect={() => {
+                          onChange(contact.id === value ? undefined : contact.id);
+                          setOpen(false);
+                        }}
+                        className="cursor-pointer hover:bg-accent hover:text-accent-foreground bg-background rounded-md p-2 mb-1"
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === contact.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{contact.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {contact.email} {contact.phone && `• ${contact.phone}`}
+                          </span>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </ScrollArea>
             </Command>
           </PopoverContent>
         </Popover>
