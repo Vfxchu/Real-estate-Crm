@@ -112,18 +112,22 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0" align="start">
-            <Command>
+          <PopoverContent 
+            className="w-[400px] p-0 z-50 bg-background border shadow-lg" 
+            align="start"
+          >
+            <Command className="bg-background">
               <CommandInput
                 placeholder="Search contacts..."
                 value={search}
                 onValueChange={setSearch}
+                className="border-none focus:ring-0"
               />
-              <CommandList>
-                <CommandEmpty>
+              <CommandList className="max-h-[300px] overflow-y-auto bg-background">
+                <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
                   {loading ? "Loading..." : "No contacts found."}
                 </CommandEmpty>
-                <CommandGroup>
+                <CommandGroup className="bg-background">
                   {contacts.map((contact) => (
                     <CommandItem
                       key={contact.id}
@@ -132,6 +136,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
                         onChange(contact.id === value ? undefined : contact.id);
                         setOpen(false);
                       }}
+                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground bg-background"
                     >
                       <Check
                         className={cn(
