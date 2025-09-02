@@ -52,7 +52,7 @@ export const useProperties = () => {
         .select(`
           id,title,segment,subtype,address,city,state,zip_code,status,offer_type,price,
           bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,images,
-          profiles!properties_agent_id_fkey (
+          profiles (
             name,
             email
           )
@@ -84,7 +84,7 @@ export const useProperties = () => {
         .insert([propertyData])
         .select(`
           *,
-          profiles!properties_agent_id_fkey (
+          profiles (
             name,
             email
           )
