@@ -76,14 +76,21 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     return () => clearTimeout(timeoutId);
   }, [search, open]);
 
-  // Listen for new contacts created
+  // Listen for new contacts created and data sync
   useEffect(() => {
     const handleContactsChanged = () => {
       loadContacts(search);
     };
+    const handleContactsUpdated = () => {
+      loadContacts(search);
+    };
 
     window.addEventListener('leads:changed', handleContactsChanged);
-    return () => window.removeEventListener('leads:changed', handleContactsChanged);
+    window.addEventListener('contacts:updated', handleContactsUpdated);
+    return () => {
+      window.removeEventListener('leads:changed', handleContactsChanged);
+      window.removeEventListener('contacts:updated', handleContactsUpdated);
+    };
   }, [search]);
 
   const selectedContact = contacts.find(c => c.id === value);
@@ -94,7 +101,9 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     if (newContact?.id) {
       onChange(newContact.id);
     }
-    loadContacts(search); // Refresh contacts list
+    // Refresh contacts list and dispatch sync event
+    loadContacts(search);
+    window.dispatchEvent(new CustomEvent('contacts:updated'));
   };
 
   return (
@@ -114,49 +123,52 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
             </Button>
           </PopoverTrigger>
           <PopoverContent 
-            className="w-[400px] p-0 z-50 bg-background border shadow-lg" 
+            className="w-[400px] p-0 z-[60] bg-popover border shadow-lg" 
             align="start"
+            sideOffset={5}
           >
-            <Command className="bg-background">
+            <Command className="bg-popover">
               <CommandInput
                 placeholder="Search contacts..."
                 value={search}
                 onValueChange={setSearch}
-                className="border-none focus:ring-0"
+                className="border-none focus:ring-0 bg-popover"
               />
-              <ScrollArea className="h-[300px]">
-                <CommandList className="bg-background">
-                  <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                    {loading ? "Loading..." : "No contacts found."}
-                  </CommandEmpty>
-                  <CommandGroup className="bg-background p-2">
-                    {contacts.map((contact) => (
-                      <CommandItem
-                        key={contact.id}
-                        value={contact.name}
-                        onSelect={() => {
-                          onChange(contact.id === value ? undefined : contact.id);
-                          setOpen(false);
-                        }}
-                        className="cursor-pointer hover:bg-accent hover:text-accent-foreground bg-background rounded-md p-2 mb-1"
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === contact.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">{contact.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {contact.email} {contact.phone && `• ${contact.phone}`}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </ScrollArea>
+              <div className="h-[300px] overflow-hidden border-t">
+                <ScrollArea className="h-full w-full">
+                  <CommandList className="bg-popover overflow-visible">
+                    <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                      {loading ? "Loading..." : "No contacts found."}
+                    </CommandEmpty>
+                    <CommandGroup className="p-2 bg-popover">
+                      {contacts.map((contact) => (
+                        <CommandItem
+                          key={contact.id}
+                          value={contact.name}
+                          onSelect={() => {
+                            onChange(contact.id === value ? undefined : contact.id);
+                            setOpen(false);
+                          }}
+                          className="cursor-pointer hover:bg-accent hover:text-accent-foreground bg-popover rounded-md p-2 mb-1 transition-colors"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              value === contact.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <span className="font-medium truncate">{contact.name}</span>
+                            <span className="text-sm text-muted-foreground truncate">
+                              {contact.email} {contact.phone && `• ${contact.phone}`}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </ScrollArea>
+              </div>
             </Command>
           </PopoverContent>
         </Popover>

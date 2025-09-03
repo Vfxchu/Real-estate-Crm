@@ -132,8 +132,9 @@ export default function ContactForm({ contact, onSuccess, onCancel, className }:
         toast({ title: 'Success', description: 'Contact created successfully' });
       }
       
-      // Trigger refresh event
+      // Trigger refresh event and sync events
       window.dispatchEvent(new CustomEvent('leads:changed'));
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
       
       // Pass the created/updated contact to onSuccess
       onSuccess?.(result.data);
