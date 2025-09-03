@@ -822,6 +822,32 @@ export type Database = {
             }
         Returns: string
       }
+      get_calendar_events_with_details: {
+        Args: { end_date_param?: string; start_date_param?: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          deal_id: string
+          deal_title: string
+          description: string
+          end_date: string
+          event_type: string
+          id: string
+          lead_email: string
+          lead_id: string
+          lead_name: string
+          location: string
+          notes: string
+          notification_sent: boolean
+          property_address: string
+          property_id: string
+          property_title: string
+          reminder_minutes: number
+          start_date: string
+          status: string
+          title: string
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never> | { uid?: string }
         Returns: string
