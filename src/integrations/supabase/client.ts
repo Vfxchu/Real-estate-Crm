@@ -5,14 +5,18 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://mxfmojbjjehyaisiikea.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14Zm1vamJqamVoeWFpc2lpa2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NDY2MjgsImV4cCI6MjA2OTUyMjYyOH0.vLAkBLPqa7viQ6kNPBvOZzcg42W_pmw_VXQCikZZoCM";
 
-// Debug logging
-console.log('SUPABASE URL:', SUPABASE_URL);
-console.log('SUPABASE KEY:', SUPABASE_PUBLISHABLE_KEY ? 'Loaded' : 'Missing');
+// Align with user's request: expose debug variables `url` and `key`
+const url = SUPABASE_URL;
+const key = SUPABASE_PUBLISHABLE_KEY;
+
+// Debug logging (safe - anon key is public)
+console.log('[SB] URL =', url);
+console.log('[SB] KEY loaded =', !!key, 'len:', key?.length ?? 0);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(url, key, {
   auth: {
     storage: localStorage,
     persistSession: true,
