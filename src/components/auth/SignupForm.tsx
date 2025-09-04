@@ -16,6 +16,7 @@ export const SignupForm = () => {
     password: '',
     confirmPassword: '',
     phone: '',
+    role: 'agent' as UserRole,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -106,6 +107,18 @@ export const SignupForm = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Select value={formData.role} onValueChange={(value: UserRole) => handleInputChange('role', value)}>
+                  <SelectTrigger className="input-field">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agent">Real Estate Agent</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>

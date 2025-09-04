@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { formatErrorForUser } from '@/lib/error-handler';
 
 export interface Property {
   id: string;
@@ -52,14 +51,18 @@ export const useProperties = () => {
         .select(`
           id,title,segment,subtype,address,city,state,zip_code,status,offer_type,price,
           bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,images,
-          profiles (
+          profiles!properties_agent_id_fkey (
             name,
             email
           )
         `)
         .order('created_at', { ascending: false });
 
-      // Agents and Admins should see all properties – no owner filter
+      // If user is an agent, only show their properties
+      if (profile?.role === 'agent') {
+        query = query.eq('agent_id', user?.id);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -68,7 +71,7 @@ export const useProperties = () => {
     } catch (error: any) {
       toast({
         title: 'Error fetching properties',
-        description: formatErrorForUser(error, 'fetchProperties'),
+        description: error.message,
         variant: 'destructive',
       });
     } finally {
@@ -84,7 +87,7 @@ export const useProperties = () => {
         .insert([propertyData])
         .select(`
           *,
-          profiles (
+          profiles!properties_agent_id_fkey (
             name,
             email
           )
@@ -107,7 +110,7 @@ export const useProperties = () => {
       console.error('Property creation error:', error);
       toast({
         title: 'Error creating property',
-        description: formatErrorForUser(error, 'createProperty'),
+        description: error.message || 'Please check all required fields and try again.',
         variant: 'destructive',
       });
       return { data: null, error };
@@ -135,7 +138,7 @@ export const useProperties = () => {
     } catch (error: any) {
       toast({
         title: 'Error updating property',
-        description: formatErrorForUser(error, 'updateProperty'),
+        description: error.message,
         variant: 'destructive',
       });
       return { data: null, error };
@@ -174,7 +177,7 @@ export const useProperties = () => {
     } catch (error: any) {
       toast({
         title: 'Error deleting property',
-        description: formatErrorForUser(error, 'deleteProperty'),
+        description: error.message,
         variant: 'destructive',
       });
       return { error };
@@ -201,7 +204,7 @@ export const useProperties = () => {
     } catch (error: any) {
       toast({
         title: 'Error uploading image',
-        description: formatErrorForUser(error, 'uploadPropertyImage'),
+        description: error.message,
         variant: 'destructive',
       });
       return { data: null, error };

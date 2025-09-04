@@ -20,8 +20,6 @@ import { useProperties, Property } from "@/hooks/useProperties";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
-import { BEDROOM_OPTIONS } from "@/constants/bedrooms";
-import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import {
   Search,
   Plus,
@@ -71,16 +69,14 @@ interface FilterState {
   status: string;
   minPrice: string;
   maxPrice: string;
-  bedrooms: string;
+  minBedrooms: string;
+  maxBedrooms: string;
   minBathrooms: string;
   maxBathrooms: string;
-  minBuiltUpArea: string;
-  maxBuiltUpArea: string;
-  minPlotArea: string;
-  maxPlotArea: string;
+  minArea: string;
+  maxArea: string;
   city: string;
   featured: string;
-  ownerContact: string;
 }
 
 // Property stats interface - removed avgPrice
@@ -146,16 +142,14 @@ export const Properties = () => {
     status: searchParams.get('status') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
-    bedrooms: searchParams.get('bedrooms') || '',
+    minBedrooms: searchParams.get('minBedrooms') || '',
+    maxBedrooms: searchParams.get('maxBedrooms') || '',
     minBathrooms: searchParams.get('minBathrooms') || '',
     maxBathrooms: searchParams.get('maxBathrooms') || '',
-    minBuiltUpArea: searchParams.get('minBuiltUpArea') || '',
-    maxBuiltUpArea: searchParams.get('maxBuiltUpArea') || '',
-    minPlotArea: searchParams.get('minPlotArea') || '',
-    maxPlotArea: searchParams.get('maxPlotArea') || '',
+    minArea: searchParams.get('minArea') || '',
+    maxArea: searchParams.get('maxArea') || '',
     city: searchParams.get('city') || '',
     featured: searchParams.get('featured') || '',
-    ownerContact: searchParams.get('ownerContact') || '',
   });
 
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -253,20 +247,14 @@ export const Properties = () => {
       if (isAdvancedMode) {
         if (filters.minPrice && property.price < parseFloat(filters.minPrice)) return false;
         if (filters.maxPrice && property.price > parseFloat(filters.maxPrice)) return false;
-        if (filters.bedrooms) {
-          const propertyBedroomEnum = property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} BHK`;
-          if (propertyBedroomEnum !== filters.bedrooms) return false;
-        }
+        if (filters.minBedrooms && (property.bedrooms || 0) < parseInt(filters.minBedrooms)) return false;
+        if (filters.maxBedrooms && (property.bedrooms || 0) > parseInt(filters.maxBedrooms)) return false;
         if (filters.minBathrooms && (property.bathrooms || 0) < parseInt(filters.minBathrooms)) return false;
         if (filters.maxBathrooms && (property.bathrooms || 0) > parseInt(filters.maxBathrooms)) return false;
-        if (filters.minBuiltUpArea && (property.area_sqft || 0) < parseInt(filters.minBuiltUpArea)) return false;
-        if (filters.maxBuiltUpArea && (property.area_sqft || 0) > parseInt(filters.maxBuiltUpArea)) return false;
-        // Note: Plot area would need to be added to Property interface if needed
-        if (filters.minPlotArea && (property.area_sqft || 0) < parseInt(filters.minPlotArea)) return false;
-        if (filters.maxPlotArea && (property.area_sqft || 0) > parseInt(filters.maxPlotArea)) return false;
+        if (filters.minArea && (property.area_sqft || 0) < parseInt(filters.minArea)) return false;
+        if (filters.maxArea && (property.area_sqft || 0) > parseInt(filters.maxArea)) return false;
         if (filters.city && !property.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
         if (filters.featured && ((property.featured ? 'yes' : 'no') !== filters.featured)) return false;
-        if (filters.ownerContact && property.owner_contact_id !== filters.ownerContact) return false;
       }
 
       return true;
@@ -341,16 +329,14 @@ export const Properties = () => {
       status: '',
       minPrice: '',
       maxPrice: '',
-      bedrooms: '',
+      minBedrooms: '',
+      maxBedrooms: '',
       minBathrooms: '',
       maxBathrooms: '',
-      minBuiltUpArea: '',
-      maxBuiltUpArea: '',
-      minPlotArea: '',
-      maxPlotArea: '',
+      minArea: '',
+      maxArea: '',
       city: '',
       featured: '',
-      ownerContact: '',
     });
   };
 
@@ -537,61 +523,42 @@ export const Properties = () => {
                   
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Bedrooms</Label>
-                    <ClearableSelect
-                      value={filters.bedrooms}
-                      onChange={(value) => updateFilter('bedrooms', value || '')}
-                      options={BEDROOM_OPTIONS}
-                      placeholder="Any Bedrooms"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Built-up Area (sq ft)</Label>
                     <div className="flex gap-2">
                       <Input
                         type="number"
                         placeholder="Min"
-                        value={filters.minBuiltUpArea}
-                        onChange={(e) => updateFilter('minBuiltUpArea', e.target.value)}
+                        value={filters.minBedrooms}
+                        onChange={(e) => updateFilter('minBedrooms', e.target.value)}
                         className="text-sm"
                       />
                       <Input
                         type="number"
                         placeholder="Max"
-                        value={filters.maxBuiltUpArea}
-                        onChange={(e) => updateFilter('maxBuiltUpArea', e.target.value)}
+                        value={filters.maxBedrooms}
+                        onChange={(e) => updateFilter('maxBedrooms', e.target.value)}
                         className="text-sm"
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Plot Area (sq ft)</Label>
+                    <Label className="text-sm font-medium">Area (sq ft)</Label>
                     <div className="flex gap-2">
                       <Input
                         type="number"
                         placeholder="Min"
-                        value={filters.minPlotArea}
-                        onChange={(e) => updateFilter('minPlotArea', e.target.value)}
+                        value={filters.minArea}
+                        onChange={(e) => updateFilter('minArea', e.target.value)}
                         className="text-sm"
                       />
                       <Input
                         type="number"
                         placeholder="Max"
-                        value={filters.maxPlotArea}
-                        onChange={(e) => updateFilter('maxPlotArea', e.target.value)}
+                        value={filters.maxArea}
+                        onChange={(e) => updateFilter('maxArea', e.target.value)}
                         className="text-sm"
                       />
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Owner Contact</Label>
-                    <SearchableContactCombobox
-                      value={filters.ownerContact}
-                      onChange={(value) => updateFilter('ownerContact', value || '')}
-                      placeholder="Any Owner"
-                    />
                   </div>
                   
                   <div className="space-y-2">

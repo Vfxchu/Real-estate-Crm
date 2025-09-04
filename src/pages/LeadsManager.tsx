@@ -614,41 +614,37 @@ export const LeadsManager = () => {
 
       {/* Add Lead Form */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
-            <LeadForm
-              context="admin"
-              onSuccess={async () => {
-                await fetchLeads();
-                setShowAddForm(false);
-              }}
-            />
-          </div>
+          <LeadForm
+            context="admin"
+            onSuccess={async () => {
+              await fetchLeads();
+              setShowAddForm(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
 
       {/* Admin-only Edit Lead Form */}
       <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Lead - {editingLead?.name}</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
-            {editingLead && (
-              <LeadForm
-                context="admin"
-                defaultValues={editingLead}
-                onSuccess={async () => {
-                  await fetchLeads();
-                  setShowEditForm(false);
-                  setEditingLead(null);
-                }}
-              />
-            )}
-          </div>
+          {editingLead && (
+            <LeadForm
+              context="admin"
+              defaultValues={editingLead}
+              onSuccess={async () => {
+                await fetchLeads();
+                setShowEditForm(false);
+                setEditingLead(null);
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

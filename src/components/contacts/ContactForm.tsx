@@ -40,7 +40,7 @@ type ContactFormData = z.infer<typeof contactFormSchema>;
 
 interface ContactFormProps {
   contact?: Lead;
-  onSuccess?: (contactData?: any) => void;
+  onSuccess?: () => void;
   onCancel?: () => void;
   className?: string;
 }
@@ -123,21 +123,17 @@ export default function ContactForm({ contact, onSuccess, onCancel, className }:
 
   const onSubmit = async (data: ContactFormData) => {
     try {
-      let result;
       if (contact?.id) {
-        result = await updateLead(contact.id, data);
+        await updateLead(contact.id, data);
         toast({ title: 'Success', description: 'Contact updated successfully' });
       } else {
-        result = await createLead(data);
+        await createLead(data);
         toast({ title: 'Success', description: 'Contact created successfully' });
       }
       
-      // Trigger refresh event and sync events
+      // Trigger refresh event
       window.dispatchEvent(new CustomEvent('leads:changed'));
-      window.dispatchEvent(new CustomEvent('contacts:updated'));
-      
-      // Pass the created/updated contact to onSuccess
-      onSuccess?.(result.data);
+      onSuccess?.();
     } catch (error: any) {
       toast({ 
         title: 'Error', 

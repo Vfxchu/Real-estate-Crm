@@ -13,8 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
-import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
-import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -27,7 +25,7 @@ const propertySchema = z.object({
   address: z.string().min(1, "Address is required"),
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
-  bedrooms: z.string().optional(),
+  bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   plot_area_sqft: z.number().min(0).optional(),
@@ -101,7 +99,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       address: '',
       city: 'Dubai',
       unit_number: '',
-      bedrooms: '',
+      bedrooms: 1,
       bathrooms: 1,
       area_sqft: 0,
       plot_area_sqft: 0,
@@ -126,7 +124,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         address: editProperty.address || '',
         city: (editProperty.city as any) || 'Dubai',
         unit_number: editProperty.unit_number || '',
-        bedrooms: editProperty ? numberToBedroomEnum(editProperty.bedrooms) : '',
+        bedrooms: editProperty.bedrooms || 1,
         bathrooms: editProperty.bathrooms || 1,
         area_sqft: editProperty.area_sqft || 0,
         plot_area_sqft: 0,
@@ -152,7 +150,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         address: '',
         city: 'Dubai',
         unit_number: '',
-        bedrooms: '',
+        bedrooms: 1,
         bathrooms: 1,
         area_sqft: 0,
         plot_area_sqft: 0,
@@ -310,8 +308,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
               .from(bucket)
               .remove([tempPath]);
               
-            // Store storage path (not public URL) so frontend can always sign when needed
-            movedFiles.push(propertyPath);
+            const { data: { publicUrl } } = supabase.storage
+              .from(bucket)
+              .getPublicUrl(propertyPath);
+              
+            movedFiles.push(publicUrl);
           }
         }
       } catch (error) {
@@ -346,7 +347,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         state: 'UAE',
         zip_code: null,
         unit_number: data.unit_number || null,
-        bedrooms: data.bedrooms ? bedroomEnumToNumber(data.bedrooms as BedroomEnum) : null,
+        bedrooms: data.bedrooms ?? null,
         bathrooms: data.bathrooms ?? null,
         area_sqft: data.area_sqft ?? null,
         status: data.status,
@@ -392,44 +393,43 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       // Move all files and update contact records
       if (propertyData) {
-        // Move images first and update the property with storage paths
-        let movedImagePaths: string[] = [];
+        const fileOperations = [];
+        
+        // Handle images
         if (uploadedImages.length > 0) {
-          movedImagePaths = await moveFiles(uploadedImages, propertyData.id, 'property-images', 'image');
-          if (movedImagePaths.length > 0) {
-            await supabase
-              .from('properties')
-              .update({ images: movedImagePaths })
-              .eq('id', propertyData.id);
-          }
+          fileOperations.push(moveFiles(uploadedImages, propertyData.id, 'property-images', 'image'));
         }
-
-        // Move layouts
+        
+        // Handle layouts
         if (uploadedLayouts.length > 0) {
-          await moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout');
+          fileOperations.push(moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout'));
         }
-
-        // Move documents and update contact files
+        
+        // Handle documents and update contact files
         if (uploadedDocuments.length > 0) {
-          await moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document');
+          fileOperations.push(moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document'));
+          
           // Update contact files for documents
           if (data.owner_contact_id) {
             for (const docUrl of uploadedDocuments) {
               const urlParts = docUrl.split('/');
               const fileName = urlParts[urlParts.length - 1];
+              
               await supabase
                 .from('contact_files')
                 .insert({
                   contact_id: data.owner_contact_id,
                   source: 'property',
                   property_id: propertyData.id,
-                  path: `${propertyData.id}/${fileName}`,
+                  path: docUrl,
                   name: fileName,
                   type: 'document'
                 });
             }
           }
         }
+        
+        await Promise.all(fileOperations);
       }
 
       toast({
@@ -720,20 +720,15 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bedrooms</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select bedrooms" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {BEDROOM_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="0"
+                          placeholder="Number of bedrooms" 
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -765,12 +760,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   name="area_sqft"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Built-up Area (sq ft)</FormLabel>
+                      <FormLabel>Area (sq ft)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           min="0"
-                          placeholder="Enter area in sqft" 
+                          placeholder="Area in square feet" 
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
@@ -790,7 +785,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                         <Input 
                           type="number" 
                           min="0"
-                          placeholder="Enter area in sqft" 
+                          placeholder="Plot area (optional)" 
                           {...field}
                           onChange={(e) => field.onChange(Number(e.target.value))}
                         />
@@ -851,13 +846,20 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Owner Contact *</FormLabel>
-                      <FormControl>
-                        <SearchableContactCombobox
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select owner contact"
-                        />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select owner contact" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {contactsList.map((contact) => (
+                            <SelectItem key={contact.id} value={contact.id}>
+                              {contact.name} ({contact.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

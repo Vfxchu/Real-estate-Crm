@@ -287,19 +287,17 @@ export const Dashboard = () => {
 
       {/* Add Lead Form */}
       <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
-            <LeadForm
-              context="admin"
-              onSuccess={async () => {
-                await fetchLeads();
-                setAddLeadFormOpen(false);
-              }}
-            />
-          </div>
+          <LeadForm
+            context="admin"
+            onSuccess={async () => {
+              await fetchLeads();
+              setAddLeadFormOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
 

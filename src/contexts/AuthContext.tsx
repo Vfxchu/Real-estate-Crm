@@ -135,19 +135,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-const login = async (email: string, password: string) => {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('[SB] Auth error:', error.message);
-      return { error };
-    }
-    return { error: null };
-  } catch (e: any) {
-    console.error('[SB] signIn network error:', e);
-    return { error: { message: 'Cannot reach Supabase. Check env vars, Auth config, or network.' } as any };
-  }
-};
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
+  };
 
   const signup = async (email: string, password: string, name: string, role: UserRole = 'agent') => {
     const redirectUrl = `${window.location.origin}/`;

@@ -35,55 +35,18 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
           try {
             // Check if it's already a full URL (starts with http)
             if (imageUrl.startsWith('http')) {
-              // If it's a Supabase Storage URL for property-images, convert to signed URL (bucket is private)
-              const publicMatch = imageUrl.match(/\/object\/public\/property-images\/(.+)$/);
-              const signMatch = imageUrl.match(/\/object\/sign\/property-images\/(.+)$/);
-              const directMatch = imageUrl.match(/\/object\/property-images\/(.+)$/);
-
-              if (signMatch) {
-                // Already a signed URL
-                urls.push(imageUrl);
-              } else if (publicMatch || directMatch) {
-                const pathFromUrl = (publicMatch?.[1] || directMatch?.[1]) as string;
-                try {
-                  const { data, error } = await supabase.storage
-                    .from('property-images')
-                    .createSignedUrl(pathFromUrl, 3600);
-                  if (error || !data) {
-                    // Fallback: try propertyId/filename (files may have been moved from temp)
-                    const fileName = pathFromUrl.split('/').pop() as string;
-                    const altPath = `${propertyId}/${fileName}`;
-                    const { data: altData, error: altErr } = await supabase.storage
-                      .from('property-images')
-                      .createSignedUrl(altPath, 3600);
-                    if (altErr || !altData) {
-                      console.warn('Failed to sign from URL path:', pathFromUrl, error);
-                      urls.push(imageUrl);
-                    } else {
-                      urls.push(altData.signedUrl);
-                    }
-                  } else {
-                    urls.push(data.signedUrl);
-                  }
-                } catch (err) {
-                  console.warn('Error signing from URL:', imageUrl, err);
-                  urls.push(imageUrl);
-                }
-              } else {
-                // External URL - use as is
-                urls.push(imageUrl);
-              }
+              urls.push(imageUrl);
             } else {
               // For storage paths, try to create signed URL
               let path = imageUrl;
-
+              
               // Normalize the path - remove any 'property-images/' prefix if it exists
               if (path.startsWith('property-images/')) {
                 path = path.substring('property-images/'.length);
               }
-
-              // If path is under a shared folder like 'temp/', don't force propertyId prefix
-              if (!path.startsWith('temp/') && !path.startsWith(`${propertyId}/`)) {
+              
+              // Ensure proper path structure
+              if (!path.startsWith(`${propertyId}/`)) {
                 path = `${propertyId}/${path}`;
               }
                 
@@ -91,7 +54,7 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
                 .from('property-images')
                 .createSignedUrl(path, 3600); // 1 hour expiry
                 
-              if (error || !data) {
+              if (error) {
                 console.warn('Failed to create signed URL for:', path, error);
                 // Try the original URL as fallback
                 urls.push(imageUrl);
@@ -152,8 +115,9 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
           src={displayImages[0]} 
           alt={propertyTitle}
           className="w-full h-full object-cover"
-          onError={() => {
+          onError={(e) => {
             console.warn('Image failed to load:', displayImages[0]);
+            e.currentTarget.style.display = 'none';
           }}
         />
       )}

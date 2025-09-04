@@ -13,8 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
 import { Property } from "@/hooks/useProperties";
-import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
-import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -26,7 +24,7 @@ const propertySchema = z.object({
   address: z.string().min(1, "Address is required"),
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
-  bedrooms: z.string().optional(),
+  bedrooms: z.number().min(0).optional(),
   bathrooms: z.number().min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
@@ -64,7 +62,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
       address: property.address || '',
       city: (property.city as any) || 'Dubai',
       unit_number: property.unit_number || '',
-      bedrooms: property ? numberToBedroomEnum(property.bedrooms) : '',
+      bedrooms: property.bedrooms || 0,
       bathrooms: property.bathrooms || 0,
       area_sqft: property.area_sqft || 0,
       status: property.status === 'available' ? 'vacant' : property.status as any || 'vacant',
@@ -124,8 +122,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
 
         if (uploadError) throw uploadError;
 
-        // Store storage path instead of public URL for secure access
-        newFiles.push(filePath);
+        const { data: { publicUrl } } = supabase.storage
+          .from('property-images')
+          .getPublicUrl(filePath);
+
+        newFiles.push(publicUrl);
       }
       
       setUploadedImages(prev => [...prev, ...newFiles]);
@@ -196,7 +197,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         state: 'UAE',
         zip_code: null,
         unit_number: data.unit_number || null,
-        bedrooms: data.bedrooms ? bedroomEnumToNumber(data.bedrooms as BedroomEnum) : null,
+        bedrooms: data.bedrooms ?? null,
         bathrooms: data.bathrooms ?? null,
         area_sqft: data.area_sqft ?? null,
         status: data.status,
@@ -483,20 +484,15 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Bedrooms</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select bedrooms" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {BEDROOM_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      placeholder="Number of bedrooms" 
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -528,12 +524,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               name="area_sqft"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Built-up Area (sq ft)</FormLabel>
+                  <FormLabel>Area (sq ft)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
                       min="0"
-                      placeholder="Enter area in sqft" 
+                      placeholder="Area in square feet" 
                       {...field}
                       onChange={(e) => field.onChange(Number(e.target.value))}
                     />
@@ -592,13 +588,20 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Owner Contact *</FormLabel>
-                  <FormControl>
-                    <SearchableContactCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select owner contact"
-                    />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select owner contact" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {contactsList.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>
+                          {contact.name} ({contact.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
