@@ -18,36 +18,29 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  type: 'viewing' | 'meeting' | 'call' | 'follow-up';
-  leadName: string;
-  agentName: string;
-  date: string;
-  time: string;
-  location?: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
-  notes?: string;
-  propertyAddress?: string;
-}
-
-// This component shows mock data for demonstration
-// In production, connect to Supabase calendar/appointments table
-const mockEvents: CalendarEvent[] = [];
+import { useCalendarEvents, CalendarEvent } from '@/hooks/useCalendarEvents';
+import { useLeads } from '@/hooks/useLeads';
 
 export const Calendar = () => {
-  const [events, setEvents] = useState<CalendarEvent[]>(mockEvents);
-  const [selectedDate, setSelectedDate] = useState('2024-01-22');
+  const { events, loading, createEvent, updateEvent } = useCalendarEvents();
+  const { leads } = useLeads();
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const { toast } = useToast();
+  const [eventForm, setEventForm] = useState({
+    title: '',
+    event_type: 'meeting' as CalendarEvent['event_type'],
+    lead_id: '',
+    start_date: '',
+    location: '',
+    notes: '',
+  });
 
-  const filteredEvents = events.filter(event => event.date === selectedDate);
+  const filteredEvents = events.filter(event => 
+    new Date(event.start_date).toDateString() === new Date(selectedDate).toDateString()
+  );
 
-  const getTypeIcon = (type: CalendarEvent['type']) => {
+  const getTypeIcon = (type: CalendarEvent['event_type']) => {
     switch (type) {
       case 'viewing': return <MapPin className="w-4 h-4" />;
       case 'meeting': return <User className="w-4 h-4" />;
@@ -57,7 +50,7 @@ export const Calendar = () => {
     }
   };
 
-  const getTypeColor = (type: CalendarEvent['type']) => {
+  const getTypeColor = (type: CalendarEvent['event_type']) => {
     switch (type) {
       case 'viewing': return 'bg-primary text-primary-foreground';
       case 'meeting': return 'bg-success text-success-foreground';
@@ -76,22 +69,39 @@ export const Calendar = () => {
     }
   };
 
-  const handleAddEvent = () => {
-    toast({
-      title: 'Event scheduled',
-      description: 'New appointment has been added to calendar',
-    });
-    setShowAddEvent(false);
+  const handleAddEvent = async () => {
+    try {
+      const startDateTime = new Date(`${eventForm.start_date}T00:00:00`).toISOString();
+      await createEvent({
+        ...eventForm,
+        start_date: startDateTime,
+      });
+      setShowAddEvent(false);
+      setEventForm({
+        title: '',
+        event_type: 'meeting',
+        lead_id: '',
+        start_date: '',
+        location: '',
+        notes: '',
+      });
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
-  const handleEventAction = (action: string, eventId: string) => {
-    toast({
-      title: `Event ${action}`,
-      description: `Event has been ${action}`,
-    });
+  const handleEventAction = async (action: string, eventId: string) => {
+    try {
+      if (action === 'completed') {
+        await updateEvent(eventId, { status: 'completed' });
+      }
+    } catch (error) {
+      // Error handled in hook
+    }
   };
 
-  const upcomingEvents = events.filter(event => new Date(event.date) >= new Date('2024-01-22')).length;
+  const today = new Date();
+  const upcomingEvents = events.filter(event => new Date(event.start_date) >= today).length;
   const todayEvents = filteredEvents.length;
   const completedEvents = events.filter(event => event.status === 'completed').length;
   const pendingEvents = events.filter(event => event.status === 'scheduled').length;
@@ -121,7 +131,10 @@ export const Calendar = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Appointment Type</Label>
-                  <Select>
+                  <Select 
+                    value={eventForm.event_type} 
+                    onValueChange={(value) => setEventForm(prev => ({ ...prev, event_type: value as CalendarEvent['event_type'] }))}
+                  >
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -135,20 +148,30 @@ export const Calendar = () => {
                 </div>
                 <div>
                   <Label>Lead</Label>
-                  <Select>
+                  <Select 
+                    value={eventForm.lead_id} 
+                    onValueChange={(value) => setEventForm(prev => ({ ...prev, lead_id: value }))}
+                  >
                     <SelectTrigger className="mt-2">
                       <SelectValue placeholder="Select lead" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">John Smith</SelectItem>
-                      <SelectItem value="2">Maria Garcia</SelectItem>
-                      <SelectItem value="3">David Wilson</SelectItem>
+                      {leads.map((lead) => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Date</Label>
-                  <Input type="date" className="mt-2" />
+                  <Input 
+                    type="date" 
+                    className="mt-2" 
+                    value={eventForm.start_date}
+                    onChange={(e) => setEventForm(prev => ({ ...prev, start_date: e.target.value }))}
+                  />
                 </div>
                 <div>
                   <Label>Time</Label>
@@ -157,15 +180,31 @@ export const Calendar = () => {
               </div>
               <div>
                 <Label>Title</Label>
-                <Input placeholder="Appointment title" className="mt-2" />
+                <Input 
+                  placeholder="Appointment title" 
+                  className="mt-2" 
+                  value={eventForm.title}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
+                />
               </div>
               <div>
                 <Label>Location (Optional)</Label>
-                <Input placeholder="Meeting location or property address" className="mt-2" />
+                <Input 
+                  placeholder="Meeting location or property address" 
+                  className="mt-2" 
+                  value={eventForm.location}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, location: e.target.value }))}
+                />
               </div>
               <div>
                 <Label>Notes</Label>
-                <Textarea placeholder="Additional notes..." className="mt-2" rows={3} />
+                <Textarea 
+                  placeholder="Additional notes..." 
+                  className="mt-2" 
+                  rows={3} 
+                  value={eventForm.notes}
+                  onChange={(e) => setEventForm(prev => ({ ...prev, notes: e.target.value }))}
+                />
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleAddEvent} className="btn-primary">Schedule</Button>
@@ -241,23 +280,20 @@ export const Calendar = () => {
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => setSelectedDate('2024-01-22')}
+                onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
               >
-                Today (Jan 22)
+                Today
               </Button>
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => setSelectedDate('2024-01-23')}
+                onClick={() => {
+                  const tomorrow = new Date();
+                  tomorrow.setDate(tomorrow.getDate() + 1);
+                  setSelectedDate(tomorrow.toISOString().split('T')[0]);
+                }}
               >
-                Tomorrow (Jan 23)
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => setSelectedDate('2024-01-24')}
-              >
-                Jan 24
+                Tomorrow
               </Button>
             </div>
           </CardContent>
@@ -288,10 +324,10 @@ export const Calendar = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <Badge className={getTypeColor(event.type)}>
+                            <Badge className={getTypeColor(event.event_type)}>
                               <div className="flex items-center gap-1">
-                                {getTypeIcon(event.type)}
-                                {event.type}
+                                {getTypeIcon(event.event_type)}
+                                {event.event_type}
                               </div>
                             </Badge>
                             {getStatusIcon(event.status)}
@@ -301,7 +337,7 @@ export const Calendar = () => {
                           </div>
                           <h4 className="font-semibold">{event.title}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {event.time} • {event.leadName} • {event.agentName}
+                            {new Date(event.start_date).toLocaleTimeString()} • {event.lead_name || 'No lead'} • {event.agent_name || 'Agent'}
                           </p>
                           {event.location && (
                             <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
@@ -352,10 +388,10 @@ export const Calendar = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Type</Label>
-                  <Badge className={getTypeColor(selectedEvent.type)}>
+                  <Badge className={getTypeColor(selectedEvent.event_type)}>
                     <div className="flex items-center gap-1">
-                      {getTypeIcon(selectedEvent.type)}
-                      {selectedEvent.type}
+                      {getTypeIcon(selectedEvent.event_type)}
+                      {selectedEvent.event_type}
                     </div>
                   </Badge>
                 </div>
@@ -368,15 +404,15 @@ export const Calendar = () => {
                 </div>
                 <div>
                   <Label>Lead</Label>
-                  <p>{selectedEvent.leadName}</p>
+                  <p>{selectedEvent.lead_name || 'No lead assigned'}</p>
                 </div>
                 <div>
                   <Label>Agent</Label>
-                  <p>{selectedEvent.agentName}</p>
+                  <p>{selectedEvent.agent_name || 'Agent'}</p>
                 </div>
                 <div>
                   <Label>Date & Time</Label>
-                  <p>{selectedEvent.date} at {selectedEvent.time}</p>
+                  <p>{new Date(selectedEvent.start_date).toLocaleDateString()} at {new Date(selectedEvent.start_date).toLocaleTimeString()}</p>
                 </div>
                 {selectedEvent.location && (
                   <div>
