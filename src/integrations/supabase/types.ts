@@ -56,6 +56,103 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          agent_id: string
+          contact_id: string | null
+          created_at: string
+          created_by: string
+          deal_id: string | null
+          description: string | null
+          end_date: string | null
+          event_type: string
+          id: string
+          is_recurring: boolean | null
+          lead_id: string | null
+          location: string | null
+          notes: string | null
+          notification_sent: boolean | null
+          property_id: string | null
+          recurrence_end_date: string | null
+          recurrence_pattern: string | null
+          reminder_minutes: number | null
+          start_date: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          deal_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          event_type: string
+          id?: string
+          is_recurring?: boolean | null
+          lead_id?: string | null
+          location?: string | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          property_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          reminder_minutes?: number | null
+          start_date: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          deal_id?: string | null
+          description?: string | null
+          end_date?: string | null
+          event_type?: string
+          id?: string
+          is_recurring?: boolean | null
+          lead_id?: string | null
+          location?: string | null
+          notes?: string | null
+          notification_sent?: boolean | null
+          property_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_pattern?: string | null
+          reminder_minutes?: number | null
+          start_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_files: {
         Row: {
           contact_id: string
@@ -290,6 +387,89 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          event_id: string | null
+          id: string
+          is_read: boolean | null
+          lead_id: string | null
+          message: string
+          priority: string
+          property_id: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          event_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          lead_id?: string | null
+          message: string
+          priority?: string
+          property_id?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          event_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          lead_id?: string | null
+          message?: string
+          priority?: string
+          property_id?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -641,6 +821,32 @@ export type Database = {
               p_property_name: string
             }
         Returns: string
+      }
+      get_calendar_events_with_details: {
+        Args: { end_date_param?: string; start_date_param?: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          deal_id: string
+          deal_title: string
+          description: string
+          end_date: string
+          event_type: string
+          id: string
+          lead_email: string
+          lead_id: string
+          lead_name: string
+          location: string
+          notes: string
+          notification_sent: boolean
+          property_address: string
+          property_id: string
+          property_title: string
+          reminder_minutes: number
+          start_date: string
+          status: string
+          title: string
+        }[]
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never> | { uid?: string }
