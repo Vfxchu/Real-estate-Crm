@@ -136,11 +136,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error };
+      return { error: null };
+    } catch (e) {
+      console.error('[SB] signIn network error:', e);
+      return { error: { message: 'Cannot reach Supabase (network/env/adblock/limits).' } as any };
+    }
   };
 
   const signup = async (email: string, password: string, name: string, role: UserRole = 'agent') => {

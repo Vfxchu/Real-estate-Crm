@@ -1,27 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://mxfmojbjjehyaisiikea.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14Zm1vamJqamVoeWFpc2lpa2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NDY2MjgsImV4cCI6MjA2OTUyMjYyOH0.vLAkBLPqa7viQ6kNPBvOZzcg42W_pmw_VXQCikZZoCM";
+console.log('[SB] CLIENT LOADED v3'); // prove THIS file is active
 
-// Diagnostics
-console.log('[SUPABASE] Client initializing...');
-console.log('[SUPABASE] URL:', SUPABASE_URL);
-console.log('[SUPABASE] Key length:', SUPABASE_PUBLISHABLE_KEY.length);
+const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID?.trim();
+const envUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const url = envUrl || (projectRef ? `https://${projectRef}.supabase.co` : '');
 
-// Test connectivity on load
-fetch(`${SUPABASE_URL}/auth/v1/health`)
-  .then(response => {
-    console.log('[SUPABASE] Health check:', response.status, response.statusText);
-  })
-  .catch(error => {
-    console.error('[SUPABASE] Health check failed:', error);
-  });
+const key =
+  import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim() || '';
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+console.log('[SB] URL =', url);
+console.log('[SB] KEY loaded =', !!key, 'len:', key?.length ?? 0);
+
+if (!url || !key) {
+  throw new Error('Missing Supabase env vars. Set VITE_SUPABASE_URL (or VITE_SUPABASE_PROJECT_ID) and VITE_SUPABASE_ANON_KEY.');
+}
+
+export const supabase = createClient<Database>(url, key, {
   auth: {
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+  },
 });
