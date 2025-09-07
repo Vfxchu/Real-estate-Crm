@@ -849,7 +849,7 @@ export type Database = {
         }[]
       }
       get_current_user_role: {
-        Args: Record<PropertyKey, never> | { uid?: string }
+        Args: Record<PropertyKey, never>
         Returns: string
       }
       get_least_busy_agent: {
