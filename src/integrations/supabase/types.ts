@@ -812,15 +812,8 @@ export type Database = {
     }
     Functions: {
       create_property_with_files: {
-        Args:
-          | { files_data?: Json[]; property_data: Json }
-          | {
-              p_agent_id?: string
-              p_description: string
-              p_file_paths: string[]
-              p_property_name: string
-            }
-        Returns: string
+        Args: { files_data?: Json[]; property_data: Json }
+        Returns: Json
       }
       get_calendar_events_with_details: {
         Args: { end_date_param?: string; start_date_param?: string }

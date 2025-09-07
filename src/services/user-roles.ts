@@ -16,7 +16,7 @@ export async function getCurrentUserRole(): Promise<UserRole> {
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid errors when no data
 
     if (!roleError && roleData) {
       return roleData.role as UserRole;
@@ -27,7 +27,7 @@ export async function getCurrentUserRole(): Promise<UserRole> {
       .from('profiles')
       .select('role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle(); // Use maybeSingle to avoid errors when no data
 
     if (!profileError && profileData) {
       return profileData.role as UserRole;
