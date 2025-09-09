@@ -21,7 +21,7 @@ export async function assignContactToAgent(contactId: string, agentId?: string) 
     if (agentError || !assignedAgentId) {
       return { data: null, error: agentError || new Error('No available agents') };
     }
-    agentId = typeof assignedAgentId === 'string' ? assignedAgentId : assignedAgentId;
+    agentId = assignedAgentId as string;
   }
 
   const { data, error } = await supabase
