@@ -793,86 +793,30 @@ export type Database = {
       }
     }
     Views: {
-      leads_per_agent_per_month: {
-        Row: {
-          agent_id: string | null
-          lead_count: number | null
-          month: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leads_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
-      create_property_with_files: {
-        Args: { files_data?: Json[]; property_data: Json }
-        Returns: Json
-      }
-      get_calendar_events_with_details: {
-        Args: { end_date_param?: string; start_date_param?: string }
-        Returns: {
-          agent_id: string
-          agent_name: string
-          deal_id: string
-          deal_title: string
-          description: string
-          end_date: string
-          event_type: string
-          id: string
-          lead_email: string
-          lead_id: string
-          lead_name: string
-          location: string
-          notes: string
-          notification_sent: boolean
-          property_address: string
-          property_id: string
-          property_title: string
-          reminder_minutes: number
-          start_date: string
-          status: string
-          title: string
-        }[]
-      }
-      get_current_user_role: {
+      current_user_id: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_least_busy_agent: {
+      is_admin: {
         Args: Record<PropertyKey, never>
-        Returns: string
+        Returns: boolean
       }
-      get_user_role_secure: {
-        Args: { user_uuid?: string }
-        Returns: string
-      }
-      map_status_to_contact_status: {
-        Args: { lead_status: string }
-        Returns: string
+      is_agent: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
     }
     Enums: {
-      app_role: "admin" | "agent"
+      app_role: "user" | "admin" | "agent" | "superadmin"
       lead_source_enum:
-        | "website"
         | "referral"
+        | "website"
         | "social"
-        | "advertising"
-        | "cold_call"
-        | "email"
-        | "whatsapp"
-        | "instagram"
-        | "facebook_ads"
-        | "google_ads"
-        | "walk_in"
-        | "portal"
+        | "advertisement"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1000,20 +944,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "agent"],
+      app_role: ["user", "admin", "agent", "superadmin"],
       lead_source_enum: [
-        "website",
         "referral",
+        "website",
         "social",
-        "advertising",
-        "cold_call",
-        "email",
-        "whatsapp",
-        "instagram",
-        "facebook_ads",
-        "google_ads",
-        "walk_in",
-        "portal",
+        "advertisement",
+        "other",
       ],
     },
   },
