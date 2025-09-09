@@ -800,6 +800,36 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_calendar_events_with_details: {
+        Args: { end_date_param?: string; start_date_param?: string }
+        Returns: {
+          agent_id: string
+          agent_name: string
+          deal_id: string
+          deal_title: string
+          description: string
+          end_date: string
+          event_type: string
+          id: string
+          lead_email: string
+          lead_id: string
+          lead_name: string
+          location: string
+          notes: string
+          notification_sent: boolean
+          property_address: string
+          property_id: string
+          property_title: string
+          reminder_minutes: number
+          start_date: string
+          status: string
+          title: string
+        }[]
+      }
+      get_least_busy_agent: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

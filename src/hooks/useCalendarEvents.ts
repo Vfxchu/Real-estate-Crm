@@ -41,7 +41,7 @@ export const useCalendarEvents = () => {
 
       if (error) throw error;
 
-      const formattedEvents: CalendarEvent[] = data.map((event: any) => ({
+      const formattedEvents: CalendarEvent[] = (data || []).map((event: any) => ({
         id: event.id,
         title: event.title,
         description: event.description,
