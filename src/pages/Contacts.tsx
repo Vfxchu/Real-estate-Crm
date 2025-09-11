@@ -280,12 +280,12 @@ export default function Contacts() {
   );
 
   return (
-    <div className="p-3 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-2">
-          <Users className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Contacts</h1>
+          <Users className="h-5 w-5 sm:h-6 sm:w-6" />
+          <h1 className="text-xl sm:text-2xl font-bold">Contacts</h1>
           <Badge variant="secondary">{total}</Badge>
         </div>
         
@@ -296,7 +296,7 @@ export default function Contacts() {
           </Button>
           <Button variant="outline" onClick={onExport} disabled={!rows.length} size={isMobile ? "sm" : "default"}>
             <Download className="mr-2 h-4 w-4" />
-            Export
+            {isMobile ? "" : "Export"}
           </Button>
           
           <label className="cursor-pointer">
@@ -312,7 +312,7 @@ export default function Contacts() {
             <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>
               <span>
                 <Upload className="mr-2 h-4 w-4" />
-                Import
+                {isMobile ? "" : "Import"}
               </span>
             </Button>
           </label>
@@ -324,14 +324,14 @@ export default function Contacts() {
             size={isMobile ? "sm" : "default"}
           >
             <GitMerge className="mr-2 h-4 w-4" />
-            Merge ({dupes.length})
+            {isMobile ? `(${dupes.length})` : `Merge (${dupes.length})`}
           </Button>
         </div>
       </div>
 
       {/* Filters */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
           <div className="flex-1">
             <Input
               placeholder="Search name, email, or phone..."
@@ -354,7 +354,7 @@ export default function Contacts() {
               ]}
               placeholder="Status"
               allowClear={false}
-              className="w-36"
+              className="w-32 sm:w-36"
             />
 
             <ClearableSelect
@@ -370,14 +370,14 @@ export default function Contacts() {
               ]}
               placeholder="Interest"
               allowClear={false}
-              className="w-36"
+              className="w-32 sm:w-36"
             />
             
             <Popover open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="whitespace-nowrap">
                   <Filter className="mr-2 h-4 w-4" />
-                  More Filters
+                  {isMobile ? 'More' : 'More Filters'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80" align="end">

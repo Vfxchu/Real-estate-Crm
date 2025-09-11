@@ -178,14 +178,14 @@ export const LeadsManager = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Leads Manager</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Leads Manager</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage and track all your leads in one place
           </p>
         </div>
-        <Button className="btn-primary" onClick={() => setShowAddForm(true)}>
+        <Button className="btn-primary w-full sm:w-auto" onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
@@ -194,7 +194,7 @@ export const LeadsManager = () => {
       {/* Filters and Actions */}
       <Card className="card-elevated">
         <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
             {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -207,9 +207,9 @@ export const LeadsManager = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32 sm:w-40">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,7 +224,7 @@ export const LeadsManager = () => {
               </Select>
 
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-32 sm:w-40">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -236,25 +236,27 @@ export const LeadsManager = () => {
                </Select>
 
                <Button 
-                 variant="outline" 
+                 variant="outline"
+                 size="sm"
                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                 className="whitespace-nowrap"
                >
                  <Filter className="w-4 h-4 mr-2" />
-                 {showAdvancedFilters ? 'Hide Filters' : 'More Filters'}
+                 {showAdvancedFilters ? 'Hide' : 'More'}
                </Button>
 
-               <Button variant="outline">
+               <Button variant="outline" size="sm" className="whitespace-nowrap">
                  <Download className="w-4 h-4 mr-2" />
                  Export
                </Button>
              </div>
            </div>
 
-           {/* Advanced Filters */}
-           {showAdvancedFilters && (
-             <div className="mt-4 p-4 border rounded-lg bg-muted/20">
-               <h4 className="font-medium mb-3">Advanced Filters</h4>
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="mt-4 p-4 border rounded-lg bg-muted/20">
+                <h4 className="font-medium mb-3">Advanced Filters</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                  {/* Contact Status Filter */}
                  <div>
                    <Label className="text-sm font-medium">Contact Status</Label>

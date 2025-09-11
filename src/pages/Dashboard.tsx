@@ -123,26 +123,26 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Welcome back, {profile?.name?.split(' ')[0] || 'User'}!
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             {isAdmin 
               ? "Here's what's happening with your team today."
               : "Here's your lead activity for today."
             }
           </p>
         </div>
-        <Button className="btn-primary" onClick={() => setAddLeadFormOpen(true)}>
+        <Button className="btn-primary w-full sm:w-auto" onClick={() => setAddLeadFormOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
@@ -154,22 +154,22 @@ export const Dashboard = () => {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {quickActions.map((action, index) => (
               <Button
                 key={index}
                 variant="outline"
-                className="h-20 flex-col gap-2 hover:scale-105 transition-transform"
+                className="h-16 sm:h-20 flex-col gap-1 sm:gap-2 hover:scale-105 transition-transform"
                 onClick={() => {
                   if (action.label === 'Add New Lead') {
                     setAddLeadFormOpen(true);
                   }
                 }}
               >
-                <div className={`w-8 h-8 rounded-full ${action.color} flex items-center justify-center`}>
-                  <action.icon className="w-4 h-4 text-white" />
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full ${action.color} flex items-center justify-center`}>
+                  <action.icon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
-                <span className="text-xs">{action.label}</span>
+                <span className="text-xs sm:text-sm text-center leading-tight">{action.label}</span>
               </Button>
             ))}
           </div>
@@ -177,14 +177,14 @@ export const Dashboard = () => {
       </Card>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Charts - Takes 2 columns on large screens */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           <LeadsChart />
         </div>
 
         {/* Recent Activity - Takes 1 column */}
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-1">
           <RecentActivity />
         </div>
       </div>
@@ -287,11 +287,11 @@ export const Dashboard = () => {
 
       {/* Add Lead Form */}
       <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Add New Lead</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto px-1">
             <LeadForm
               context="admin"
               onSuccess={async () => {

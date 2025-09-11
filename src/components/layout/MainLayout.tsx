@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -48,8 +50,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           onToggleMobileSidebar={toggleMobileSidebar}
         />
         
-        <main className="flex-1 p-4 lg:p-6 overflow-auto">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
+          <div className="max-w-7xl mx-auto w-full">
             {children}
           </div>
         </main>

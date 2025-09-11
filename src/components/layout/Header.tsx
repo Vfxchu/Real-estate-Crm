@@ -74,8 +74,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
           <Menu className="w-5 h-5" />
         </Button>
 
-        {/* Search */}
-        <div className="relative hidden md:block">
+        {/* Search - Hidden on small screens */}
+        <div className="relative hidden lg:block">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             placeholder="Search leads, properties..."
@@ -85,11 +85,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {/* Theme Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="p-2">
               {getThemeIcon()}
               <span className="sr-only">Toggle theme</span>
             </Button>
@@ -115,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative">
-              <Bell className="w-5 h-5" />
-              <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 text-xs">
+            <Button variant="ghost" size="sm" className="relative p-2">
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 text-xs">
                 3
               </Badge>
               <span className="sr-only">Notifications</span>
@@ -150,13 +150,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-2">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            <Button variant="ghost" size="sm" className="gap-2 p-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center">
                 <span className="text-xs font-medium text-primary-foreground">
                   {profile?.name.split(' ').map(n => n[0]).join('') || 'U'}
                 </span>
               </div>
-              <span className="hidden md:block">{profile?.name || user?.email}</span>
+              <span className="hidden lg:block text-sm">{profile?.name || user?.email}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

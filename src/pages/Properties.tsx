@@ -386,16 +386,16 @@ export const Properties = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Property Manager</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Property Manager</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage your property listings and inventory
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
           <Select value={currency} onValueChange={setCurrency}>
-            <SelectTrigger className="w-20">
+            <SelectTrigger className="w-20 sm:w-24">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -404,15 +404,15 @@ export const Properties = () => {
               <SelectItem value="EUR">EUR</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="btn-primary" onClick={() => setShowAddProperty(true)}>
+          <Button className="btn-primary flex-1 sm:flex-none" onClick={() => setShowAddProperty(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Property
           </Button>
         </div>
       </div>
 
-      {/* KPI Cards - Removed Average Price */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatsCard
           title="Total Properties"
           value={stats.loading ? "..." : stats.total.toString()}
@@ -420,19 +420,19 @@ export const Properties = () => {
           className="card-elevated"
         />
         <StatsCard
-          title="Available for Sale"
+          title="For Sale"
           value={stats.loading ? "..." : stats.availableForSale.toString()}
           icon={Star}
           className="card-elevated"
         />
         <StatsCard
-          title="Available for Rent"
+          title="For Rent"
           value={stats.loading ? "..." : stats.availableForRent.toString()}
           icon={Coins}
           className="card-elevated"
         />
         <StatsCard
-          title="Total Portfolio Value"
+          title="Portfolio Value"
           value={stats.loading ? "..." : formatCurrency(stats.totalValue, currency)}
           icon={TrendingUp}
           className="card-elevated"
