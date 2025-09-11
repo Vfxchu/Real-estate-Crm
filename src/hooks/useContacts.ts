@@ -47,7 +47,8 @@ export function useContacts() {
   } = {}) => {
     const { q, status_category = 'all', interest_type = 'all', page = 1, pageSize = 25, filters = {} } = opts;
 
-    // Prefer shared service for consistent listing
+    // For contacts view, we want to show master contacts (contacts without contact_id or non-lead status)
+    // This gives us the unique people/contacts, not individual lead inquiries
     const { listLeads } = await import("@/services/leads");
     const { rows, total, error } = await listLeads({
       q,
@@ -70,7 +71,23 @@ export function useContacts() {
       },
     });
 
-    return { data: rows, total, error } as const;
+    // Filter to show only master contacts (unique people)
+    const masterContacts = rows.filter((contact: any) => 
+      !contact.contact_id || contact.contact_status !== 'lead'
+    );
+
+    return { data: masterContacts, total: masterContacts.length, error } as const;
+  }, []);
+
+  // Get all leads for a specific contact
+  const getContactLeads = useCallback(async (contactId: string) => {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .or(`id.eq.${contactId},contact_id.eq.${contactId}`)
+      .order('created_at', { ascending: false });
+
+    return { data: data || [], error };
   }, []);
 
   const updateContact = useCallback(async (id: string, patch: Partial<{
@@ -168,6 +185,7 @@ export function useContacts() {
     mergeContacts,
     potentialDuplicates,
     toCSV,
-    getActivities
+    getActivities,
+    getContactLeads
   };
 }

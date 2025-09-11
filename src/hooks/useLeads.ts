@@ -71,27 +71,14 @@ export const useLeads = () => {
   const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
       console.log('[LEADS] Creating lead:', leadData);
-      // Enforce rules: set agent_id to current user, omit null/empty source
-      const payload: any = { ...leadData };
-      // Always attribute to current user for RLS
-      if (user?.id) payload.agent_id = user.id;
-      // Handle source enum default: omit if empty or null
-      if (payload.source == null || String(payload.source).trim() === '') {
-        delete payload.source;
-      }
-      // Ensure email is at least empty string because DB column is not nullable
-      if (payload.email == null) payload.email = '';
-      if (payload.status == null) payload.status = 'new';
-
-      const { data, error } = await supabase
-        .from('leads')
-        .insert([payload])
-        .select('*')
-        .single();
+      
+      // Use the enhanced lead creation service that handles contact sync
+      const { createLead: serviceCreateLead } = await import('@/services/leads');
+      const { data, error } = await serviceCreateLead(leadData as any);
 
       if (error) throw error;
 
-      // Fetch the profile data separately if the lead has an agent_id
+      // Fetch profile data for display if needed
       let leadWithProfile = data;
       if (data?.agent_id) {
         const { data: profileData } = await supabase
@@ -100,17 +87,22 @@ export const useLeads = () => {
           .eq('user_id', data.agent_id)
           .single();
         
-      leadWithProfile = {
-        ...data,
-        profiles: profileData || null
-      } as any;
+        leadWithProfile = {
+          ...data,
+          profiles: profileData || null
+        } as any;
       }
 
-      console.log('[LEADS] Lead created successfully');
+      console.log('[LEADS] Lead created successfully and synced with contacts');
       setLeads(prev => [leadWithProfile as Lead, ...prev]);
+      
+      // Trigger sync events
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
+      window.dispatchEvent(new CustomEvent('leads:changed'));
+      
       toast({
         title: 'Lead created',
-        description: 'New lead has been added successfully.',
+        description: 'New lead has been added and synced with contacts.',
       });
 
       return { data: leadWithProfile, error: null };

@@ -4,51 +4,95 @@ import type { TablesInsert } from "@/integrations/supabase/types";
 export type CreateLeadInput = Partial<TablesInsert<"leads">>;
 
 export async function createLead(input: CreateLeadInput) {
-  const { data: userRes } = await supabase.auth.getUser();
+  const { data: userRes } = await supabase.auth.getUser(); 
   const user = userRes?.user;
   if (!user) return { data: null, error: new Error("Not authenticated") } as const;
 
-  // Build payload respecting DB NOT NULL/defaults and RLS
-  const payload: TablesInsert<"leads"> = {
-    name: input.name || "",
-    email: (input.email ?? "") as string,
-    phone: input.phone ?? null,
-    notes: input.notes ?? null,
-    priority: (input.priority as any) ?? "medium",
-    status: (input.status as any) ?? "new",
-    // Additive fields (pass through when present)
-    lead_source: (input as any).lead_source ?? null,
-    interest_tags: (input as any).interest_tags ?? [],
-    category: (input as any).category ?? null,
-    segment: (input as any).segment ?? null,
-    subtype: (input as any).subtype ?? null,
-    budget_sale_band: (input as any).budget_sale_band ?? null,
-    budget_rent_band: (input as any).budget_rent_band ?? null,
-    bedrooms: (input as any).bedrooms ?? null,
-    size_band: (input as any).size_band ?? null,
-    location_place_id: (input as any).location_place_id ?? null,
-    location_lat: (input as any).location_lat ?? null,
-    location_lng: (input as any).location_lng ?? null,
-    location_address: (input as any).location_address ?? null,
-    contact_pref: (input as any).contact_pref ?? [],
-    interested_in: input.interested_in ?? null,
-    budget_range: input.budget_range ?? null,
-    // RLS: attribute to current user
-    agent_id: user.id,
-  } as TablesInsert<"leads">;
+  try {
+    // Step 1: Check if a contact already exists with same email or phone
+    let existingContactId = null;
+    if (input.email || input.phone) {
+      const { data: existingContacts } = await (supabase as any)
+        .from("leads")
+        .select("id, contact_status, email, phone")
+        .or(
+          input.email ? `email.eq.${input.email}` : 'id.eq.00000000-0000-0000-0000-000000000000',
+          input.phone ? `phone.eq.${input.phone}` : 'id.eq.00000000-0000-0000-0000-000000000000'
+        )
+        .eq("agent_id", user.id);
 
-  // Only include enum source if provided and non-empty; omit to use DB default
-  if (input.source && String(input.source).trim().length > 0) {
-    (payload as any).source = input.source;
+      // Find the master contact (one without contact_id or with contact_status != 'lead')
+      const masterContact = existingContacts?.find((c: any) => 
+        !c.contact_id || c.contact_status !== 'lead'
+      );
+      
+      if (masterContact) {
+        existingContactId = masterContact.id;
+      }
+    }
+
+    // Step 2: Build payload respecting DB NOT NULL/defaults and RLS
+    const payload: TablesInsert<"leads"> = {
+      name: input.name || "",
+      email: (input.email ?? "") as string,
+      phone: input.phone ?? null,
+      notes: input.notes ?? null,
+      priority: (input.priority as any) ?? "medium",
+      status: (input.status as any) ?? "new",
+      // Contact sync fields
+      contact_id: existingContactId,
+      contact_status: (input as any).contact_status ?? (existingContactId ? 'lead' : 'lead'),
+      // Additive fields (pass through when present)
+      lead_source: (input as any).lead_source ?? null,
+      interest_tags: (input as any).interest_tags ?? [],
+      category: (input as any).category ?? null,
+      segment: (input as any).segment ?? null,
+      subtype: (input as any).subtype ?? null,
+      budget_sale_band: (input as any).budget_sale_band ?? null,
+      budget_rent_band: (input as any).budget_rent_band ?? null,
+      bedrooms: (input as any).bedrooms ?? null,
+      size_band: (input as any).size_band ?? null,
+      location_place_id: (input as any).location_place_id ?? null,
+      location_lat: (input as any).location_lat ?? null,
+      location_lng: (input as any).location_lng ?? null,
+      location_address: (input as any).location_address ?? null,
+      contact_pref: (input as any).contact_pref ?? [],
+      interested_in: input.interested_in ?? null,
+      budget_range: input.budget_range ?? null,
+      // RLS: attribute to current user
+      agent_id: user.id,
+    } as TablesInsert<"leads">;
+
+    // Only include enum source if provided and non-empty; omit to use DB default
+    if (input.source && String(input.source).trim().length > 0) {
+      (payload as any).source = input.source;
+    }
+
+    // Step 3: Insert the lead
+    const { data, error } = await (supabase as any)
+      .from("leads")
+      .insert([payload])
+      .select("*")
+      .single();
+
+    if (error) return { data: null, error };
+
+    // Step 4: If this is a new contact (no existing contact found), update the contact_status if needed
+    if (!existingContactId && (input as any).contact_status && (input as any).contact_status !== 'lead') {
+      const { error: updateError } = await (supabase as any)
+        .from("leads")
+        .update({ contact_status: (input as any).contact_status })
+        .eq("id", data.id);
+      
+      if (updateError) {
+        console.warn("Failed to update contact status:", updateError);
+      }
+    }
+
+    return { data, error: null } as const;
+  } catch (err: any) {
+    return { data: null, error: err } as const;
   }
-
-  const { data, error } = await (supabase as any)
-    .from("leads")
-    .insert([payload])
-    .select("*")
-    .single();
-
-  return { data, error } as const;
 }
 
 export async function listLeads(opts: {
