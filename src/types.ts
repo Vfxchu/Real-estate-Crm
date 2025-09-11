@@ -39,4 +39,9 @@ export interface Lead {
   location_address?: string | null;
   contact_pref?: string[] | null;
   contact_status?: string | null;
+  
+  // Database fields that were missing
+  custom_fields?: any | null;
+  merged_into_id?: string | null;
+  tags?: string[] | null;
 }

@@ -61,7 +61,7 @@ export const ShareProperty = () => {
         return;
       }
 
-      setProperty(propertyData as Property);
+      setProperty(propertyData as unknown as Property);
       setAgentProfile(propertyData.profiles);
     } catch (error: any) {
       console.error('Error fetching property:', error);

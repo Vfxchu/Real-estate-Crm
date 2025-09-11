@@ -7,29 +7,29 @@ import { formatErrorForUser } from '@/lib/error-handler';
 export interface Property {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   property_type: string;
-  segment?: 'residential' | 'commercial';
-  subtype?: string;
+  segment?: string | null;
+  subtype?: string | null;
   address: string;
   city: string;
   state: string;
-  zip_code?: string;
-  unit_number?: string;
+  zip_code?: string | null;
+  unit_number?: string | null;
   price: number;
-  bedrooms?: number;
-  bathrooms?: number;
-  area_sqft?: number;
-  status: 'available' | 'pending' | 'sold' | 'off_market' | 'vacant' | 'rented' | 'in_development';
-  offer_type: 'rent' | 'sale'; // Required field
-  featured?: boolean;
-  images?: string[];
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  area_sqft?: number | null;
+  status: string;
+  offer_type: string; // Required field
+  featured?: boolean | null;
+  images?: string[] | null;
   agent_id: string; // Required field
-  permit_number?: string;
-  owner_contact_id?: string;
-  location_place_id?: string;
-  location_lat?: number;
-  location_lng?: number;
+  permit_number?: string | null;
+  owner_contact_id?: string | null;
+  location_place_id?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
   created_at: string;
   updated_at: string;
   profiles?: {
@@ -118,7 +118,7 @@ export const useProperties = () => {
       propertyWithProfile = {
         ...data,
         profiles: profileData || { name: 'Unknown', email: 'unknown@example.com' }
-      } as Property;
+      } as any;
       }
 
       console.log('[PROPERTIES] Property created successfully');

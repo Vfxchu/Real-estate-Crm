@@ -56,9 +56,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
     resolver: zodResolver(propertySchema),
     defaultValues: {
       title: property.title || '',
-      segment: property.segment || 'residential',
+      segment: (property.segment as any) || 'residential',
       subtype: property.subtype || '',
-      offer_type: property.offer_type || 'sale',
+      offer_type: (property.offer_type as any) || 'sale',
       price: property.price || 0,
       description: property.description || '',
       address: property.address || '',

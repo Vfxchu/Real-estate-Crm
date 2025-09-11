@@ -53,15 +53,18 @@ export async function getAgentStatistics() {
   if (error) return { data: null, error };
 
   // Calculate statistics
-  const stats = data?.map(agent => ({
-    agent_id: agent.user_id,
-    name: agent.name,
-    email: agent.email,
-    total_leads: agent.leads?.length || 0,
-    active_leads: agent.leads?.filter(lead => 
-      !['won', 'lost'].includes(lead.status)
-    ).length || 0,
-  }));
+  const stats = data?.map(agent => {
+    const leads = Array.isArray(agent.leads) ? agent.leads : [];
+    return {
+      agent_id: agent.user_id,
+      name: agent.name,
+      email: agent.email,
+      total_leads: leads.length || 0,
+      active_leads: leads.filter(lead => 
+        !['won', 'lost'].includes(lead.status)
+      ).length || 0,
+    };
+  });
 
   return { data: stats, error: null };
 }

@@ -100,10 +100,10 @@ export const useLeads = () => {
           .eq('user_id', data.agent_id)
           .single();
         
-        leadWithProfile = {
-          ...data,
-          profiles: profileData || null
-        } as Lead;
+      leadWithProfile = {
+        ...data,
+        profiles: profileData || null
+      } as any;
       }
 
       console.log('[LEADS] Lead created successfully');
