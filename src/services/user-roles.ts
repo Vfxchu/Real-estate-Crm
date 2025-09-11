@@ -4,36 +4,25 @@ export type UserRole = 'admin' | 'agent';
 
 /**
  * Gets the current user's role from the secure user_roles table
- * Falls back to profiles table for backward compatibility
  */
 export async function getCurrentUserRole(): Promise<UserRole> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 'agent';
 
-    // First try the new secure user_roles table
+    // Use the secure user_roles table as the authoritative source
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .maybeSingle(); // Use maybeSingle to avoid errors when no data
+      .maybeSingle();
 
     if (!roleError && roleData) {
       return roleData.role as UserRole;
     }
 
-    // Fallback to profiles table
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle(); // Use maybeSingle to avoid errors when no data
-
-    if (!profileError && profileData) {
-      return profileData.role as UserRole;
-    }
-
-    return 'agent'; // Default role
+    // Default to agent if no role found
+    return 'agent';
   } catch (error) {
     console.error('Error fetching user role:', error);
     return 'agent';
