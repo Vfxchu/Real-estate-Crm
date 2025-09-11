@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,10 +80,12 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
       }
 
       // Create the user account
+      const redirectUrl = `${window.location.origin}/`;
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
             name: escapeHtml(formData.name.trim()),
             role: formData.role,
@@ -107,16 +109,22 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
 
         if (profileError) throw profileError;
 
-        // Create user role entry for proper role management
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: formData.role as 'admin' | 'agent',
-            assigned_by: (await supabase.auth.getUser()).data.user?.id
-          });
+        // Grant admin role if selected (agent role is auto-added by trigger)
+        if (formData.role === 'admin') {
+          const currentUser = (await supabase.auth.getUser()).data.user;
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .upsert(
+              {
+                user_id: authData.user.id,
+                role: 'admin',
+                assigned_by: currentUser?.id
+              } as any,
+              { onConflict: 'user_id,role' } as any
+            );
 
-        if (roleError) throw roleError;
+          if (roleError) throw roleError;
+        }
       }
 
       toast({
@@ -156,6 +164,7 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Agent</DialogTitle>
+          <DialogDescription>Create a new agent account</DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
