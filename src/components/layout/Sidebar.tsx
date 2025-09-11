@@ -119,11 +119,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
 
   return (
     <div className={cn(
-      "bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col h-full",
+      "bg-sidebar border-r border-sidebar-border flex flex-col h-full fixed left-0 top-0 z-30 transition-all duration-300",
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Logo */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-sidebar-border bg-sidebar">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
             <Home className="w-4 h-4 text-primary-foreground" />
@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-1">
           {filteredNavigation.map((item) => {
             const isActive = location.pathname === item.href;
@@ -172,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
 
       {/* User Info */}
       {!isCollapsed && profile && (
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border bg-sidebar">
           <div className="flex items-center gap-3 animate-fade-in">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <span className="text-xs font-medium text-primary-foreground">
