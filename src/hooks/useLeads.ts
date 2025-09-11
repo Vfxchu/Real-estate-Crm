@@ -183,12 +183,13 @@ export const useLeads = () => {
     }
   };
 
-  const addActivity = async (leadId: string, type: string, description: string) => {
+  const addActivity = async (leadId: string, type: string, description: string, propertyId?: string) => {
     try {
       const { error } = await supabase
         .from('activities')
         .insert([{
           lead_id: leadId,
+          property_id: propertyId || null,
           type,
           description,
           created_by: user?.id,

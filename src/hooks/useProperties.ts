@@ -242,6 +242,36 @@ export const useProperties = () => {
     }
   }, [user, profile]);
 
+  const addActivity = async (propertyId: string, type: string, description: string, leadId?: string) => {
+    try {
+      const { error } = await supabase
+        .from('activities')
+        .insert([{
+          property_id: propertyId,
+          lead_id: leadId || null,
+          type,
+          description,
+          created_by: user?.id,
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Activity added',
+        description: 'Activity has been logged successfully.',
+      });
+
+      return { error: null };
+    } catch (error: any) {
+      toast({
+        title: 'Error adding activity',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return { error };
+    }
+  };
+
   return {
     properties,
     loading,
@@ -250,5 +280,6 @@ export const useProperties = () => {
     updateProperty,
     deleteProperty,
     uploadPropertyImage,
+    addActivity,
   };
 };

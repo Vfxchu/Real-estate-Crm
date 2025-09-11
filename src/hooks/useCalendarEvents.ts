@@ -128,6 +128,26 @@ export const useCalendarEvents = () => {
 
       if (error) throw error;
 
+      // Auto-create activity when appointment is completed
+      if (updates.status === 'completed') {
+        const event = events.find(e => e.id === id);
+        if (event && event.event_type === 'viewing') {
+          try {
+            await supabase
+              .from('activities')
+              .insert({
+                type: 'appointment',
+                description: `Completed property viewing: ${event.property_title || event.title}`,
+                lead_id: event.lead_id,
+                property_id: event.property_id,
+                created_by: event.agent_id,
+              });
+          } catch (activityError) {
+            console.error('Error creating activity for completed appointment:', activityError);
+          }
+        }
+      }
+
       toast({
         title: 'Event updated',
         description: 'Event has been successfully updated',

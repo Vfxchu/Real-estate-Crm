@@ -16,27 +16,33 @@ export type Database = {
     Tables: {
       activities: {
         Row: {
+          contact_id: string | null
           created_at: string
           created_by: string
           description: string
           id: string
           lead_id: string
+          property_id: string | null
           type: string
         }
         Insert: {
+          contact_id?: string | null
           created_at?: string
           created_by: string
           description: string
           id?: string
           lead_id: string
+          property_id?: string | null
           type: string
         }
         Update: {
+          contact_id?: string | null
           created_at?: string
           created_by?: string
           description?: string
           id?: string
           lead_id?: string
+          property_id?: string | null
           type?: string
         }
         Relationships: [
@@ -45,6 +51,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -275,6 +288,7 @@ export type Database = {
           budget_rent_band: string | null
           budget_sale_band: string | null
           category: string | null
+          contact_id: string | null
           contact_pref: string[] | null
           contact_status: string | null
           created_at: string
@@ -310,6 +324,7 @@ export type Database = {
           budget_rent_band?: string | null
           budget_sale_band?: string | null
           category?: string | null
+          contact_id?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string
@@ -345,6 +360,7 @@ export type Database = {
           budget_rent_band?: string | null
           budget_sale_band?: string | null
           category?: string | null
+          contact_id?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string

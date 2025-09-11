@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,53 +27,84 @@ interface Activity {
   status?: 'success' | 'pending' | 'failed';
 }
 
-const mockActivities: Activity[] = [
-  {
-    id: '1',
-    type: 'lead',
-    title: 'New Lead Added',
-    description: 'John Smith - Interested in 3BR house',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000),
-    user: { name: 'Sarah Agent', initials: 'SA' },
-    status: 'success',
-  },
-  {
-    id: '2',
-    type: 'call',
-    title: 'Follow-up Call',
-    description: 'Called Maria Garcia - Left voicemail',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    user: { name: 'Mike Agent', initials: 'MA' },
-    status: 'pending',
-  },
-  {
-    id: '3',
-    type: 'appointment',
-    title: 'Property Viewing',
-    description: 'Scheduled viewing for 123 Oak Street',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    user: { name: 'Lisa Agent', initials: 'LA' },
-    status: 'success',
-  },
-  {
-    id: '4',
-    type: 'email',
-    title: 'Email Sent',
-    description: 'Property brochure sent to David Wilson',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-    user: { name: 'Sarah Agent', initials: 'SA' },
-    status: 'success',
-  },
-  {
-    id: '5',
-    type: 'message',
-    title: 'WhatsApp Message',
-    description: 'Responded to inquiry about pricing',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000),
-    user: { name: 'Tom Agent', initials: 'TA' },
-    status: 'success',
-  },
-];
+// Hook to fetch real activities from Supabase
+const useRecentActivities = () => {
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('activities')
+          .select(`
+            id,
+            type,
+            description,
+            created_at,
+            lead_id,
+            property_id,
+            created_by,
+            leads!activities_lead_id_fkey(name, email),
+            properties!activities_property_id_fkey(title, address),
+            profiles!activities_created_by_fkey(name)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+
+        const formattedActivities: Activity[] = (data || []).map(activity => {
+          const profile = activity.profiles as any;
+          const lead = activity.leads as any;
+          const property = activity.properties as any;
+          
+          let title = activity.type;
+          let description = activity.description;
+          
+          // Format title and description based on type and related data
+          if (activity.type === 'lead' && lead) {
+            title = 'New Lead Added';
+            description = `${lead.name} - ${lead.email}`;
+          } else if (activity.type === 'appointment' && property) {
+            title = 'Property Viewing';
+            description = `Scheduled viewing for ${property.address}`;
+          } else if (activity.type === 'call' && lead) {
+            title = 'Follow-up Call';
+            description = `Called ${lead.name}`;
+          }
+
+          return {
+            id: activity.id,
+            type: activity.type as Activity['type'],
+            title,
+            description,
+            timestamp: new Date(activity.created_at),
+            user: {
+              name: profile?.name || 'Unknown User',
+              initials: profile?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'
+            },
+            status: 'success' as const
+          };
+        });
+
+        setActivities(formattedActivities);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, [user]);
+
+  return { activities, loading };
+};
 
 const getActivityIcon = (type: Activity['type']) => {
   const iconClass = "w-4 h-4";
@@ -106,6 +139,21 @@ const getStatusColor = (status?: Activity['status']) => {
 };
 
 export const RecentActivity: React.FC = () => {
+  const { activities, loading } = useRecentActivities();
+
+  if (loading) {
+    return (
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-muted-foreground">Loading activities...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="card-elevated">
       <CardHeader>
@@ -113,7 +161,12 @@ export const RecentActivity: React.FC = () => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {mockActivities.map((activity) => (
+          {activities.length === 0 ? (
+            <div className="text-center text-muted-foreground py-4">
+              No recent activities found
+            </div>
+          ) : (
+            activities.map((activity) => (
             <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 {getActivityIcon(activity.type)}
@@ -146,8 +199,9 @@ export const RecentActivity: React.FC = () => {
                   <span className="text-xs text-muted-foreground">{activity.user.name}</span>
                 </div>
               </div>
-            </div>
-          ))}
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>
