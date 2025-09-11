@@ -26,9 +26,10 @@ import {
 
 interface HeaderProps {
   onToggleSidebar: () => void;
+  onToggleMobileSidebar?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileSidebar }) => {
   const { user, profile, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
@@ -50,14 +51,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="bg-background border-b border-border px-4 lg:px-6 h-16 flex items-center justify-between">
+    <header className="bg-background border-b border-border px-4 lg:px-6 h-16 flex items-center justify-between sticky top-0 z-30">
       {/* Left side */}
       <div className="flex items-center gap-4">
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleMobileSidebar}
+          className="lg:hidden"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+
+        {/* Desktop sidebar toggle */}
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggleSidebar}
-          className="lg:hidden"
+          className="hidden lg:flex"
         >
           <Menu className="w-5 h-5" />
         </Button>

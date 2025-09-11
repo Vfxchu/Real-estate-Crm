@@ -23,6 +23,7 @@ import { Notifications } from "@/pages/Notifications";
 import { Settings } from "@/pages/Settings";
 import { ShareProperty } from "@/pages/ShareProperty";
 import NotFound from "./pages/NotFound";
+import { MainLayout } from "@/components/layout/MainLayout";
 
 const queryClient = new QueryClient();
 
@@ -42,19 +43,19 @@ const App = () => {
 
     return (
       <Routes>
-        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><LeadsManager /></ProtectedRoute>} />
-        <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MyLeads /></ProtectedRoute>} />
-        <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><TeamManagement /></ProtectedRoute>} />
-        <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin']}><AgentManager /></ProtectedRoute>} />
-        <Route path="/communication" element={<ProtectedRoute><Communication /></ProtectedRoute>} />
-        <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
-        <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin']}><Automation /></ProtectedRoute>} />
-        <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
-        <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><LeadsManager /></MainLayout></ProtectedRoute>} />
+        <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MainLayout><MyLeads /></MainLayout></ProtectedRoute>} />
+        <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><TeamManagement /></MainLayout></ProtectedRoute>} />
+        <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><AgentManager /></MainLayout></ProtectedRoute>} />
+        <Route path="/communication" element={<ProtectedRoute><MainLayout><Communication /></MainLayout></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute><MainLayout><Calendar /></MainLayout></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Analytics /></MainLayout></ProtectedRoute>} />
+        <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin']}><MainLayout><Automation /></MainLayout></ProtectedRoute>} />
+        <Route path="/properties" element={<ProtectedRoute><MainLayout><Properties /></MainLayout></ProtectedRoute>} />
+        <Route path="/contacts" element={<ProtectedRoute><MainLayout><Contacts /></MainLayout></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><MainLayout><Notifications /></MainLayout></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
         <Route path="/share/property/:propertyId" element={<ShareProperty />} />
         <Route path="/auth" element={<Navigate to="/" replace />} />
         <Route path="/auth/reset" element={<AuthReset />} />
