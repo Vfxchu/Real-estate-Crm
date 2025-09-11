@@ -56,8 +56,7 @@ export async function getAllUserRoles() {
   return await supabase
     .from('user_roles')
     .select(`
-      *,
-      profiles!user_roles_user_id_fkey(name, email)
+      *
     `)
     .order('assigned_at', { ascending: false });
 }

@@ -17,8 +17,7 @@ export function useContacts() {
       .from('leads')
       .insert([contactData]) // Auto-assignment happens via trigger
       .select(`
-        *,
-        profiles!leads_agent_id_fkey(name, email)
+        *
       `)
       .single();
     

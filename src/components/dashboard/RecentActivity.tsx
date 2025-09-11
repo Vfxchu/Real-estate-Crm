@@ -49,8 +49,7 @@ const useRecentActivities = () => {
             property_id,
             created_by,
             leads!activities_lead_id_fkey(name, email),
-            properties!activities_property_id_fkey(title, address),
-            profiles!activities_created_by_fkey(name)
+            properties!activities_property_id_fkey(title, address)
           `)
           .order('created_at', { ascending: false })
           .limit(10);
@@ -58,7 +57,6 @@ const useRecentActivities = () => {
         if (error) throw error;
 
         const formattedActivities: Activity[] = (data || []).map(activity => {
-          const profile = activity.profiles as any;
           const lead = activity.leads as any;
           const property = activity.properties as any;
           
@@ -84,8 +82,8 @@ const useRecentActivities = () => {
             description,
             timestamp: new Date(activity.created_at),
             user: {
-              name: profile?.name || 'Unknown User',
-              initials: profile?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'U'
+              name: 'System User',
+              initials: 'SU'
             },
             status: 'success' as const
           };

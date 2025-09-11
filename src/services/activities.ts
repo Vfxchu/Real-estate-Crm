@@ -14,8 +14,7 @@ export async function listActivities(lead_id?: string, property_id?: string, con
     .select(`
       *,
       leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address),
-      profiles!activities_created_by_fkey(name, email)
+      properties!activities_property_id_fkey(title, address)
     `)
     .order("created_at", { ascending: false });
 
@@ -50,8 +49,7 @@ export async function createActivity(payload: ActivityPayload) {
     .select(`
       *,
       leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address),
-      profiles!activities_created_by_fkey(name, email)
+      properties!activities_property_id_fkey(title, address)
     `)
     .single();
     
@@ -66,8 +64,7 @@ export async function updateActivity(id: string, patch: Partial<ActivityPayload>
     .select(`
       *,
       leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address),
-      profiles!activities_created_by_fkey(name, email)
+      properties!activities_property_id_fkey(title, address)
     `)
     .single();
     
@@ -86,8 +83,7 @@ export async function getAgentActivities(agentId: string) {
     .select(`
       *,
       leads!activities_lead_id_fkey(name, email, agent_id),
-      properties!activities_property_id_fkey(title, address, agent_id),
-      profiles!activities_created_by_fkey(name, email)
+      properties!activities_property_id_fkey(title, address, agent_id)
     `)
     .or(`leads.agent_id.eq.${agentId},properties.agent_id.eq.${agentId}`)
     .order("created_at", { ascending: false });

@@ -30,8 +30,7 @@ export async function createDeal(payload: DealPayload) {
     .select(`
       *,
       leads!deals_contact_id_fkey(name, email, phone),
-      properties!deals_property_id_fkey(title, address),
-      profiles!deals_agent_id_fkey(name, email)
+      properties!deals_property_id_fkey(title, address)
     `)
     .single();
 
@@ -55,8 +54,7 @@ export async function listDeals(opts: {
     .select(`
       *,
       leads!deals_contact_id_fkey(name, email, phone),
-      properties!deals_property_id_fkey(title, address),
-      profiles!deals_agent_id_fkey(name, email)
+      properties!deals_property_id_fkey(title, address)
     `, { count: "exact" })
     .order("updated_at", { ascending: false });
 
@@ -84,8 +82,7 @@ export async function updateDeal(id: string, patch: Partial<DealPayload>) {
     .select(`
       *,
       leads!deals_contact_id_fkey(name, email, phone),
-      properties!deals_property_id_fkey(title, address),
-      profiles!deals_agent_id_fkey(name, email)
+      properties!deals_property_id_fkey(title, address)
     `)
     .single();
 
@@ -107,8 +104,7 @@ export async function getDeal(id: string) {
     .select(`
       *,
       leads!deals_contact_id_fkey(name, email, phone, contact_status),
-      properties!deals_property_id_fkey(title, address, city, price),
-      profiles!deals_agent_id_fkey(name, email)
+      properties!deals_property_id_fkey(title, address, city, price)
     `)
     .eq("id", id)
     .single();
