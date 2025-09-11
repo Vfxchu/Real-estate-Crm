@@ -24,8 +24,8 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
     email: '',
     phone: '',
     password: '',
-    role: 'agent' as const,
-    status: 'active' as const,
+    role: 'agent' as 'agent' | 'admin',
+    status: 'active' as 'active' | 'inactive',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,8 +138,8 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
         email: '',
         phone: '',
         password: '',
-        role: 'agent' as const,
-        status: 'active' as const,
+        role: 'agent' as 'agent' | 'admin',
+        status: 'active' as 'active' | 'inactive',
       });
       
       onAgentCreated?.();
