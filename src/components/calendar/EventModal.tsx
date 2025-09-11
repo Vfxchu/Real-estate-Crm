@@ -124,10 +124,10 @@ export const EventModal: React.FC<EventModalProps> = ({
         end_date: endDateTime.toISOString(),
         location: formData.location || undefined,
         notes: formData.notes || undefined,
-        lead_id: formData.lead_id || undefined,
-        property_id: formData.property_id || undefined,
+        lead_id: formData.lead_id && formData.lead_id !== 'none' ? formData.lead_id : undefined,
+        property_id: formData.property_id && formData.property_id !== 'none' ? formData.property_id : undefined,
         // contact_id: formData.contact_id || undefined,
-        deal_id: formData.deal_id || undefined,
+        deal_id: formData.deal_id && formData.deal_id !== 'none' ? formData.deal_id : undefined,
         reminder_minutes: formData.reminder_minutes,
       };
 
@@ -305,7 +305,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                   <SelectValue placeholder="Select lead (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No lead</SelectItem>
+                  <SelectItem value="none">No lead</SelectItem>
                   {leads.map((lead) => (
                     <SelectItem key={lead.id} value={lead.id}>
                       <div className="flex items-center gap-2">
@@ -328,7 +328,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                   <SelectValue placeholder="Select property (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No property</SelectItem>
+                  <SelectItem value="none">No property</SelectItem>
                   {properties.map((property) => (
                     <SelectItem key={property.id} value={property.id}>
                       <div className="flex items-center gap-2">
@@ -354,7 +354,7 @@ export const EventModal: React.FC<EventModalProps> = ({
                   <SelectValue placeholder="Select deal (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No deal</SelectItem>
+                  <SelectItem value="none">No deal</SelectItem>
                   {deals.map((deal) => (
                     <SelectItem key={deal.id} value={deal.id}>
                       <div className="flex items-center gap-2">
