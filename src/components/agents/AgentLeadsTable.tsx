@@ -50,17 +50,43 @@ export const AgentLeadsTable: React.FC<AgentLeadsTableProps> = ({
   const fetchLeads = async () => {
     try {
       setLoading(true);
+      console.log('[AGENT_LEADS] Fetching leads...');
+      
       const { data, error } = await supabase
         .from('leads')
-        .select(`
-          *,
-          profiles!leads_agent_id_fkey(name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLeads((data || []) as Lead[]);
+
+      console.log('[AGENT_LEADS] Query result:', { data: data?.length || 0 });
+
+      // Fetch profile data separately for each lead that has an agent_id
+      const leadsWithProfiles = await Promise.all(
+        (data || []).map(async (lead) => {
+          if (lead.agent_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name, email')
+              .eq('user_id', lead.agent_id)
+              .single();
+            
+            return {
+              ...lead,
+              profiles: profileData || null
+            } as Lead;
+          }
+          return {
+            ...lead,
+            profiles: null
+          } as Lead;
+        })
+      );
+
+      console.log('[AGENT_LEADS] Final data with profiles:', leadsWithProfiles.length);
+      setLeads(leadsWithProfiles);
     } catch (error: any) {
+      console.error('[AGENT_LEADS] Error fetching leads:', error);
       toast({
         title: 'Error fetching leads',
         description: error.message,

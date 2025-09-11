@@ -47,25 +47,43 @@ export const useProperties = () => {
   const fetchProperties = async () => {
     try {
       setLoading(true);
-      let query = supabase
+      console.log('[PROPERTIES] Fetching properties...');
+      
+      const { data, error } = await supabase
         .from('properties')
-        .select(`
-          id,title,segment,subtype,address,city,state,zip_code,status,offer_type,price,
-          bedrooms,bathrooms,area_sqft,owner_contact_id,agent_id,created_at,updated_at,images,
-          profiles (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
-
-      // Agents and Admins should see all properties – no owner filter
-      const { data, error } = await query;
 
       if (error) throw error;
 
-      setProperties((data as Property[]) || []);
+      console.log('[PROPERTIES] Query result:', { data: data?.length || 0 });
+
+      // Fetch profile data separately for each property that has an agent_id
+      const propertiesWithProfiles = await Promise.all(
+        (data || []).map(async (property) => {
+          if (property.agent_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name, email')
+              .eq('user_id', property.agent_id)
+              .single();
+            
+            return {
+              ...property,
+              profiles: profileData || { name: 'Unknown', email: 'unknown@example.com' }
+            };
+          }
+          return {
+            ...property,
+            profiles: { name: 'Unknown', email: 'unknown@example.com' }
+          };
+        })
+      );
+
+      console.log('[PROPERTIES] Final data with profiles:', propertiesWithProfiles.length);
+      setProperties(propertiesWithProfiles as Property[]);
     } catch (error: any) {
+      console.error('[PROPERTIES] Error fetching properties:', error);
       toast({
         title: 'Error fetching properties',
         description: formatErrorForUser(error, 'fetchProperties'),
@@ -78,33 +96,43 @@ export const useProperties = () => {
 
   const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
+      console.log('[PROPERTIES] Creating property:', propertyData);
       // Direct insert - simplified, no RPC
       const { data, error } = await supabase
         .from('properties')
         .insert([propertyData])
-        .select(`
-          *,
-          profiles (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
+      // Fetch the profile data separately if the property has an agent_id
+      let propertyWithProfile = data;
+      if (data?.agent_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .eq('user_id', data.agent_id)
+          .single();
+        
+      propertyWithProfile = {
+        ...data,
+        profiles: profileData || { name: 'Unknown', email: 'unknown@example.com' }
+      } as Property;
+      }
+
+      console.log('[PROPERTIES] Property created successfully');
       // Add to state immediately for instant UI update
-      const newProperty = { ...data, profiles: data.profiles } as Property;
-      setProperties(prev => [newProperty, ...prev]);
+      setProperties(prev => [propertyWithProfile as Property, ...prev]);
       
       toast({
         title: 'Property created successfully',
         description: 'New property has been added to your listings.',
       });
 
-      return { data, error: null };
+      return { data: propertyWithProfile, error: null };
     } catch (error: any) {
-      console.error('Property creation error:', error);
+      console.error('[PROPERTIES] Property creation error:', error);
       toast({
         title: 'Error creating property',
         description: formatErrorForUser(error, 'createProperty'),

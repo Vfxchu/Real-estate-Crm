@@ -15,15 +15,11 @@ export const useLeads = () => {
   const fetchLeads = async () => {
     try {
       setLoading(true);
+      console.log('[LEADS] Fetching leads...');
+      
       let query = supabase
         .from('leads')
-        .select(`
-          *,
-          profiles!leads_agent_id_fkey (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // If user is an agent, only show their leads
@@ -32,11 +28,36 @@ export const useLeads = () => {
       }
 
       const { data, error } = await query;
+      console.log('[LEADS] Query result:', { data: data?.length || 0, error });
 
       if (error) throw error;
 
-      setLeads((data as Lead[]) || []);
+      // Fetch profile data separately for each lead that has an agent_id
+      const leadsWithProfiles = await Promise.all(
+        (data || []).map(async (lead) => {
+          if (lead.agent_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name, email')
+              .eq('user_id', lead.agent_id)
+              .single();
+            
+            return {
+              ...lead,
+              profiles: profileData || null
+            } as Lead;
+          }
+          return {
+            ...lead,
+            profiles: null
+          } as Lead;
+        })
+      );
+
+      console.log('[LEADS] Final data with profiles:', leadsWithProfiles.length);
+      setLeads(leadsWithProfiles);
     } catch (error: any) {
+      console.error('[LEADS] Error fetching leads:', error);
       toast({
         title: 'Error fetching leads',
         description: error.message,
@@ -49,6 +70,7 @@ export const useLeads = () => {
 
   const createLead = async (leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
     try {
+      console.log('[LEADS] Creating lead:', leadData);
       // Enforce rules: set agent_id to current user, omit null/empty source
       const payload: any = { ...leadData };
       // Always attribute to current user for RLS
@@ -64,25 +86,36 @@ export const useLeads = () => {
       const { data, error } = await supabase
         .from('leads')
         .insert([payload])
-        .select(`
-          *,
-          profiles!leads_agent_id_fkey (
-            name,
-            email
-          )
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
-      setLeads(prev => [data as Lead, ...prev]);
+      // Fetch the profile data separately if the lead has an agent_id
+      let leadWithProfile = data;
+      if (data?.agent_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .eq('user_id', data.agent_id)
+          .single();
+        
+        leadWithProfile = {
+          ...data,
+          profiles: profileData || null
+        } as Lead;
+      }
+
+      console.log('[LEADS] Lead created successfully');
+      setLeads(prev => [leadWithProfile as Lead, ...prev]);
       toast({
         title: 'Lead created',
         description: 'New lead has been added successfully.',
       });
 
-      return { data, error: null };
+      return { data: leadWithProfile, error: null };
     } catch (error: any) {
+      console.error('[LEADS] Error creating lead:', error);
       toast({
         title: 'Error creating lead',
         description: error.message,
