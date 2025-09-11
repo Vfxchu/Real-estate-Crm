@@ -41,13 +41,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "activities_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
             foreignKeyName: "activities_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -130,6 +123,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendar_events_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendar_events_deal_id_fkey"
             columns: ["deal_id"]
@@ -251,13 +251,6 @@ export type Database = {
           value?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "deals_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
           {
             foreignKeyName: "deals_contact_id_fkey"
             columns: ["contact_id"]
@@ -382,11 +375,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "leads_agent_id_fkey"
-            columns: ["agent_id"]
+            foreignKeyName: "leads_merged_into_id_fkey"
+            columns: ["merged_into_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -629,13 +622,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "properties_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
             foreignKeyName: "properties_owner_contact_id_fkey"
             columns: ["owner_contact_id"]
             isOneToOne: false
@@ -844,12 +830,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "user" | "admin" | "agent" | "superadmin"
+      app_role: "admin" | "agent"
       lead_source_enum:
-        | "referral"
         | "website"
-        | "social"
+        | "referral"
         | "advertisement"
+        | "cold_call"
+        | "social_media"
         | "other"
     }
     CompositeTypes: {
@@ -978,12 +965,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["user", "admin", "agent", "superadmin"],
+      app_role: ["admin", "agent"],
       lead_source_enum: [
-        "referral",
         "website",
-        "social",
+        "referral",
         "advertisement",
+        "cold_call",
+        "social_media",
         "other",
       ],
     },
