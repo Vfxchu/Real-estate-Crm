@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { uploadFile } from "@/services/storage";
+import { validateFileUpload } from "@/lib/sanitizer";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
@@ -210,17 +212,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         const fileName = `${Date.now()}_${i}.${fileExt}`;
         const filePath = `temp/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from(bucketMap[type])
-          .upload(filePath, file);
+        const { error: uploadError } = await uploadFile(bucketMap[type], filePath, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from(bucketMap[type])
-          .getPublicUrl(filePath);
-
-        newFiles.push(publicUrl);
+        // For private buckets, we'll store the path and get signed URLs on read
+        newFiles.push(filePath);
       }
       
       if (type === 'images') {
