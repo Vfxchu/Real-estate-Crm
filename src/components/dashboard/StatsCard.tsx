@@ -37,16 +37,16 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   return (
     <Card className={cn("card-elevated hover:shadow-lg transition-all duration-200", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+        <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 sm:p-4 pt-0">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-lg sm:text-2xl font-bold">{value}</div>
             {description && (
               <p className="text-xs text-muted-foreground mt-1">
                 {description}
@@ -56,7 +56,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({
           {change && (
             <Badge 
               variant="secondary" 
-              className={cn("text-xs", getChangeColor(change.type))}
+              className={cn("text-xs px-1.5 py-0.5", getChangeColor(change.type))}
             >
               {change.value}
             </Badge>

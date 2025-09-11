@@ -185,7 +185,7 @@ export const LeadsManager = () => {
             Manage and track all your leads in one place
           </p>
         </div>
-        <Button className="btn-primary w-full sm:w-auto" onClick={() => setShowAddForm(true)}>
+        <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>
@@ -207,9 +207,9 @@ export const LeadsManager = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-32 sm:w-40">
+                <SelectTrigger className="w-full sm:w-32 md:w-40">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -224,7 +224,7 @@ export const LeadsManager = () => {
               </Select>
 
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-32 sm:w-40">
+                <SelectTrigger className="w-full sm:w-32 md:w-40">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -239,13 +239,13 @@ export const LeadsManager = () => {
                  variant="outline"
                  size="sm"
                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                 className="whitespace-nowrap"
+                 className="whitespace-nowrap w-full sm:w-auto"
                >
                  <Filter className="w-4 h-4 mr-2" />
                  {showAdvancedFilters ? 'Hide' : 'More'}
                </Button>
 
-               <Button variant="outline" size="sm" className="whitespace-nowrap">
+               <Button variant="outline" size="sm" className="whitespace-nowrap w-full sm:w-auto">
                  <Download className="w-4 h-4 mr-2" />
                  Export
                </Button>

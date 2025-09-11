@@ -122,27 +122,27 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            Welcome back, {profile?.name?.split(' ')[0] || 'User'}!
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {isAdmin 
-              ? "Here's what's happening with your team today."
-              : "Here's your lead activity for today."
-            }
-          </p>
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              Welcome back, {profile?.name?.split(' ')[0] || 'User'}!
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              {isAdmin 
+                ? "Here's what's happening with your team today."
+                : "Here's your lead activity for today."
+              }
+            </p>
+          </div>
+          <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setAddLeadFormOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Lead
+          </Button>
         </div>
-        <Button className="btn-primary w-full sm:w-auto" onClick={() => setAddLeadFormOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Lead
-        </Button>
-      </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}

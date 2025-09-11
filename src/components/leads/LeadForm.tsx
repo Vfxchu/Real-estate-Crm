@@ -242,9 +242,9 @@ export default function LeadForm({
   };
 
   return (
-    <Card className="p-4 md:p-6">
+    <Card className="p-3 sm:p-4 md:p-6">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {/* Full Name (required) */}
           <FormField
             control={form.control}
@@ -280,7 +280,7 @@ export default function LeadForm({
             control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="md:col-span-2">
                 <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="name@example.com" {...field} />
@@ -295,7 +295,7 @@ export default function LeadForm({
             control={form.control}
             name="source"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="md:col-span-2">
                 <FormLabel>Lead Source</FormLabel>
                 <FormControl>
                   <ClearableSelect
@@ -518,7 +518,7 @@ export default function LeadForm({
             render={({ field }) => (
               <FormItem className="md:col-span-2">
                 <FormLabel>Contact Preference</FormLabel>
-                <div className="flex flex-wrap gap-4 mt-2">
+                <div className="flex flex-wrap gap-2 sm:gap-4 mt-2">
                   {contactPrefs.map((opt) => {
                     const checked = (field.value as string[])?.includes(opt);
                     return (
@@ -557,8 +557,8 @@ export default function LeadForm({
             )}
           />
 
-          <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-            <Button type="submit" disabled={submitting} className="btn-primary">
+          <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-2 mt-4">
+            <Button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto">
               {submitting ? "Saving..." : "Create Lead"}
             </Button>
           </div>

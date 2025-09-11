@@ -141,59 +141,59 @@ export const AgentManager = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Agent Manager Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Agent Manager Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Comprehensive agent and lead management with real-time updates
           </p>
         </div>
-        <Button className="btn-primary" onClick={() => setShowAddForm(true)}>
+        <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add New Agent
         </Button>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
         <Card className="card-elevated">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Users className="w-8 h-8 text-primary" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Agents</p>
-                <p className="text-2xl font-bold">{totalAgents}</p>
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Total Agents</p>
+                <p className="text-lg sm:text-2xl font-bold">{totalAgents}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="card-elevated">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <UserCheck className="w-8 h-8 text-success" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Active Agents</p>
-                <p className="text-2xl font-bold">{activeAgents}</p>
+              <UserCheck className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Active Agents</p>
+                <p className="text-lg sm:text-2xl font-bold">{activeAgents}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="card-elevated">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Target className="w-8 h-8 text-info" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Active Leads</p>
-                <p className="text-2xl font-bold">{totalLeads}</p>
+              <Target className="w-6 h-6 sm:w-8 sm:h-8 text-info" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Active Leads</p>
+                <p className="text-lg sm:text-2xl font-bold">{totalLeads}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="card-elevated">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <TrendingUp className="w-8 h-8 text-warning" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Closed Deals</p>
-                <p className="text-2xl font-bold">{totalClosedDeals}</p>
+              <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-warning" />
+              <div className="ml-3 sm:ml-4">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Closed Deals</p>
+                <p className="text-lg sm:text-2xl font-bold">{totalClosedDeals}</p>
               </div>
             </div>
           </CardContent>

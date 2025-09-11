@@ -490,9 +490,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editProperty ? 'Edit Property' : 'Add New Property'}</DialogTitle>
+      <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="text-lg sm:text-xl">{editProperty ? 'Edit Property' : 'Add New Property'}</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
