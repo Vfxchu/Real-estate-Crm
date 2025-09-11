@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { formatErrorForUser } from '@/lib/error-handler';
+import { getSecureImageUrl } from '@/services/storage';
 
 export interface Property {
   id: string;
@@ -61,21 +62,34 @@ export const useProperties = () => {
       // Fetch profile data separately for each property that has an agent_id
       const propertiesWithProfiles = await Promise.all(
         (data || []).map(async (property) => {
+          let profileData = null;
+          
           if (property.agent_id) {
-            const { data: profileData } = await supabase
+            const { data: profile } = await supabase
               .from('profiles')
               .select('name, email')
               .eq('user_id', property.agent_id)
               .single();
             
-            return {
-              ...property,
-              profiles: profileData || { name: 'Unknown', email: 'unknown@example.com' }
-            };
+            profileData = profile || { name: 'Unknown', email: 'unknown@example.com' };
+          } else {
+            profileData = { name: 'Unknown', email: 'unknown@example.com' };
           }
+
+          // Transform image URLs to secure signed URLs
+          const secureImages = property.images ? await Promise.all(
+            property.images.map(async (imagePath: string) => {
+              if (imagePath.startsWith('http')) {
+                return imagePath; // Already a full URL
+              }
+              return await getSecureImageUrl('property-images', imagePath) || imagePath;
+            })
+          ) : [];
+          
           return {
             ...property,
-            profiles: { name: 'Unknown', email: 'unknown@example.com' }
+            images: secureImages,
+            profiles: profileData
           };
         })
       );
@@ -221,11 +235,10 @@ export const useProperties = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('property-images')
-        .getPublicUrl(filePath);
-
-      return { data: publicUrl, error: null };
+      // Create a signed URL instead of public URL for security
+      const signedUrl = await getSecureImageUrl('property-images', filePath);
+      
+      return { data: signedUrl, error: null };
     } catch (error: any) {
       toast({
         title: 'Error uploading image',
