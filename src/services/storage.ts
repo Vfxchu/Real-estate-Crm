@@ -51,7 +51,7 @@ export async function listFiles(bucket: string, prefix: string) {
 export async function getSecureImageUrl(bucket: string, path: string) {
   if (!path) return null;
   
-  // Always use signed URLs for private buckets
+  // All buckets are now private, always use signed URLs
   const { data, error } = await createSignedUrl(bucket, path, 3600); // 1 hour expiry
   
   if (error || !data) {
