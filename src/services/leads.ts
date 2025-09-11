@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import { getLeastBusyAgent } from "./assignment";
 
 export type CreateLeadInput = Partial<TablesInsert<"leads">>;
 
@@ -59,9 +60,22 @@ export async function createLead(input: CreateLeadInput) {
       contact_pref: (input as any).contact_pref ?? [],
       interested_in: input.interested_in ?? null,
       budget_range: input.budget_range ?? null,
-      // RLS: attribute to current user
+      // RLS: attribute to current user initially, then potentially reassign
       agent_id: user.id,
     } as TablesInsert<"leads">;
+    
+    // Step 2.5: Auto-assign to least busy agent if no specific agent is assigned
+    if (!input.agent_id) {
+      const { data: assignedAgentId, error: agentError } = await getLeastBusyAgent();
+      if (!agentError && assignedAgentId) {
+        payload.agent_id = assignedAgentId as string;
+        console.log('Auto-assigned lead to agent:', assignedAgentId);
+      } else {
+        console.warn('No available agents for auto-assignment, using current user:', agentError);
+      }
+    } else {
+      payload.agent_id = input.agent_id;
+    }
 
     // Only include enum source if provided and non-empty; omit to use DB default
     if (input.source && String(input.source).trim().length > 0) {

@@ -106,6 +106,17 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
           .eq('user_id', authData.user.id);
 
         if (profileError) throw profileError;
+
+        // Create user role entry for proper role management
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: formData.role as 'admin' | 'agent',
+            assigned_by: (await supabase.auth.getUser()).data.user?.id
+          });
+
+        if (roleError) throw roleError;
       }
 
       toast({

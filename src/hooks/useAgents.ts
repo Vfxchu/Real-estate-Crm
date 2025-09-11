@@ -27,8 +27,15 @@ export const useAgents = () => {
     try {
       setLoading(true);
       
-      // Only admins can fetch all agents
-      if (profile?.role !== 'admin') {
+      // Check if user is admin using the secure user_roles table
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user?.id)
+        .eq('role', 'admin')
+        .single();
+      
+      if (!userRole) {
         setAgents([]);
         return;
       }
@@ -136,10 +143,10 @@ export const useAgents = () => {
   };
 
   useEffect(() => {
-    if (user && profile?.role === 'admin') {
+    if (user) {
       fetchAgents();
     }
-  }, [user, profile]);
+  }, [user]);
 
   return {
     agents,
