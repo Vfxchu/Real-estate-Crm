@@ -17,15 +17,12 @@ export const useLeads = () => {
       setLoading(true);
       console.log('[LEADS] Fetching leads...');
       
-      let query = supabase
+      // SECURITY: Let RLS handle access control - no client-side filtering
+      // The database RLS policies will automatically filter based on agent_id
+      const query = supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
-
-      // If user is an agent, only show their leads
-      if (profile?.role === 'agent') {
-        query = query.eq('agent_id', user?.id);
-      }
 
       const { data, error } = await query;
       console.log('[LEADS] Query result:', { data: data?.length || 0, error });
@@ -40,7 +37,7 @@ export const useLeads = () => {
               .from('profiles')
               .select('name, email')
               .eq('user_id', lead.agent_id)
-              .single();
+              .maybeSingle(); // SECURITY: Use maybeSingle to prevent errors
             
             return {
               ...lead,
@@ -85,7 +82,7 @@ export const useLeads = () => {
           .from('profiles')
           .select('name, email')
           .eq('user_id', data.agent_id)
-          .single();
+          .maybeSingle(); // SECURITY: Use maybeSingle to prevent errors
         
         leadWithProfile = {
           ...data,
@@ -128,7 +125,7 @@ export const useLeads = () => {
         .update(updates)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle(); // SECURITY: Use maybeSingle to prevent errors
 
       if (error) throw error;
 

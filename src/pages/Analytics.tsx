@@ -73,41 +73,29 @@ export const Analytics = () => {
       try {
         setLoading(true);
         
-        // Fetch total leads count
-        let leadsQuery = supabase.from('leads').select('id, status, agent_id', { count: 'exact' });
-        
-        // If user is an agent, only show their leads
-        if (profile?.role === 'agent') {
-          leadsQuery = leadsQuery.eq('agent_id', user.id);
-        }
+        // SECURITY: Let RLS handle access control - no client-side filtering
+        // The database RLS policies will automatically filter based on agent_id
+        const leadsQuery = supabase.from('leads').select('id, status, agent_id', { count: 'exact' });
         
         const { count: totalLeads } = await leadsQuery;
         
-        // Fetch new leads count (last 30 days)
+        // Fetch new leads count (last 30 days) - RLS automatically applies
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        let newLeadsQuery = supabase
+        const newLeadsQuery = supabase
           .from('leads')
           .select('id', { count: 'exact' })
           .gte('created_at', thirtyDaysAgo.toISOString());
           
-        if (profile?.role === 'agent') {
-          newLeadsQuery = newLeadsQuery.eq('agent_id', user.id);
-        }
-        
         const { count: newLeads } = await newLeadsQuery;
         
-        // Fetch converted leads count
-        let convertedQuery = supabase
+        // Fetch converted leads count - RLS automatically applies
+        const convertedQuery = supabase
           .from('leads')
           .select('id', { count: 'exact' })
           .eq('status', 'won');
           
-        if (profile?.role === 'agent') {
-          convertedQuery = convertedQuery.eq('agent_id', user.id);
-        }
-        
         const { count: convertedLeads } = await convertedQuery;
         
         // Fetch active agents count (only for admin)
