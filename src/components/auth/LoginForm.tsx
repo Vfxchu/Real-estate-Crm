@@ -108,12 +108,6 @@ export const LoginForm = () => {
               </Link>
             </div>
 
-            <div className="mt-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">
-              <p className="font-medium mb-1">Demo Accounts:</p>
-              <p>Admin: admin@realestate.com</p>
-              <p>Agent: agent@realestate.com</p>
-              <p className="mt-1">Password: any password works</p>
-            </div>
           </div>
         </CardContent>
       </Card>

@@ -31,11 +31,15 @@ export async function createTransaction(lead_id: string, payload: TransactionPay
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   
-  // Auto-set agent_id if not provided
+  if (!user) {
+    return { data: null, error: { message: 'User not authenticated' } };
+  }
+  
+  // Mandatory agent assignment for security compliance
   const transactionData = {
     ...payload,
     lead_id,
-    agent_id: payload.agent_id || user?.id,
+    agent_id: user.id, // Always set to current user for security
   };
 
   const { data, error } = await (supabase as any)

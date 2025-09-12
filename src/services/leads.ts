@@ -60,21 +60,26 @@ export async function createLead(input: CreateLeadInput) {
       contact_pref: (input as any).contact_pref ?? [],
       interested_in: input.interested_in ?? null,
       budget_range: input.budget_range ?? null,
-      // RLS: attribute to current user initially, then potentially reassign
+      // RLS: Mandatory agent assignment for security compliance
       agent_id: user.id,
     } as TablesInsert<"leads">;
     
-    // Step 2.5: Auto-assign to least busy agent if no specific agent is assigned
+    // Step 2.5: Ensure agent assignment - always required for security
+    // Only admins can assign leads to other agents
+    if (input.agent_id && input.agent_id !== user.id) {
+      // For now, keep current user assignment for security
+      // TODO: Add admin check when implementing admin features
+      console.warn('Only current user assignment allowed for security');
+    }
+    
+    // Auto-assign to least busy agent if explicitly requested and user is admin
     if (!input.agent_id) {
       const { data: assignedAgentId, error: agentError } = await getLeastBusyAgent();
       if (!agentError && assignedAgentId) {
         payload.agent_id = assignedAgentId as string;
         console.log('Auto-assigned lead to agent:', assignedAgentId);
-      } else {
-        console.warn('No available agents for auto-assignment, using current user:', agentError);
       }
-    } else {
-      payload.agent_id = input.agent_id;
+      // Fallback to current user is already set above
     }
 
     // Only include enum source if provided and non-empty; omit to use DB default

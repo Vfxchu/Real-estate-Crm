@@ -282,7 +282,7 @@ export type Database = {
       }
       leads: {
         Row: {
-          agent_id: string | null
+          agent_id: string
           bedrooms: string | null
           budget_range: string | null
           budget_rent_band: string | null
@@ -318,7 +318,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_id?: string | null
+          agent_id: string
           bedrooms?: string | null
           budget_range?: string | null
           budget_rent_band?: string | null
@@ -354,7 +354,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_id?: string | null
+          agent_id?: string
           bedrooms?: string | null
           budget_range?: string | null
           budget_rent_band?: string | null
@@ -686,7 +686,7 @@ export type Database = {
       }
       transactions: {
         Row: {
-          agent_id: string | null
+          agent_id: string
           amount: number | null
           created_at: string
           currency: string | null
@@ -706,7 +706,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_id?: string | null
+          agent_id: string
           amount?: number | null
           created_at?: string
           currency?: string | null
@@ -726,7 +726,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_id?: string | null
+          agent_id?: string
           amount?: number | null
           created_at?: string
           currency?: string | null
