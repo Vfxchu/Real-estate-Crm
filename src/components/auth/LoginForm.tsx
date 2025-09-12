@@ -107,7 +107,6 @@ export const LoginForm = () => {
                 Sign up
               </Link>
             </div>
-
           </div>
         </CardContent>
       </Card>
