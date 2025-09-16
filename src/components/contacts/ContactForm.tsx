@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -98,6 +98,8 @@ const contactPrefOptions = [
 
 export default function ContactForm({ contact, onSuccess, onCancel, className }: ContactFormProps) {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
@@ -123,27 +125,48 @@ export default function ContactForm({ contact, onSuccess, onCancel, className }:
 
   const onSubmit = async (data: ContactFormData) => {
     try {
+      setLoading(true);
+      
       let result;
       if (contact?.id) {
         result = await updateLead(contact.id, data);
-        toast({ title: 'Success', description: 'Contact updated successfully' });
+        toast({ 
+          title: 'Contact updated', 
+          description: 'Contact has been updated successfully.'
+        });
       } else {
         result = await createLead(data);
-        toast({ title: 'Success', description: 'Contact created successfully' });
+        toast({ 
+          title: 'Contact created', 
+          description: 'New contact has been added successfully.'
+        });
+      }
+
+      if (result.error) {
+        throw new Error(result.error.message);
       }
       
-      // Trigger refresh event and sync events
+      // Trigger refresh events
       window.dispatchEvent(new CustomEvent('leads:changed'));
       window.dispatchEvent(new CustomEvent('contacts:updated'));
       
       // Pass the created/updated contact to onSuccess
       onSuccess?.(result.data);
     } catch (error: any) {
+      console.error('Contact form error:', error);
+      
+      let errorMessage = error.message || 'Failed to save contact';
+      if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
+        errorMessage = 'Permission denied: You can only create contacts assigned to yourself.';
+      }
+      
       toast({ 
         title: 'Error', 
-        description: error.message || 'Failed to save contact', 
+        description: errorMessage, 
         variant: 'destructive' 
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -393,8 +416,8 @@ export default function ContactForm({ contact, onSuccess, onCancel, className }:
                 Cancel
               </Button>
             )}
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Saving...' : contact ? 'Update Contact' : 'Create Contact'}
+            <Button type="submit" className="btn-primary" disabled={loading || form.formState.isSubmitting}>
+              {(loading || form.formState.isSubmitting) ? 'Saving...' : contact ? 'Update Contact' : 'Create Contact'}
             </Button>
           </div>
         </form>
