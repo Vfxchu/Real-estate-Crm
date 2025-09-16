@@ -24,7 +24,8 @@ import {
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { EventModal } from '@/components/calendar/EventModal';
 import { NotificationSystem } from '@/components/calendar/NotificationSystem';
-import { useCalendarEvents, CalendarEvent } from '@/hooks/useCalendarEvents';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import { CalendarEvent } from '@/types';
 import { useLeads } from '@/hooks/useLeads';
 import { useProperties } from '@/hooks/useProperties';
 import { useDeals } from '@/hooks/useDeals';

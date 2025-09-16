@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import moment from 'moment';
 import { Badge } from '@/components/ui/badge';
-import { CalendarEvent } from '@/hooks/useCalendarEvents';
+import { CalendarEvent } from '@/types';
 import { cn } from '@/lib/utils';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -43,17 +43,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     let backgroundColor = '#6366f1'; // default primary color
     
     switch (calendarEvent.event_type) {
-      case 'viewing':
+      case 'property_viewing':
         backgroundColor = '#10b981'; // green for property viewings
         break;
-      case 'meeting':
+      case 'contact_meeting':
         backgroundColor = '#f59e0b'; // yellow for meetings
         break;
-      case 'call':
+      case 'lead_call':
         backgroundColor = '#3b82f6'; // blue for calls
         break;
-      case 'follow-up':
+      case 'follow_up':
         backgroundColor = '#8b5cf6'; // purple for follow-ups
+        break;
+      case 'general':
+        backgroundColor = '#6b7280'; // gray for general events
         break;
     }
 
@@ -83,8 +86,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <div className="flex items-center gap-1 text-xs">
         <div className="w-2 h-2 rounded-full bg-current opacity-80" />
         <span className="truncate">{event.title}</span>
-        {calendarEvent.lead_name && (
-          <span className="opacity-70">• {calendarEvent.lead_name}</span>
+        {calendarEvent.lead_id && (
+          <span className="opacity-70">• Lead</span>
         )}
       </div>
     );

@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = 'admin' | 'agent';
+export type UserRole = 'admin' | 'agent' | 'user' | 'superadmin';
 
 /**
  * Gets the current user's role from the secure user_roles table

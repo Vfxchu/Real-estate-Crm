@@ -1,43 +1,35 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  description?: string;
-  event_type: 'viewing' | 'meeting' | 'call' | 'follow-up';
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
-  start_date: string;
-  end_date?: string;
-  location?: string;
-  notes?: string;
-  agent_id: string;
-  agent_name?: string;
-  lead_id?: string;
-  lead_name?: string;
-  lead_email?: string;
-  property_id?: string;
-  property_title?: string;
-  property_address?: string;
-  deal_id?: string;
-  deal_title?: string;
-  reminder_minutes?: number;
-  notification_sent?: boolean;
-}
+import { CalendarEvent } from '@/types';
 
 export const useCalendarEvents = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchEvents = async (startDate?: string, endDate?: string) => {
+  const fetchEvents = async (startDate?: string, endDate?: string): Promise<void> => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_calendar_events_with_details', {
-        start_date_param: startDate ? new Date(startDate).toISOString() : null,
-        end_date_param: endDate ? new Date(endDate).toISOString() : null,
-      });
+      
+      // Build query for calendar events
+      let query = supabase
+        .from('calendar_events')
+        .select(`
+          *,
+          leads!calendar_events_lead_id_fkey(name, email),
+          properties!calendar_events_property_id_fkey(title, address)
+        `)
+        .order('start_date', { ascending: true });
+
+      if (startDate) {
+        query = query.gte('start_date', new Date(startDate).toISOString());
+      }
+      if (endDate) {
+        query = query.lte('start_date', new Date(endDate).toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -51,18 +43,19 @@ export const useCalendarEvents = () => {
         end_date: event.end_date,
         location: event.location,
         notes: event.notes,
-        agent_id: event.agent_id,
-        agent_name: event.agent_name,
         lead_id: event.lead_id,
-        lead_name: event.lead_name,
-        lead_email: event.lead_email,
         property_id: event.property_id,
-        property_title: event.property_title,
-        property_address: event.property_address,
+        contact_id: event.contact_id,
         deal_id: event.deal_id,
-        deal_title: event.deal_title,
+        agent_id: event.agent_id,
+        created_by: event.created_by,
+        created_at: event.created_at,
+        updated_at: event.updated_at,
         reminder_minutes: event.reminder_minutes,
         notification_sent: event.notification_sent,
+        is_recurring: event.is_recurring,
+        recurrence_pattern: event.recurrence_pattern,
+        recurrence_end_date: event.recurrence_end_date,
       }));
 
       setEvents(formattedEvents);
@@ -78,7 +71,7 @@ export const useCalendarEvents = () => {
     }
   };
 
-  const createEvent = async (eventData: Partial<CalendarEvent>) => {
+  const createEvent = async (eventData: Partial<CalendarEvent>): Promise<any> => {
     try {
       const { data, error } = await supabase
         .from('calendar_events')
@@ -92,6 +85,7 @@ export const useCalendarEvents = () => {
           notes: eventData.notes,
           lead_id: eventData.lead_id,
           property_id: eventData.property_id,
+          contact_id: eventData.contact_id,
           deal_id: eventData.deal_id,
           reminder_minutes: eventData.reminder_minutes || 15,
         })
@@ -119,7 +113,7 @@ export const useCalendarEvents = () => {
     }
   };
 
-  const updateEvent = async (id: string, updates: Partial<CalendarEvent>) => {
+  const updateEvent = async (id: string, updates: Partial<CalendarEvent>): Promise<void> => {
     try {
       const { error } = await supabase
         .from('calendar_events')
@@ -131,13 +125,13 @@ export const useCalendarEvents = () => {
       // Auto-create activity when appointment is completed
       if (updates.status === 'completed') {
         const event = events.find(e => e.id === id);
-        if (event && event.event_type === 'viewing') {
+        if (event && event.event_type === 'property_viewing') {
           try {
             await supabase
               .from('activities')
               .insert({
-                type: 'appointment',
-                description: `Completed property viewing: ${event.property_title || event.title}`,
+                type: 'meeting',
+                description: `Completed property viewing: ${event.title}`,
                 lead_id: event.lead_id,
                 property_id: event.property_id,
                 created_by: event.agent_id,
@@ -166,7 +160,7 @@ export const useCalendarEvents = () => {
     }
   };
 
-  const deleteEvent = async (id: string) => {
+  const deleteEvent = async (id: string): Promise<void> => {
     try {
       const { error } = await supabase
         .from('calendar_events')

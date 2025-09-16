@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { CalendarEvent } from '@/hooks/useCalendarEvents';
+import { CalendarEvent } from '@/types';
 import { useLeads } from '@/hooks/useLeads';
 import { useProperties } from '@/hooks/useProperties';
 import { useContacts } from '@/hooks/useContacts';
