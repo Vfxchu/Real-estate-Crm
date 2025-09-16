@@ -144,26 +144,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (error) return { error };
       return { error: null };
     } catch (e) {
-      console.error('[SB] signIn network error:', e);
-      return { error: { message: 'Cannot reach Supabase (network/env/adblock/limits).' } as any };
+      console.error('[AUTH] Login network error:', e);
+      return { error: { message: 'Network connection failed. Please check your internet connection.' } as any };
     }
   };
 
   const signup = async (email: string, password: string, name: string, role: UserRole = 'agent') => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          name,
-          role,
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name,
+            role,
+          }
         }
-      }
-    });
-    return { error };
+      });
+      return { error };
+    } catch (e) {
+      console.error('[AUTH] Signup network error:', e);
+      return { error: { message: 'Network connection failed. Please check your internet connection.' } as any };
+    }
   };
 
   const logout = async () => {

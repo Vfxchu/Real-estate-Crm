@@ -22,6 +22,7 @@ import Contacts from "@/pages/Contacts";
 import { Notifications } from "@/pages/Notifications";
 import { Settings } from "@/pages/Settings";
 import { ShareProperty } from "@/pages/ShareProperty";
+import { CRMTest } from "@/pages/CRMTest";
 import NotFound from "./pages/NotFound";
 
 
@@ -56,6 +57,7 @@ const App = () => {
         <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/test" element={<ProtectedRoute><CRMTest /></ProtectedRoute>} />
         <Route path="/share/property/:propertyId" element={<ShareProperty />} />
         <Route path="/auth" element={<Navigate to="/" replace />} />
         <Route path="/auth/reset" element={<AuthReset />} />
