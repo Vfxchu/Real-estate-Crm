@@ -25,6 +25,8 @@ import { Settings } from "@/pages/Settings";
 import { ShareProperty } from "@/pages/ShareProperty";
 import { CRMTest } from "@/pages/CRMTest";
 import { AuthStatus } from "@/components/auth/AuthStatus";
+import { AdminPanel } from "@/pages/AdminPanel";
+import { AgentPanel } from "@/pages/AgentPanel";
 import NotFound from "./pages/NotFound";
 
 
@@ -47,6 +49,8 @@ const App = () => {
     return (
       <Routes>
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><AdminPanel /></ProtectedRoute>} />
+        <Route path="/agent" element={<ProtectedRoute allowedRoles={['agent']}><AgentPanel /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><LeadsManager /></ProtectedRoute>} />
         <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MyLeads /></ProtectedRoute>} />
         <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><TeamManagement /></ProtectedRoute>} />

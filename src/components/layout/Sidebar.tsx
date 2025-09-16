@@ -32,6 +32,18 @@ const navigation: NavItem[] = [
     roles: ['admin', 'agent'],
   },
   {
+    title: 'Admin Panel',
+    href: '/admin',
+    icon: Settings,
+    roles: ['admin', 'superadmin'],
+  },
+  {
+    title: 'Agent Panel',
+    href: '/agent',
+    icon: UserCheck,
+    roles: ['agent'],
+  },
+  {
     title: 'Contacts',
     href: '/contacts',
     icon: Users,
