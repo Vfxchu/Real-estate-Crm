@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthErrorBoundary } from "@/components/auth/AuthErrorBoundary";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Auth } from "@/pages/Auth";
 import AuthReset from "@/pages/AuthReset";
@@ -23,6 +24,7 @@ import { Notifications } from "@/pages/Notifications";
 import { Settings } from "@/pages/Settings";
 import { ShareProperty } from "@/pages/ShareProperty";
 import { CRMTest } from "@/pages/CRMTest";
+import { AuthStatus } from "@/components/auth/AuthStatus";
 import NotFound from "./pages/NotFound";
 
 
@@ -58,6 +60,7 @@ const App = () => {
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/test" element={<ProtectedRoute><CRMTest /></ProtectedRoute>} />
+        <Route path="/auth-status" element={<ProtectedRoute><div className="p-6"><AuthStatus /></div></ProtectedRoute>} />
         <Route path="/share/property/:propertyId" element={<ShareProperty />} />
         <Route path="/auth" element={<Navigate to="/" replace />} />
         <Route path="/auth/reset" element={<AuthReset />} />
@@ -71,11 +74,13 @@ const App = () => {
       <ThemeProvider>
         <TooltipProvider>
           <BrowserRouter>
-            <AuthProvider>
-              <Toaster />
-              <Sonner />
-              <AppRoutes />
-            </AuthProvider>
+            <AuthErrorBoundary>
+              <AuthProvider>
+                <Toaster />
+                <Sonner />
+                <AppRoutes />
+              </AuthProvider>
+            </AuthErrorBoundary>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>

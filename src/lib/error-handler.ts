@@ -3,6 +3,15 @@
  * Prevents sensitive information leakage in production
  */
 export function formatErrorForUser(error: any, context?: string): string {
+  // Handle empty object errors
+  if (error && typeof error === 'object' && Object.keys(error).length === 0) {
+    return 'An error occurred. Please try again.';
+  }
+  
+  // Handle string errors that are empty or "{}"
+  if (typeof error === 'string' && (error === '{}' || error.trim() === '')) {
+    return 'An error occurred. Please try again.';
+  }
   // If it's already a user-friendly message, return it
   if (typeof error === 'string') {
     return error;

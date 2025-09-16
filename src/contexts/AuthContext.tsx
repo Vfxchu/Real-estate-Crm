@@ -141,11 +141,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error };
+      if (error) {
+        // Better error handling
+        if (error.message.includes('Invalid login credentials')) {
+          return { error: { message: 'Invalid email or password. Please check your credentials.' } };
+        }
+        if (error.message === '{}') {
+          return { error: { message: 'Login failed. Please try again or contact support.' } };
+        }
+        return { error: { message: formatErrorForUser(error, 'login') } };
+      }
       return { error: null };
-    } catch (e) {
+    } catch (e: any) {
       console.error('[AUTH] Login network error:', e);
-      return { error: { message: 'Network connection failed. Please check your internet connection.' } as any };
+      if (e?.status === 503) {
+        return { error: { message: 'Service temporarily unavailable. Please try again in a moment.' } };
+      }
+      return { error: { message: 'Network connection failed. Please check your internet connection.' } };
     }
   };
 
@@ -164,10 +176,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
       });
-      return { error };
-    } catch (e) {
+      
+      if (error) {
+        // Better error handling
+        if (error.message.includes('User already registered')) {
+          return { error: { message: 'An account with this email already exists. Try signing in instead.' } };
+        }
+        if (error.message === '{}') {
+          return { error: { message: 'Signup failed. Please try again or contact support.' } };
+        }
+        return { error: { message: formatErrorForUser(error, 'signup') } };
+      }
+      return { error: null };
+    } catch (e: any) {
       console.error('[AUTH] Signup network error:', e);
-      return { error: { message: 'Network connection failed. Please check your internet connection.' } as any };
+      if (e?.status === 503) {
+        return { error: { message: 'Service temporarily unavailable. Please try again in a moment.' } };
+      }
+      return { error: { message: 'Network connection failed. Please check your internet connection.' } };
     }
   };
 
