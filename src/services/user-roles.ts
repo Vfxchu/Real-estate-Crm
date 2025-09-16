@@ -10,18 +10,21 @@ export async function getCurrentUserRole(): Promise<UserRole> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return 'agent';
 
-    // Use the secure user_roles table as the authoritative source
-    const { data: roleData, error: roleError } = await supabase
+    // Fetch all roles for the user and pick the highest-precedence one
+    const { data: rolesData, error: rolesError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .eq('user_id', user.id);
 
-    if (!roleError && roleData) {
-      return roleData.role as UserRole;
+    if (!rolesError && rolesData && rolesData.length > 0) {
+      const roles = rolesData.map(r => r.role as UserRole);
+      if (roles.includes('superadmin')) return 'superadmin';
+      if (roles.includes('admin')) return 'admin';
+      if (roles.includes('agent')) return 'agent';
+      if (roles.includes('user')) return 'user';
     }
 
-    // Default to agent if no role found
+    // Default to agent if no role found or error
     return 'agent';
   } catch (error) {
     console.error('Error fetching user role:', error);

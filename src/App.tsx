@@ -51,14 +51,14 @@ const App = () => {
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin', 'superadmin']}><AdminPanel /></ProtectedRoute>} />
         <Route path="/agent" element={<ProtectedRoute allowedRoles={['agent']}><AgentPanel /></ProtectedRoute>} />
-        <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin']}><LeadsManager /></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><LeadsManager /></ProtectedRoute>} />
         <Route path="/my-leads" element={<ProtectedRoute allowedRoles={['agent']}><MyLeads /></ProtectedRoute>} />
-        <Route path="/team" element={<ProtectedRoute allowedRoles={['admin']}><TeamManagement /></ProtectedRoute>} />
-        <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin']}><AgentManager /></ProtectedRoute>} />
+        <Route path="/team" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><TeamManagement /></ProtectedRoute>} />
+        <Route path="/agents" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><AgentManager /></ProtectedRoute>} />
         <Route path="/communication" element={<ProtectedRoute><Communication /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-        <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin']}><Analytics /></ProtectedRoute>} />
-        <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin']}><Automation /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Analytics /></ProtectedRoute>} />
+        <Route path="/automation" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Automation /></ProtectedRoute>} />
         <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
         <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
