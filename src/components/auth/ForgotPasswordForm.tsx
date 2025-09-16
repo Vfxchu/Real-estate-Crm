@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
+const APP_URL = window.location.origin;
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
