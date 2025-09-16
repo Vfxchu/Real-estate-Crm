@@ -695,6 +695,45 @@ export type Database = {
           },
         ]
       }
+      security_audit: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           agent_id: string | null
@@ -820,6 +859,16 @@ export type Database = {
       has_role: {
         Args: { _role: string; _user_id: string }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_new_values?: Json
+          p_old_values?: Json
+          p_resource_id?: string
+          p_resource_type: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
