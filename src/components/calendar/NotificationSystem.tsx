@@ -136,20 +136,22 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
 
   const getEventIcon = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'viewing': return <Building className="w-4 h-4" />;
-      case 'meeting': return <Users className="w-4 h-4" />;
-      case 'call': return <Phone className="w-4 h-4" />;
-      case 'follow-up': return <Clock className="w-4 h-4" />;
+      case 'property_viewing': return <Building className="w-4 h-4" />;
+      case 'contact_meeting': return <Users className="w-4 h-4" />;
+      case 'lead_call': return <Phone className="w-4 h-4" />;
+      case 'follow_up': return <Clock className="w-4 h-4" />;
+      case 'general': return <CalendarIcon className="w-4 h-4" />;
       default: return <CalendarIcon className="w-4 h-4" />;
     }
   };
 
   const getEventColor = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'viewing': return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'meeting': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-      case 'call': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'follow-up': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+      case 'property_viewing': return 'bg-green-500/10 text-green-600 border-green-500/20';
+      case 'contact_meeting': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+      case 'lead_call': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+      case 'follow_up': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+      case 'general': return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
       default: return 'bg-primary/10 text-primary border-primary/20';
     }
   };
@@ -200,12 +202,12 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
                     })}
                   </div>
                   
-                  {event.lead_name && (
-                    <div className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      <span className="truncate">{event.lead_name}</span>
-                    </div>
-                  )}
+                   {event.lead_id && (
+                     <div className="flex items-center gap-1">
+                       <User className="w-3 h-3" />
+                       <span className="truncate">Lead</span>
+                     </div>
+                   )}
                   
                   {event.location && (
                     <div className="flex items-center gap-1">

@@ -67,21 +67,21 @@ export const Calendar = () => {
 
     if (action === 'schedule-viewing' && propertyId) {
       setDefaultEventData({
-        type: 'viewing',
+        type: 'property_viewing',
         linkedRecord: { type: 'property', id: propertyId },
       });
       setModalMode('create');
       setShowEventModal(true);
     } else if (action === 'schedule-call' && leadId) {
       setDefaultEventData({
-        type: 'call',
+        type: 'lead_call',
         linkedRecord: { type: 'lead', id: leadId },
       });
       setModalMode('create');
       setShowEventModal(true);
     } else if (action === 'schedule-meeting' && dealId) {
       setDefaultEventData({
-        type: 'meeting',
+        type: 'contact_meeting',
         linkedRecord: { type: 'deal', id: dealId },
       });
       setModalMode('create');
@@ -96,8 +96,8 @@ export const Calendar = () => {
       const searchTerm = filters.search.toLowerCase();
       const matchesSearch = 
         event.title.toLowerCase().includes(searchTerm) ||
-        event.lead_name?.toLowerCase().includes(searchTerm) ||
-        event.property_title?.toLowerCase().includes(searchTerm) ||
+        event.lead_id ||
+        event.property_id ||
         event.location?.toLowerCase().includes(searchTerm);
       if (!matchesSearch) return false;
     }
@@ -198,10 +198,11 @@ export const Calendar = () => {
 
   const getTypeIcon = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'viewing': return <Building className="w-4 h-4" />;
-      case 'meeting': return <Users className="w-4 h-4" />;
-      case 'call': return <Phone className="w-4 h-4" />;
-      case 'follow-up': return <Clock className="w-4 h-4" />;
+      case 'property_viewing': return <Building className="w-4 h-4" />;
+      case 'contact_meeting': return <Users className="w-4 h-4" />;
+      case 'lead_call': return <Phone className="w-4 h-4" />;
+      case 'follow_up': return <Clock className="w-4 h-4" />;
+      case 'general': return <CalendarIcon className="w-4 h-4" />;
       default: return <CalendarIcon className="w-4 h-4" />;
     }
   };

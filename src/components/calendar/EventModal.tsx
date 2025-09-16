@@ -98,7 +98,7 @@ export const EventModal: React.FC<EventModalProps> = ({
         ...prev,
         start_date: format(defaultDateTime, 'yyyy-MM-dd'),
         start_time: format(defaultDateTime, 'HH:mm'),
-        event_type: defaultType || 'meeting',
+        event_type: defaultType || 'contact_meeting',
         lead_id: linkedRecord?.type === 'lead' ? linkedRecord.id : '',
         property_id: linkedRecord?.type === 'property' ? linkedRecord.id : '',
         // contact_id: linkedRecord?.type === 'contact' ? linkedRecord.id : '',
@@ -156,20 +156,22 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   const getTypeIcon = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'viewing': return <Building className="w-4 h-4" />;
-      case 'meeting': return <Users className="w-4 h-4" />;
-      case 'call': return <Phone className="w-4 h-4" />;
-      case 'follow-up': return <Clock className="w-4 h-4" />;
+      case 'property_viewing': return <Building className="w-4 h-4" />;
+      case 'contact_meeting': return <Users className="w-4 h-4" />;
+      case 'lead_call': return <Phone className="w-4 h-4" />;
+      case 'follow_up': return <Clock className="w-4 h-4" />;
+      case 'general': return <CalendarIcon className="w-4 h-4" />;
       default: return <CalendarIcon className="w-4 h-4" />;
     }
   };
 
   const getTypeColor = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'viewing': return 'bg-green-500 text-white';
-      case 'meeting': return 'bg-yellow-500 text-white';
-      case 'call': return 'bg-blue-500 text-white';
-      case 'follow-up': return 'bg-purple-500 text-white';
+      case 'property_viewing': return 'bg-green-500 text-white';
+      case 'contact_meeting': return 'bg-yellow-500 text-white';
+      case 'lead_call': return 'bg-blue-500 text-white';
+      case 'follow_up': return 'bg-purple-500 text-white';
+      case 'general': return 'bg-gray-500 text-white';
       default: return 'bg-primary text-primary-foreground';
     }
   };
