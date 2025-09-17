@@ -40,9 +40,8 @@ export async function createLead(input: CreateLeadInput) {
       notes: input.notes ?? null,
       priority: (input.priority as any) ?? "medium",
       status: (input.status as any) ?? "new",
-      // Contact sync fields
-      contact_id: existingContactId,
-      contact_status: (input as any).contact_status ?? (existingContactId ? 'lead' : 'lead'),
+      // Contact sync fields (no contact_id column in leads table)
+      contact_status: (input as any).contact_status ?? 'lead',
       // Additive fields (pass through when present)
       lead_source: (input as any).lead_source ?? null,
       interest_tags: (input as any).interest_tags ?? [],
