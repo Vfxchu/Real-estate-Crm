@@ -78,7 +78,10 @@ export async function createLead(input: CreateLeadInput) {
     const { data, error } = await (supabase as any)
       .from("leads")
       .insert([payload])
-      .select("*")
+      .select(`
+        *,
+        profiles!leads_agent_id_fkey(name, email)
+      `)
       .single();
 
     if (error) return { data: null, error };
@@ -136,8 +139,10 @@ export async function listLeads(opts: {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let selectCols = "*";
-  // Note: Profile joins removed due to missing foreign key constraints
+  let selectCols = `
+    *,
+    profiles!leads_agent_id_fkey(name, email)
+  `;
 
   let query = (supabase as any)
     .from("leads")
@@ -200,7 +205,10 @@ export async function updateLead(id: string, patch: Partial<TablesInsert<"leads"
     .from("leads")
     .update(payload)
     .eq("id", id)
-    .select("*")
+    .select(`
+      *,
+      profiles!leads_agent_id_fkey(name, email)
+    `)
     .maybeSingle();
 
   return { data, error } as const;

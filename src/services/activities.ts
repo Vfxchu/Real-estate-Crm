@@ -13,8 +13,8 @@ export async function listActivities(lead_id?: string, property_id?: string, con
     .from("activities")
     .select(`
       *,
-      leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address)
+      leads(name, email),
+      properties(title, address)
     `)
     .order("created_at", { ascending: false });
 
@@ -25,8 +25,9 @@ export async function listActivities(lead_id?: string, property_id?: string, con
   if (property_id) {
     query = query.eq("property_id", property_id);
   }
+  // contact_id filtering - in this system, leads ARE contacts
   if (contact_id) {
-    query = query.eq("contact_id", contact_id);
+    query = query.eq("lead_id", contact_id);
   }
 
   return await query;
@@ -36,20 +37,23 @@ export async function createActivity(payload: ActivityPayload) {
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   
+  // In this system, leads ARE contacts, so use lead_id for contact references
+  const activityData = {
+    type: payload.type,
+    description: payload.description,
+    lead_id: payload.lead_id || payload.contact_id, // Normalize contact_id to lead_id
+    property_id: payload.property_id,
+    contact_id: payload.contact_id, // Keep both for compatibility but prefer lead_id
+    created_by: user?.id
+  };
+  
   const { data, error } = await supabase
     .from("activities")
-    .insert([{ 
-      type: payload.type, 
-      description: payload.description, 
-      lead_id: payload.lead_id,
-      property_id: payload.property_id,
-      contact_id: payload.contact_id,
-      created_by: user?.id 
-    }])
+    .insert([activityData])
     .select(`
       *,
-      leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address)
+      leads(name, email),
+      properties(title, address)
     `)
     .single();
     
@@ -63,8 +67,8 @@ export async function updateActivity(id: string, patch: Partial<ActivityPayload>
     .eq("id", id)
     .select(`
       *,
-      leads!activities_lead_id_fkey(name, email),
-      properties!activities_property_id_fkey(title, address)
+      leads(name, email),
+      properties(title, address)
     `)
     .single();
     
@@ -82,8 +86,8 @@ export async function getAgentActivities(agentId: string) {
     .from("activities")
     .select(`
       *,
-      leads!activities_lead_id_fkey(name, email, agent_id),
-      properties!activities_property_id_fkey(title, address, agent_id)
+      leads!inner(name, email, agent_id),
+      properties!inner(title, address, agent_id)
     `)
     .or(`leads.agent_id.eq.${agentId},properties.agent_id.eq.${agentId}`)
     .order("created_at", { ascending: false });

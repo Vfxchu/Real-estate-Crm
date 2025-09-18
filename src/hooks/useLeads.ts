@@ -17,39 +17,24 @@ export const useLeads = () => {
       setLoading(true);
       console.log('[LEADS] Fetching leads...');
       
-      // SECURITY: Let RLS handle access control - no client-side filtering
-      // The database RLS policies will automatically filter based on agent_id
-      const query = supabase
+      // PERFORMANCE FIX: Use JOIN instead of N+1 queries
+      const { data, error } = await supabase
         .from('leads')
-        .select('*')
+        .select(`
+          *,
+          profiles!leads_agent_id_fkey(name, email)
+        `)
         .order('created_at', { ascending: false });
 
-      const { data, error } = await query;
       console.log('[LEADS] Query result:', { data: data?.length || 0, error });
 
       if (error) throw error;
 
-      // Fetch profile data separately for each lead that has an agent_id
-      const leadsWithProfiles = await Promise.all(
-        (data || []).map(async (lead) => {
-          if (lead.agent_id) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('name, email')
-              .eq('user_id', lead.agent_id)
-              .maybeSingle(); // SECURITY: Use maybeSingle to prevent errors
-            
-            return {
-              ...lead,
-              profiles: profileData || null
-            } as Lead;
-          }
-          return {
-            ...lead,
-            profiles: null
-          } as Lead;
-        })
-      );
+      // Data is already joined, no need for additional queries
+      const leadsWithProfiles = (data || []).map(lead => ({
+        ...lead,
+        profiles: lead.profiles || null
+      })) as Lead[];
 
       console.log('[LEADS] Final data with profiles:', leadsWithProfiles.length);
       setLeads(leadsWithProfiles);
@@ -75,20 +60,8 @@ export const useLeads = () => {
 
       if (error) throw error;
 
-      // Fetch profile data for display if needed
-      let leadWithProfile = data;
-      if (data?.agent_id) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('name, email')
-          .eq('user_id', data.agent_id)
-          .maybeSingle(); // SECURITY: Use maybeSingle to prevent errors
-        
-        leadWithProfile = {
-          ...data,
-          profiles: profileData || null
-        } as any;
-      }
+      // Data already includes profile from service, no additional fetch needed
+      const leadWithProfile = data;
 
       console.log('[LEADS] Lead created successfully and synced with contacts');
       setLeads(prev => [leadWithProfile as Lead, ...prev]);
