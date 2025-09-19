@@ -69,6 +69,89 @@ export type Database = {
           },
         ]
       }
+      automation_executions: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          executed_at: string
+          execution_result: Json | null
+          id: string
+          status: string
+          trigger_data: Json | null
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          executed_at?: string
+          execution_result?: Json | null
+          id?: string
+          status?: string
+          trigger_data?: Json | null
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          executed_at?: string
+          execution_result?: Json | null
+          id?: string
+          status?: string
+          trigger_data?: Json | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_workflows: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          n8n_workflow_id: string | null
+          name: string
+          trigger_conditions: Json | null
+          trigger_type: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          n8n_workflow_id?: string | null
+          name: string
+          trigger_conditions?: Json | null
+          trigger_type: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          n8n_workflow_id?: string | null
+          name?: string
+          trigger_conditions?: Json | null
+          trigger_type?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           agent_id: string
@@ -563,6 +646,10 @@ export type Database = {
           created_at: string
           description: string | null
           featured: boolean | null
+          featured_image: string | null
+          gallery: Json | null
+          geo_lat: number | null
+          geo_lng: number | null
           id: string
           images: string[] | null
           location_lat: number | null
@@ -580,6 +667,9 @@ export type Database = {
           title: string
           unit_number: string | null
           updated_at: string
+          wp_id: number | null
+          wp_permalink: string | null
+          wp_slug: string | null
           zip_code: string | null
         }
         Insert: {
@@ -592,6 +682,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           featured?: boolean | null
+          featured_image?: string | null
+          gallery?: Json | null
+          geo_lat?: number | null
+          geo_lng?: number | null
           id?: string
           images?: string[] | null
           location_lat?: number | null
@@ -609,6 +703,9 @@ export type Database = {
           title: string
           unit_number?: string | null
           updated_at?: string
+          wp_id?: number | null
+          wp_permalink?: string | null
+          wp_slug?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -621,6 +718,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           featured?: boolean | null
+          featured_image?: string | null
+          gallery?: Json | null
+          geo_lat?: number | null
+          geo_lng?: number | null
           id?: string
           images?: string[] | null
           location_lat?: number | null
@@ -638,6 +739,9 @@ export type Database = {
           title?: string
           unit_number?: string | null
           updated_at?: string
+          wp_id?: number | null
+          wp_permalink?: string | null
+          wp_slug?: string | null
           zip_code?: string | null
         }
         Relationships: [
