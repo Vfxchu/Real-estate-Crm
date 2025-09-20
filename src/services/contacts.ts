@@ -62,7 +62,16 @@ export async function setContactManualStatus(
   contactId: string,
   status: ContactStatusValue
 ) {
-  // 1. Update the contact/lead record
+  // 1. Fetch current status before update
+  const { data: existing } = await supabase
+    .from("leads")
+    .select("status_effective")
+    .eq("id", contactId)
+    .single();
+
+  const oldStatus = existing?.status_effective ?? null;
+
+  // 2. Update the contact/lead record
   const { data, error } = await supabase
     .from("leads")
     .update({
@@ -78,16 +87,16 @@ export async function setContactManualStatus(
     return { data, error };
   }
 
-  // 2. Get current user id (auth.uid)
+  // 3. Get current user id (auth.uid)
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const userId = user?.id ?? null;
 
-  // 3. Insert into contact_status_changes for audit
+  // 4. Insert into contact_status_changes for audit
   await supabase.from("contact_status_changes").insert({
     contact_id: contactId,
-    old_status: null, // (optional: fetch previous before update if needed)
+    old_status: oldStatus,
     new_status: status,
     reason: "manual override",
     changed_by: userId,
