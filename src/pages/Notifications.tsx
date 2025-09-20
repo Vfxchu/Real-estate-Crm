@@ -23,24 +23,92 @@ import {
   Phone,
   Settings,
   Search,
-  Snooze,
+  Mail,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday, isYesterday } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  fetchDueEvents,
-  ackEventReminder,
-  snoozeEventReminder,
-  type DueEventRow,
-} from "@/services/contacts";
+
+/** Local type matching your calendar_events shape */
+type DueEventRow = {
+  id: string;
+  title: string;
+  event_type:
+    | "property_viewing"
+    | "lead_call"
+    | "contact_meeting"
+    | "follow_up"
+    | "general"
+    | string;
+  status: "scheduled" | "completed" | "cancelled" | "rescheduled" | string;
+  start_date: string;
+  next_due_at?: string | null;
+  agent_id?: string | null;
+  created_by?: string | null;
+};
+
+/** ---- Local helpers (no external service import needed) ---- **/
+
+/** Load reminders due now for this agent */
+async function fetchDueEvents(agentId: string) {
+  const nowIso = new Date().toISOString();
+
+  // Prefer next_due_at if present; fall back to start_date
+  let query = supabase
+    .from("calendar_events")
+    .select("id,title,event_type,status,start_date,next_due_at,agent_id,created_by")
+    .or(`agent_id.eq.${agentId},created_by.eq.${agentId}`)
+    .eq("status", "scheduled")
+    .lte("next_due_at", nowIso)
+    .order("next_due_at", { ascending: true });
+
+  let { data, error } = await query;
+
+  // Fallback if next_due_at isn’t populated
+  if (error) {
+    const fallback = await supabase
+      .from("calendar_events")
+      .select("id,title,event_type,status,start_date,next_due_at,agent_id,created_by")
+      .or(`agent_id.eq.${agentId},created_by.eq.${agentId}`)
+      .eq("status", "scheduled")
+      .lte("start_date", nowIso)
+      .order("start_date", { ascending: true });
+
+    data = fallback.data as any;
+  }
+
+  return { data: (data ?? []) as DueEventRow[] };
+}
+
+/** Mark reminder as done (sets status=completed) */
+async function ackEventReminder(eventId: string) {
+  await supabase
+    .from("calendar_events")
+    .update({ status: "completed" })
+    .eq("id", eventId);
+}
+
+/** Snooze reminder for N minutes (sets snooze_until & next_due_at) */
+async function snoozeEventReminder(eventId: string, minutes: number) {
+  const next = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  await supabase
+    .from("calendar_events")
+    .update({ snooze_until: next, next_due_at: next })
+    .eq("id", eventId);
+}
 
 type NotificationRow = {
   id: string;
   title: string;
   message: string | null;
-  type: "new_lead" | "appointment" | "system" | "agent_activity" | "reminder" | string;
+  type:
+    | "new_lead"
+    | "appointment"
+    | "system"
+    | "agent_activity"
+    | "reminder"
+    | string;
   priority: "low" | "medium" | "high" | string;
   is_read: boolean;
   created_at: string;
@@ -51,7 +119,6 @@ export const Notifications = () => {
   const { profile, user } = useAuth();
   const { toast } = useToast();
 
-  // Identify agent (adjust if your profile structure differs)
   const agentId =
     (profile as any)?.id ||
     (profile as any)?.user_id ||
@@ -61,7 +128,9 @@ export const Notifications = () => {
   // Filters
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"all" | "reminders" | "activity">("all");
-  const [priorityFilter, setPriorityFilter] = useState<"all" | "high" | "medium" | "low">("all");
+  const [priorityFilter, setPriorityFilter] = useState<
+    "all" | "high" | "medium" | "low"
+  >("all");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
 
   // Reminders
@@ -90,9 +159,11 @@ export const Notifications = () => {
         if (agentId) {
           const now = new Date();
           const week = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-          const { data: upcomingData, error: upErr } = await (supabase as any)
+          const { data: upcomingData, error: upErr } = await supabase
             .from("calendar_events")
-            .select("id,title,event_type,status,start_date,next_due_at,agent_id,created_by")
+            .select(
+              "id,title,event_type,status,start_date,next_due_at,agent_id,created_by"
+            )
             .or(`agent_id.eq.${agentId},created_by.eq.${agentId}`)
             .eq("status", "scheduled")
             .gt("start_date", now.toISOString())
@@ -105,7 +176,7 @@ export const Notifications = () => {
         }
 
         // 3) General notifications (if table exists)
-        const { data: maybe, error: notifErr } = await (supabase as any)
+        const { data: maybe, error: notifErr } = await supabase
           .from("notifications")
           .select("*")
           .order("created_at", { ascending: false })
@@ -119,7 +190,7 @@ export const Notifications = () => {
           setGeneral((maybe ?? []) as NotificationRow[]);
         }
       } catch {
-        // Swallow errors to avoid UI breakage
+        // ignore to avoid UI break
       } finally {
         if (mounted) setLoading(false);
       }
@@ -127,7 +198,7 @@ export const Notifications = () => {
 
     loadAll();
 
-    // quick poll every 45s to refresh
+    // Poll every 45s
     const id = setInterval(loadAll, 45_000);
     return () => {
       mounted = false;
@@ -138,7 +209,6 @@ export const Notifications = () => {
   // --- Actions for reminders ---
   const handleDone = async (id: string) => {
     await ackEventReminder(id);
-    // remove from dueNow/upcoming locally
     setDueNow((arr) => arr.filter((e) => e.id !== id));
     setUpcoming((arr) => arr.filter((e) => e.id !== id));
     toast({ title: "Reminder completed", description: "Marked as done." });
@@ -146,7 +216,6 @@ export const Notifications = () => {
 
   const handleSnooze = async (id: string, minutes: number) => {
     await snoozeEventReminder(id, minutes);
-    // remove from dueNow; it will reappear later
     setDueNow((arr) => arr.filter((e) => e.id !== id));
     toast({
       title: "Snoozed",
@@ -157,14 +226,14 @@ export const Notifications = () => {
   // --- Actions for general notifications (if table exists) ---
   const markAsRead = async (id: string) => {
     if (!hasNotificationsTable) return;
-    await (supabase as any).from("notifications").update({ is_read: true }).eq("id", id);
+    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     setGeneral((items) => items.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     toast({ title: "Marked as read" });
   };
 
   const markAllAsRead = async () => {
     if (!hasNotificationsTable) return;
-    await (supabase as any).from("notifications").update({ is_read: true }).neq("id", ""); // all rows
+    await supabase.from("notifications").update({ is_read: true }).neq("id", ""); // all rows
     setGeneral((items) => items.map((n) => ({ ...n, is_read: true })));
     toast({ title: "All notifications marked as read" });
   };
@@ -234,7 +303,7 @@ export const Notifications = () => {
     if (isToday(d)) return `Today · ${format(d, "HH:mm")}`;
     if (isYesterday(d)) return `Yesterday · ${format(d, "HH:mm")}`;
     return format(d, "EEE, MMM d · HH:mm");
-    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -402,7 +471,6 @@ export const Notifications = () => {
                           Done
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleSnooze(e.id, 5)}>
-                          <Snooze className="w-4 h-4 mr-2" />
                           Snooze 5m
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleSnooze(e.id, 10)}>
@@ -450,7 +518,15 @@ export const Notifications = () => {
               >
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="mt-1">{typeIcon(n.type)}</div>
+                    <div className="mt-1">
+                      {n.type === "agent_activity"
+                        ? <Users className="w-5 h-5 text-success" />
+                        : n.type === "system"
+                        ? <Settings className="w-5 h-5 text-muted-foreground" />
+                        : n.type === "reminder" || n.type === "appointment"
+                        ? <Clock className="w-5 h-5 text-warning" />
+                        : <Info className="w-5 h-5 text-muted-foreground" />}
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-center gap-2">
@@ -534,7 +610,6 @@ export const Notifications = () => {
                           Done
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleSnooze(e.id, 5)}>
-                          <Snooze className="w-4 h-4 mr-2" />
                           Snooze 5m
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => handleSnooze(e.id, 10)}>
