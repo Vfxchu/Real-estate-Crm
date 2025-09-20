@@ -1,99 +1,140 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
-import { setContactStatusMode, setContactManualStatus, recomputeContactStatus } from "@/services/contacts";
+import {
+  setContactStatusMode,
+  setContactManualStatus,
+  recomputeContactStatus,
+} from "@/services/contacts";
+
+type ContactStatusMode = "auto" | "manual";
+type ContactStatusValue = "active" | "past";
+
+interface Contact {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status_mode: ContactStatusMode;
+  status_effective: ContactStatusValue;
+  status_manual?: ContactStatusValue | null;
+  tags?: string[];
+}
 
 interface ContactHeaderProps {
-  contact: any;
-  onUpdate: () => void;
+  contact: Contact;
+  onUpdate: () => void; // parent refetch callback
 }
 
 export function ContactHeader({ contact, onUpdate }: ContactHeaderProps) {
   const { profile } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
-  
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
-  const isManualMode = contact.status_mode === 'manual';
-  const currentStatus = contact.status_effective;
+
+  const isAdmin = profile?.role === "admin" || profile?.role === "superadmin";
+  const isManualMode: boolean = contact?.status_mode === "manual";
+  const currentStatus: ContactStatusValue = contact?.status_effective ?? "active";
+
+  const getStatusVariant = (status: ContactStatusValue) =>
+    status === "active" ? "default" : "secondary";
 
   const handleModeToggle = async (checked: boolean) => {
-    if (!isAdmin) return;
-    
+    if (!isAdmin || !contact?.id) return;
+
     setIsUpdating(true);
     try {
-      const newMode = checked ? 'manual' : 'auto';
-      await setContactStatusMode(contact.id, newMode);
-      
-      if (newMode === 'auto') {
-        // Trigger recomputation when switching to auto
-        const result = await recomputeContactStatus(contact.id);
+      const newMode: ContactStatusMode = checked ? "manual" : "auto";
+      const { error } = await setContactStatusMode(contact.id, newMode);
+      if (error) throw error;
+
+      if (newMode === "auto") {
+        const { error: err2 } = await recomputeContactStatus(contact.id);
+        if (err2) throw err2;
         toast({
           title: "Status set to Auto",
-          description: `Recalculated status based on leads and properties.`,
+          description: "Recalculated based on linked leads and properties.",
         });
       } else {
         toast({
           title: "Status set to Manual",
-          description: "Status will not auto-update based on leads/properties.",
+          description: "Automation paused. You can set Active/Past manually.",
         });
       }
-      
-      onUpdate();
+
+      onUpdate?.();
     } catch (error) {
+      console.error("Failed to update status mode", error);
       toast({
         title: "Error",
-        description: "Failed to update status mode",
+        description: "Failed to update status mode.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
-  const handleStatusChange = async (newStatus: 'active' | 'past') => {
-    if (!isAdmin || !isManualMode) return;
-    
+  const handleStatusChange = async (newStatus: ContactStatusValue) => {
+    if (!isAdmin || !isManualMode || !contact?.id) return;
+
     setIsUpdating(true);
     try {
-      await setContactManualStatus(contact.id, newStatus);
+      const { error } = await setContactManualStatus(contact.id, newStatus);
+      if (error) throw error;
+
       toast({
         title: "Status Updated",
-        description: `Contact status set to ${newStatus}`,
+        description: `Contact status set to ${newStatus}.`,
       });
-      onUpdate();
+
+      onUpdate?.();
     } catch (error) {
+      console.error("Failed to set manual status", error);
       toast({
         title: "Error",
-        description: "Failed to update status",
+        description: "Failed to set manual status.",
         variant: "destructive",
       });
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
-  };
-
-  const getStatusVariant = (status: string) => {
-    return status === 'active' ? 'default' : 'secondary';
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border-b">
-      <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{contact.name}</h1>
-          <p className="text-muted-foreground">{contact.email}</p>
+    <div
+      className="flex items-center justify-between p-4 border-b"
+      aria-busy={isUpdating}
+    >
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold truncate">
+            {contact?.name || "Contact"}
+          </h1>
+          {contact?.email && (
+            <p className="text-muted-foreground truncate">{contact.email}</p>
+          )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Badge variant={getStatusVariant(currentStatus)} className="capitalize">
             {currentStatus}
           </Badge>
-          
-          {contact.tags && contact.tags.length > 0 && (
+          <Badge variant="outline" className="text-[10px] uppercase">
+            {isManualMode ? "MANUAL" : "AUTO"}
+          </Badge>
+
+          {Array.isArray(contact?.tags) && contact.tags.length > 0 && (
             <div className="flex gap-1">
-              {contact.tags.slice(0, 3).map((tag: string) => (
+              {contact.tags.slice(0, 3).map((tag) => (
                 <Badge key={tag} variant="outline" className="text-xs">
                   {tag}
                 </Badge>
@@ -111,7 +152,9 @@ export function ContactHeader({ contact, onUpdate }: ContactHeaderProps) {
       {isAdmin && (
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Label htmlFor="status-mode" className="text-sm">Manual</Label>
+            <Label htmlFor="status-mode" className="text-sm">
+              Manual
+            </Label>
             <Switch
               id="status-mode"
               checked={isManualMode}
@@ -119,11 +162,15 @@ export function ContactHeader({ contact, onUpdate }: ContactHeaderProps) {
               disabled={isUpdating}
             />
           </div>
-          
+
           {isManualMode && (
-            <Select value={currentStatus} onValueChange={handleStatusChange} disabled={isUpdating}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
+            <Select
+              value={currentStatus}
+              onValueChange={(v) => handleStatusChange(v as ContactStatusValue)}
+              disabled={isUpdating}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
@@ -136,3 +183,5 @@ export function ContactHeader({ contact, onUpdate }: ContactHeaderProps) {
     </div>
   );
 }
+
+export default ContactHeader;
