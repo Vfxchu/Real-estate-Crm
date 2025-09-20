@@ -1,186 +1,106 @@
-// src/pages/Notifications.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Bell,
   CheckCircle,
   AlertCircle,
   Info,
-  Calendar as CalendarIcon,
-  Clock,
-  Settings,
-  Search,
+  Star,
+  Users,
+  MessageSquare,
+  Calendar,
+  Target,
+  Trash2,
   Mail,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format, isToday, isYesterday } from "date-fns";
-import { useCalendarEvents } from "@/hooks/useCalendarEvents";
-import { CalendarEvent } from "@/types";
+  Settings,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
-const whenText = (iso: string) => {
-  const d = new Date(iso);
-  if (isToday(d)) return `Today · ${format(d, "HH:mm")}`;
-  if (isYesterday(d)) return `Yesterday · ${format(d, "HH:mm")}`;
-  return format(d, "EEE, MMM d · HH:mm");
-};
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'new_lead' | 'appointment' | 'system' | 'agent_activity' | 'reminder';
+  priority: 'low' | 'medium' | 'high';
+  isRead: boolean;
+  timestamp: string;
+  relatedId?: string;
+  actionUrl?: string;
+}
 
-export const Notifications: React.FC = () => {
+// Mock notifications - in production, store in Supabase
+const mockNotifications: Notification[] = [];
+
+export const Notifications = () => {
+  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [filter, setFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const { toast } = useToast();
-  const { events, loading, updateEvent } = useCalendarEvents();
 
-  // UI state
-  const [tab, setTab] = useState<"due" | "upcoming">("due");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "scheduled" | "completed" | "cancelled" | "rescheduled">("all");
+  const filteredNotifications = notifications.filter(notification => {
+    const matchesRead = filter === 'all' || 
+                       (filter === 'unread' && !notification.isRead) ||
+                       (filter === 'read' && notification.isRead);
+    const matchesPriority = priorityFilter === 'all' || notification.priority === priorityFilter;
+    
+    return matchesRead && matchesPriority;
+  });
 
-  // Filter helpers (safe defaults)
-  const safeEvents: CalendarEvent[] = Array.isArray(events) ? events : [];
-
-  const now = new Date();
-  const in7d = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  const matchesSearch = (ev: CalendarEvent) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (ev.title || "").toLowerCase().includes(q) ||
-      (ev.location || "").toLowerCase().includes(q) ||
-      (ev.event_type || "").toLowerCase().includes(q)
-    );
-  };
-
-  const matchesStatus = (ev: CalendarEvent) => {
-    if (statusFilter === "all") return true;
-    return (ev.status as any) === statusFilter;
-  };
-
-  const dueNow = useMemo(
-    () =>
-      safeEvents
-        .filter(
-          (e) =>
-            e.status === "scheduled" &&
-            e.start_date &&
-            new Date(e.start_date) <= now
-        )
-        .filter(matchesSearch)
-        .filter(matchesStatus)
-        .sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime()),
-    [safeEvents, now, search, statusFilter]
-  );
-
-  const upcoming = useMemo(
-    () =>
-      safeEvents
-        .filter(
-          (e) =>
-            e.status === "scheduled" &&
-            e.start_date &&
-            new Date(e.start_date) > now &&
-            new Date(e.start_date) <= in7d
-        )
-        .filter(matchesSearch)
-        .filter(matchesStatus)
-        .sort((a, b) => new Date(a.start_date!).getTime() - new Date(b.start_date!).getTime()),
-    [safeEvents, now, in7d, search, statusFilter]
-  );
-
-  const stats = {
-    due: dueNow.length,
-    upcoming: upcoming.length,
-    today: safeEvents.filter(
-      (e) => e.start_date && isToday(new Date(e.start_date))
-    ).length,
-    total: safeEvents.length,
-  };
-
-  // actions
-  const done = async (id: string) => {
-    try {
-      await updateEvent(id, { status: "completed" });
-      toast({ title: "Done", description: "Event marked as completed." });
-    } catch (e) {
-      toast({ title: "Failed", description: "Could not update event.", variant: "destructive" });
+  const getTypeIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'new_lead': return <Target className="w-5 h-5 text-primary" />;
+      case 'appointment': return <Calendar className="w-5 h-5 text-info" />;
+      case 'system': return <Settings className="w-5 h-5 text-warning" />;
+      case 'agent_activity': return <Users className="w-5 h-5 text-success" />;
+      case 'reminder': return <Bell className="w-5 h-5 text-orange-500" />;
+      default: return <Info className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
-  const snooze = async (id: string, minutes: number) => {
-    try {
-      const newStart = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-      await updateEvent(id, { start_date: newStart });
-      toast({ title: "Snoozed", description: `Will remind you again in ${minutes} minutes.` });
-    } catch (e) {
-      toast({ title: "Failed", description: "Could not snooze event.", variant: "destructive" });
+  const getPriorityColor = (priority: Notification['priority']) => {
+    switch (priority) {
+      case 'high': return 'bg-destructive text-destructive-foreground';
+      case 'medium': return 'bg-warning text-warning-foreground';
+      case 'low': return 'bg-muted text-muted-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
-  // simple list render
-  const renderList = (list: CalendarEvent[], emptyIcon: React.ReactNode, emptyTitle: string, emptyDesc: string) => (
-    <>
-      {loading ? (
-        <Card className="card-elevated">
-          <CardContent className="p-6">Loading…</CardContent>
-        </Card>
-      ) : list.length > 0 ? (
-        list.map((e) => (
-          <Card key={e.id} className="card-elevated border-l-4 border-l-primary">
-            <CardContent className="p-6">
-              <div className="flex items-start gap-4">
-                <Clock className="w-5 h-5 text-primary mt-1" />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="font-semibold">{e.title || "Untitled"}</div>
-                    <Badge variant="outline" className="capitalize">
-                      {(e.event_type || "reminder").replaceAll("_", " ")}
-                    </Badge>
-                  </div>
-                  {e.start_date && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {whenText(e.start_date)}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 mt-3">
-                    <Button size="sm" onClick={() => done(e.id!)}>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Done
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => snooze(e.id!, 5)}>
-                      Snooze 5m
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => snooze(e.id!, 10)}>
-                      Snooze 10m
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => snooze(e.id!, 15)}>
-                      Snooze 15m
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      ) : (
-        <Card className="card-elevated">
-          <CardContent className="p-12 text-center">
-            <div className="w-12 h-12 text-muted-foreground mx-auto mb-4">{emptyIcon}</div>
-            <h3 className="text-lg font-semibold mb-2">{emptyTitle}</h3>
-            <p className="text-muted-foreground">{emptyDesc}</p>
-          </CardContent>
-        </Card>
-      )}
-    </>
-  );
+  const markAsRead = (notificationId: string) => {
+    setNotifications(notifications.map(notif => 
+      notif.id === notificationId ? { ...notif, isRead: true } : notif
+    ));
+    toast({
+      title: 'Marked as read',
+      description: 'Notification has been marked as read',
+    });
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map(notif => ({ ...notif, isRead: true })));
+    toast({
+      title: 'All notifications marked as read',
+      description: 'All notifications have been marked as read',
+    });
+  };
+
+  const deleteNotification = (notificationId: string) => {
+    setNotifications(notifications.filter(notif => notif.id !== notificationId));
+    toast({
+      title: 'Notification deleted',
+      description: 'Notification has been removed',
+    });
+  };
+
+  const totalNotifications = notifications.length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.isRead).length;
+  const todayCount = notifications.filter(n => n.timestamp.startsWith('2024-01-20')).length;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -188,9 +108,15 @@ export const Notifications: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Notifications</h1>
-          <p className="text-muted-foreground">Event reminders from your calendar</p>
+          <p className="text-muted-foreground">
+            Stay updated with important alerts and reminders
+          </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={markAllAsRead}>
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Mark All Read
+          </Button>
           <Button variant="outline">
             <Settings className="w-4 h-4 mr-2" />
             Settings
@@ -198,108 +124,216 @@ export const Notifications: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="card-elevated">
-          <CardContent className="p-4 flex items-center">
-            <Bell className="w-6 h-6 text-primary mr-3" />
-            <div>
-              <div className="text-xs text-muted-foreground">Due Now</div>
-              <div className="text-lg font-bold">{stats.due}</div>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Bell className="w-8 h-8 text-primary" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{totalNotifications}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+        
         <Card className="card-elevated">
-          <CardContent className="p-4 flex items-center">
-            <CalendarIcon className="w-6 h-6 text-info mr-3" />
-            <div>
-              <div className="text-xs text-muted-foreground">Upcoming (7d)</div>
-              <div className="text-lg font-bold">{stats.upcoming}</div>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Mail className="w-8 h-8 text-info" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Unread</p>
+                <p className="text-2xl font-bold">{unreadCount}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+
         <Card className="card-elevated">
-          <CardContent className="p-4 flex items-center">
-            <Clock className="w-6 h-6 text-success mr-3" />
-            <div>
-              <div className="text-xs text-muted-foreground">Today</div>
-              <div className="text-lg font-bold">{stats.today}</div>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">High Priority</p>
+                <p className="text-2xl font-bold">{highPriorityCount}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
+
         <Card className="card-elevated">
-          <CardContent className="p-4 flex items-center">
-            <Info className="w-6 h-6 text-muted-foreground mr-3" />
-            <div>
-              <div className="text-xs text-muted-foreground">Total Events</div>
-              <div className="text-lg font-bold">{stats.total}</div>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Calendar className="w-8 h-8 text-success" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Today</p>
+                <p className="text-2xl font-bold">{todayCount}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="card-elevated">
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search reminders..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select
-                value={statusFilter}
-                onValueChange={(v: any) => setStatusFilter(v)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <Tabs defaultValue="all" className="w-full">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <TabsList className="grid w-full lg:w-auto grid-cols-3">
+            <TabsTrigger value="all">All Notifications</TabsTrigger>
+            <TabsTrigger value="important">Important</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+
+          <div className="flex gap-2">
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="unread">Unread</SelectItem>
+                <SelectItem value="read">Read</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Tabs */}
-      <Tabs value={tab} onValueChange={(v: any) => setTab(v)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="due">Due Now</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="due" className="space-y-4 mt-4">
-          {renderList(
-            dueNow,
-            <Bell className="w-12 h-12" />,
-            "No reminders due",
-            "You’re all caught up!"
+        {/* All Notifications */}
+        <TabsContent value="all" className="space-y-4">
+          {filteredNotifications.length > 0 ? (
+            filteredNotifications.map((notification) => (
+              <Card key={notification.id} className={`card-elevated transition-all duration-200 hover:shadow-md ${
+                !notification.isRead ? 'border-l-4 border-l-primary bg-primary/5' : ''
+              }`}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1">
+                      {getTypeIcon(notification.type)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{notification.title}</h4>
+                          {!notification.isRead && (
+                            <div className="w-2 h-2 bg-primary rounded-full" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getPriorityColor(notification.priority)}>
+                            {notification.priority}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            {notification.timestamp}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-muted-foreground mb-3">{notification.message}</p>
+                      
+                      <div className="flex items-center gap-2">
+                        {!notification.isRead && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Mark Read
+                          </Button>
+                        )}
+                        {notification.actionUrl && (
+                          <Button size="sm" variant="outline">
+                            View Details
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteNotification(notification.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="card-elevated">
+              <CardContent className="p-12 text-center">
+                <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No notifications</h3>
+                <p className="text-muted-foreground">
+                  {filter !== 'all' || priorityFilter !== 'all'
+                    ? 'No notifications match your current filters'
+                    : 'You\'re all caught up!'
+                  }
+                </p>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
 
-        <TabsContent value="upcoming" className="space-y-4 mt-4">
-          {renderList(
-            upcoming,
-            <CalendarIcon className="w-12 h-12" />,
-            "No upcoming reminders",
-            "The next 7 days look clear."
-          )}
+        {/* Important Notifications */}
+        <TabsContent value="important" className="space-y-4">
+          {filteredNotifications.filter(n => n.priority === 'high').map((notification) => (
+            <Card key={notification.id} className="card-elevated border-l-4 border-l-destructive">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <AlertCircle className="w-5 h-5 text-destructive mt-1" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-2">{notification.title}</h4>
+                    <p className="text-muted-foreground mb-3">{notification.message}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-destructive text-destructive-foreground">
+                        High Priority
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {notification.timestamp}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+
+        {/* Activity Notifications */}
+        <TabsContent value="activity" className="space-y-4">
+          {filteredNotifications.filter(n => n.type === 'agent_activity' || n.type === 'new_lead').map((notification) => (
+            <Card key={notification.id} className="card-elevated">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback>
+                      {notification.type === 'new_lead' ? 'L' : 'A'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-1">{notification.title}</h4>
+                    <p className="text-muted-foreground text-sm mb-2">{notification.message}</p>
+                    <span className="text-xs text-muted-foreground">{notification.timestamp}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </TabsContent>
       </Tabs>
     </div>
   );
 };
-
-// Provide a default export as well to avoid import mismatches
-export default Notifications;
