@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _crm_constants: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           contact_id: string | null
@@ -258,6 +273,7 @@ export type Database = {
           path: string
           property_id: string | null
           source: string
+          tag: Database["public"]["Enums"]["contact_file_tag"] | null
           type: string
         }
         Insert: {
@@ -268,6 +284,7 @@ export type Database = {
           path: string
           property_id?: string | null
           source?: string
+          tag?: Database["public"]["Enums"]["contact_file_tag"] | null
           type: string
         }
         Update: {
@@ -278,6 +295,7 @@ export type Database = {
           path?: string
           property_id?: string | null
           source?: string
+          tag?: Database["public"]["Enums"]["contact_file_tag"] | null
           type?: string
         }
         Relationships: [
@@ -293,6 +311,83 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_properties: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          property_id: string
+          role: Database["public"]["Enums"]["contact_property_role"]
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          property_id: string
+          role: Database["public"]["Enums"]["contact_property_role"]
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          property_id?: string
+          role?: Database["public"]["Enums"]["contact_property_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_properties_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contact_status_changes: {
+        Row: {
+          changed_by: string | null
+          contact_id: string
+          created_at: string
+          id: string
+          new_status: Database["public"]["Enums"]["contact_status"]
+          old_status: Database["public"]["Enums"]["contact_status"] | null
+          reason: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          contact_id: string
+          created_at?: string
+          id?: string
+          new_status: Database["public"]["Enums"]["contact_status"]
+          old_status?: Database["public"]["Enums"]["contact_status"] | null
+          reason?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          contact_id?: string
+          created_at?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["contact_status"]
+          old_status?: Database["public"]["Enums"]["contact_status"] | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_status_changes_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -377,6 +472,7 @@ export type Database = {
           budget_range: string | null
           budget_rent_band: string | null
           budget_sale_band: string | null
+          buyer_preferences: Json | null
           category: string | null
           contact_pref: string[] | null
           contact_status: string | null
@@ -392,6 +488,7 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           location_place_id: string | null
+          marketing_source: string | null
           merged_into_id: string | null
           name: string
           notes: string | null
@@ -402,8 +499,12 @@ export type Database = {
           size_band: string | null
           source: Database["public"]["Enums"]["lead_source_enum"]
           status: string
+          status_effective: Database["public"]["Enums"]["contact_status"]
+          status_manual: Database["public"]["Enums"]["contact_status"] | null
+          status_mode: Database["public"]["Enums"]["contact_status_mode"]
           subtype: string | null
           tags: string[] | null
+          tenant_preferences: Json | null
           updated_at: string
         }
         Insert: {
@@ -412,6 +513,7 @@ export type Database = {
           budget_range?: string | null
           budget_rent_band?: string | null
           budget_sale_band?: string | null
+          buyer_preferences?: Json | null
           category?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
@@ -427,6 +529,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           location_place_id?: string | null
+          marketing_source?: string | null
           merged_into_id?: string | null
           name: string
           notes?: string | null
@@ -437,8 +540,12 @@ export type Database = {
           size_band?: string | null
           source?: Database["public"]["Enums"]["lead_source_enum"]
           status?: string
+          status_effective?: Database["public"]["Enums"]["contact_status"]
+          status_manual?: Database["public"]["Enums"]["contact_status"] | null
+          status_mode?: Database["public"]["Enums"]["contact_status_mode"]
           subtype?: string | null
           tags?: string[] | null
+          tenant_preferences?: Json | null
           updated_at?: string
         }
         Update: {
@@ -447,6 +554,7 @@ export type Database = {
           budget_range?: string | null
           budget_rent_band?: string | null
           budget_sale_band?: string | null
+          buyer_preferences?: Json | null
           category?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
@@ -462,6 +570,7 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           location_place_id?: string | null
+          marketing_source?: string | null
           merged_into_id?: string | null
           name?: string
           notes?: string | null
@@ -472,8 +581,12 @@ export type Database = {
           size_band?: string | null
           source?: Database["public"]["Enums"]["lead_source_enum"]
           status?: string
+          status_effective?: Database["public"]["Enums"]["contact_status"]
+          status_manual?: Database["public"]["Enums"]["contact_status"] | null
+          status_mode?: Database["public"]["Enums"]["contact_status_mode"]
           subtype?: string | null
           tags?: string[] | null
+          tenant_preferences?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -974,9 +1087,23 @@ export type Database = {
         }
         Returns: undefined
       }
+      recompute_contact_status: {
+        Args: { p_contact_id: string; p_reason?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "agent" | "user" | "superadmin"
+      contact_file_tag:
+        | "id"
+        | "poa"
+        | "listing_agreement"
+        | "tenancy"
+        | "mou"
+        | "other"
+      contact_property_role: "owner" | "buyer_interest" | "tenant" | "investor"
+      contact_status: "active" | "past"
+      contact_status_mode: "auto" | "manual"
       lead_source_enum:
         | "referral"
         | "website"
@@ -1113,6 +1240,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "agent", "user", "superadmin"],
+      contact_file_tag: [
+        "id",
+        "poa",
+        "listing_agreement",
+        "tenancy",
+        "mou",
+        "other",
+      ],
+      contact_property_role: ["owner", "buyer_interest", "tenant", "investor"],
+      contact_status: ["active", "past"],
+      contact_status_mode: ["auto", "manual"],
       lead_source_enum: [
         "referral",
         "website",

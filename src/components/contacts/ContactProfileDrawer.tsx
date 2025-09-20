@@ -27,7 +27,8 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, createSignedUrl, deleteFile, listFiles } from '@/services/storage';
 import ContactForm from './ContactForm';
-import ContactDetailTabs from './ContactDetailTabs';
+import { ContactHeader } from './ContactHeader';
+import { ContactEnhancedTabs } from './ContactEnhancedTabs';
 import { format } from 'date-fns';
 
 interface ContactProfileDrawerProps {
@@ -205,6 +206,15 @@ export default function ContactProfileDrawer({ contact, open, onClose }: Contact
           </div>
         </SheetHeader>
 
+        <ContactHeader 
+          contact={contact} 
+          onUpdate={() => {
+            // Trigger refresh events
+            window.dispatchEvent(new CustomEvent('contacts:updated'));
+            window.dispatchEvent(new CustomEvent('leads:changed'));
+          }}
+        />
+
         <div className="flex-1 overflow-hidden">
           {editMode ? (
             <ScrollArea className="h-full">
@@ -223,9 +233,18 @@ export default function ContactProfileDrawer({ contact, open, onClose }: Contact
               </div>
             </ScrollArea>
           ) : (
-            <div className="p-6">
-              <ContactDetailTabs contact={contact} />
-            </div>
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <ContactEnhancedTabs 
+                  contact={contact}
+                  onUpdate={() => {
+                    // Trigger refresh events
+                    window.dispatchEvent(new CustomEvent('contacts:updated'));
+                    window.dispatchEvent(new CustomEvent('leads:changed'));
+                  }}
+                />
+              </div>
+            </ScrollArea>
           )}
         </div>
       </SheetContent>
