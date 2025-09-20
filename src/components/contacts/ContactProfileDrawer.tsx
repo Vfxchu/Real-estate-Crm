@@ -1,377 +1,286 @@
+import React, { useState, useEffect } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { User, Edit, X } from "lucide-react";
+import { Lead } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { uploadFile, createSignedUrl, deleteFile } from "@/services/storage";
+import ContactForm from "./ContactForm";
+import { ContactHeader } from "./ContactHeader";
+import { ContactEnhancedTabs } from "./ContactEnhancedTabs";
 
-/**
- * Contact Master Hub Service
- * Enhanced contact service with status management, property relationships, and timeline
- */
-
-// Re-export from leads service to avoid duplication
-export { createLead as createContact } from "@/services/leads";
-export { listLeads as listContacts } from "@/services/leads";
-export { updateLead as updateContact } from "@/services/leads";
-export { deleteLead as deleteContact } from "@/services/leads";
-
-export type ContactPropertyRole =
-  | "owner"
-  | "buyer_interest"
-  | "tenant"
-  | "investor";
-export type ContactFileTag =
-  | "id"
-  | "poa"
-  | "listing_agreement"
-  | "tenancy"
-  | "mou"
-  | "other";
-export type ContactStatusMode = "auto" | "manual";
-export type ContactStatusValue = "active" | "past";
-
-export async function getContact(id: string) {
-  const { data, error } = await supabase
-    .from("leads")
-    .select(
-      `
-      *,
-      profiles!leads_agent_id_fkey(name, email)
-    `
-    )
-    .eq("id", id)
-    .single();
-
-  return { data, error } as const;
+interface ContactProfileDrawerProps {
+  contact: Lead | null;
+  open: boolean;
+  onClose: () => void;
 }
 
-export async function mergeContacts(
-  primaryId: string,
-  duplicateIds: string[]
-) {
-  if (!duplicateIds.length) return { data: null, error: null };
-
-  const { data, error } = await supabase
-    .from("leads")
-    .update({ merged_into_id: primaryId })
-    .in("id", duplicateIds);
-
-  return { data, error };
-}
-
-// ----------------------
-// Contact Status (Admin)
-// ----------------------
-export async function setContactStatusMode(
-  contactId: string,
-  mode: ContactStatusMode
-) {
-  const { data, error } = await supabase
-    .from("leads")
-    .update({ status_mode: mode })
-    .eq("id", contactId)
-    .select()
-    .single();
-
-  if (!error && mode === "auto") {
-    // Trigger recomputation when switching to auto
-    await recomputeContactStatus(contactId);
-  }
-
-  return { data, error };
-}
-
-export async function setContactManualStatus(
-  contactId: string,
-  status: ContactStatusValue
-) {
-  // 1) fetch old status for audit
-  const { data: existing } = await supabase
-    .from("leads")
-    .select("status_effective")
-    .eq("id", contactId)
-    .single();
-
-  const oldStatus = (existing?.status_effective as ContactStatusValue) ?? null;
-
-  // 2) update record
-  const { data, error } = await supabase
-    .from("leads")
-    .update({
-      status_manual: status,
-      status_effective: status,
-      status_mode: "manual",
-    })
-    .eq("id", contactId)
-    .select()
-    .single();
-
-  if (error || !data) {
-    return { data, error };
-  }
-
-  // 3) current user for changed_by
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const userId = user?.id ?? null;
-
-  // 4) audit log
-  await supabase.from("contact_status_changes" as any).insert({
-    contact_id: contactId,
-    old_status: oldStatus,
-    new_status: status,
-    reason: "manual override",
-    changed_by: userId,
-  });
-
-  return { data, error: null };
-}
-
-export async function recomputeContactStatus(contactId: string) {
-  const { data, error } = await supabase.rpc("recompute_contact_status", {
-    p_contact_id: contactId,
-    p_reason: "manual_trigger",
-  });
-
-  return { data, error };
-}
-
-// ----------------------
-// Property Relationships
-// ----------------------
-export async function linkPropertyToContact(params: {
-  contactId: string;
-  propertyId: string;
-  role: ContactPropertyRole;
-}) {
-  const { data, error } = await supabase
-    .from("contact_properties")
-    .insert({
-      contact_id: params.contactId,
-      property_id: params.propertyId,
-      role: params.role,
-    })
-    .select()
-    .single();
-
-  return { data, error };
-}
-
-export async function unlinkPropertyFromContact(params: {
-  contactId: string;
-  propertyId: string;
-  role: ContactPropertyRole;
-}) {
-  const { data, error } = await supabase
-    .from("contact_properties")
-    .delete()
-    .eq("contact_id", params.contactId)
-    .eq("property_id", params.propertyId)
-    .eq("role", params.role);
-
-  return { data, error };
-}
-
-export async function getContactProperties(contactId: string) {
-  const { data, error } = await supabase
-    .from("contact_properties")
-    .select(
-      `
-      *,
-      properties!inner(*)
-    `
-    )
-    .eq("contact_id", contactId);
-
-  return { data, error };
-}
-
-// ----------------------
-// Timeline (typed + safe)
-// ----------------------
-type ContactStatusChangeRow = {
+interface ContactFile {
   id: string;
-  contact_id: string;
-  created_at: string;
-  new_status: "active" | "past";
-  old_status: "active" | "past" | null;
-  reason: string | null;
-  changed_by: string | null;
-};
-
-type LeadStatusChangeRow = {
-  id: string;
-  lead_id: string;
-  created_at: string;
-  new_status: string | null;
-  old_status: string | null;
-};
-
-type PropertyStatusChangeRow = {
-  id: string;
-  property_id: string;
-  created_at: string;
-  new_status: string | null;
-  old_status: string | null;
-};
-
-type ActivityRow = {
-  id: string;
-  lead_id: string;
-  created_at: string;
+  name: string;
+  path: string;
   type: string;
-  description: string | null;
-};
-
-type FileRow = {
-  id: string;
-  contact_id: string;
   created_at: string;
-  name: string | null;
-  tag: string | null;
-};
+  // tag?: string; // uncomment if you show tags in UI
+}
 
-export type TimelineItem =
-  | {
-      id: string;
-      type: "status_change";
-      timestamp: string;
-      title: string;
-      subtitle: string;
-      data: ContactStatusChangeRow;
+function ContactProfileDrawer({ contact, open, onClose }: ContactProfileDrawerProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [files, setFiles] = useState<ContactFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  // Build a contact-like shape for ContactHeader (ensures required fields exist)
+  const headerContact = contact
+    ? {
+        id: contact.id,
+        name: (contact as any).name ?? (contact as any).full_name ?? "Contact",
+        email: (contact as any).email ?? null,
+        phone: (contact as any).phone ?? null,
+        status_mode: ((contact as any).status_mode ?? "auto") as "auto" | "manual",
+        status_effective: ((contact as any).status_effective ?? "active") as "active" | "past",
+        status_manual: ((contact as any).status_manual ?? null) as "active" | "past" | null,
+        tags: (contact as any).tags ?? (contact as any).interest_tags ?? [],
+      }
+    : null;
+
+  // Load contact files
+  useEffect(() => {
+    if (contact?.id) {
+      loadFiles();
     }
-  | {
-      id: string;
-      type: "lead_change";
-      timestamp: string;
-      title: string;
-      subtitle: string;
-      data: LeadStatusChangeRow;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact?.id]);
+
+  const loadFiles = async () => {
+    if (!contact?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("contact_files")
+        .select("*")
+        .eq("contact_id", contact.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setFiles((data as ContactFile[]) || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to load files: " + error.message,
+        variant: "destructive",
+      });
     }
-  | {
-      id: string;
-      type: "property_change";
-      timestamp: string;
-      title: string;
-      subtitle: string;
-      data: PropertyStatusChangeRow;
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !contact?.id || !user?.id) return;
+
+    setUploading(true);
+    try {
+      // Create storage path
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `documents/${user.id}/${contact.id}/general/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await uploadFile("documents", filePath, file);
+      if (uploadError) throw uploadError;
+
+      // Save to database (NOTE: your table does not have "size", so we don't send it)
+      const { error: dbError } = await supabase.from("contact_files").insert({
+        contact_id: contact.id,
+        name: file.name,
+        path: filePath,
+        type: "document", // or 'manual'/'upload' depending on your UI
+        // tag: 'id', // optionally add default tag
+      });
+
+      if (dbError) throw dbError;
+
+      toast({ title: "Success", description: "File uploaded successfully" });
+      await loadFiles();
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset input
+      if (event.target) {
+        event.target.value = "";
+      }
     }
-  | {
-      id: string;
-      type: "activity";
-      timestamp: string;
-      title: string;
-      subtitle: string;
-      data: ActivityRow;
+  };
+
+  const handleFileDownload = async (file: ContactFile) => {
+    try {
+      const { data: signedUrl, error } = await createSignedUrl("documents", file.path, 300);
+      if (error) throw error;
+      if (!signedUrl?.signedUrl) throw new Error("No signed URL received");
+      window.open(signedUrl.signedUrl, "_blank");
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  | {
-      id: string;
-      type: "file_upload";
-      timestamp: string;
-      title: string;
-      subtitle: string;
-      data: FileRow;
-    };
+  };
 
-export async function getContactTimeline(contactId: string) {
-  // Contact status changes
-  const { data: statusChanges } = await supabase
-    .from<ContactStatusChangeRow>("contact_status_changes" as any)
-    .select("*")
-    .eq("contact_id", contactId);
+  const handleFileDelete = async (file: ContactFile) => {
+    if (!confirm("Are you sure you want to delete this file?")) return;
 
-  // Activities
-  const { data: activities } = await supabase
-    .from<ActivityRow>("activities")
-    .select("*")
-    .eq("lead_id", contactId);
+    try {
+      const { error: storageError } = await deleteFile("documents", file.path);
+      if (storageError) throw storageError;
 
-  // File uploads
-  const { data: files } = await supabase
-    .from<FileRow>("contact_files")
-    .select("*")
-    .eq("contact_id", contactId);
+      const { error: dbError } = await supabase.from("contact_files").delete().eq("id", file.id);
+      if (dbError) throw dbError;
 
-  // Lead status changes (new audit table may not be in generated types yet)
-  const { data: leadStatusChanges } = await supabase
-    .from<LeadStatusChangeRow>("lead_status_changes" as any)
-    .select("*")
-    .eq("lead_id", contactId);
+      toast({ title: "Success", description: "File deleted successfully" });
+      await loadFiles();
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
-  // Property status changes via linked properties
-  const { data: properties } = await supabase
-    .from<{ property_id: string }>("contact_properties")
-    .select("property_id")
-    .eq("contact_id", contactId);
+  if (!contact) return null;
 
-  let propertyStatusChanges: PropertyStatusChangeRow[] = [];
-  if (properties?.length) {
-    const propertyIds = properties.map((p) => p.property_id);
-    const { data } = await supabase
-      .from<PropertyStatusChangeRow>("property_status_changes" as any)
-      .select("*")
-      .in("property_id", propertyIds);
-    propertyStatusChanges = data || [];
-  }
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full">
+        <SheetHeader className="p-6 border-b flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <SheetTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                {contact.name || "Unknown Contact"}
+              </SheetTitle>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant={contact.contact_status === "lead" ? "secondary" : "default"}>
+                  {contact.contact_status}
+                </Badge>
+                {contact.interest_tags?.map((tag) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </SheetHeader>
 
-  const timeline: TimelineItem[] = [
-    ...(statusChanges || []).map((item): TimelineItem => ({
-      id: item.id,
-      type: "status_change",
-      timestamp: item.created_at,
-      title: `Contact status changed to ${item.new_status}`,
-      subtitle: item.reason || "",
-      data: item,
-    })),
-    ...(leadStatusChanges || []).map((item): TimelineItem => ({
-      id: item.id,
-      type: "lead_change",
-      timestamp: item.created_at,
-      title: `Lead status changed to ${item.new_status ?? ""}`,
-      subtitle: item.old_status ? `from ${item.old_status}` : "",
-      data: item,
-    })),
-    ...(propertyStatusChanges || []).map((item): TimelineItem => ({
-      id: item.id,
-      type: "property_change",
-      timestamp: item.created_at,
-      title: `Property status changed to ${item.new_status ?? ""}`,
-      subtitle: item.old_status ? `from ${item.old_status}` : "",
-      data: item,
-    })),
-    ...(activities || []).map((item): TimelineItem => ({
-      id: item.id,
-      type: "activity",
-      timestamp: item.created_at,
-      title: item.description ?? "",
-      subtitle: item.type,
-      data: item,
-    })),
-    ...(files || []).map((item): TimelineItem => ({
-      id: item.id,
-      type: "file_upload",
-      timestamp: item.created_at,
-      title: `Uploaded ${item.name ?? "document"}`,
-      subtitle: item.tag || "document",
-      data: item,
-    })),
-  ].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        {headerContact && (
+          <ContactHeader
+            contact={headerContact}
+            onUpdate={() => {
+              // Trigger refresh events (your app listens to these)
+              window.dispatchEvent(new CustomEvent("contacts:updated"));
+              window.dispatchEvent(new CustomEvent("leads:changed"));
+            }}
+          />
+        )}
+
+        <div className="flex-1 overflow-hidden">
+          {editMode ? (
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <ContactForm
+                  contact={contact}
+                  onSuccess={() => {
+                    setEditMode(false);
+                    toast({ title: "Success", description: "Contact updated successfully" });
+                    window.dispatchEvent(new CustomEvent("contacts:updated"));
+                    window.dispatchEvent(new CustomEvent("leads:changed"));
+                  }}
+                  onCancel={() => setEditMode(false)}
+                />
+              </div>
+            </ScrollArea>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="file-upload"
+                      type="file"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                    <label htmlFor="file-upload">
+                      <Button type="button" disabled={uploading}>
+                        Upload File
+                      </Button>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Files list */}
+                {files.length > 0 && (
+                  <div className="space-y-2 mb-6">
+                    {files.map((f) => (
+                      <div
+                        key={f.id}
+                        className="flex items-center justify-between border rounded-lg p-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{f.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{f.path}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleFileDownload(f)}>
+                            Download
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleFileDelete(f)}>
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Role-aware tabs / details */}
+                <ContactEnhancedTabs
+                  contact={contact}
+                  onUpdate={() => {
+                    window.dispatchEvent(new CustomEvent("contacts:updated"));
+                    window.dispatchEvent(new CustomEvent("leads:changed"));
+                  }}
+                />
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
-
-  return { data: timeline, error: null as null };
 }
 
-// ----------------------
-// File management with tags
-// ----------------------
-export async function updateContactFileTag(
-  fileId: string,
-  tag: ContactFileTag
-) {
-  const { data, error } = await supabase
-    .from("contact_files")
-    .update({ tag })
-    .eq("id", fileId)
-    .select()
-    .single();
-
-  return { data, error };
-}
+export default ContactProfileDrawer;
