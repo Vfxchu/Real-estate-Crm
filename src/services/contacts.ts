@@ -161,55 +161,94 @@ export async function getContactProperties(contactId: string) {
 
 // Timeline
 export async function getContactTimeline(contactId: string) {
-  // Get status changes
+  // Contact status changes
   const { data: statusChanges } = await supabase
-    .from('contact_status_changes')
-    .select('*')
-    .eq('contact_id', contactId);
+    .from("contact_status_changes")
+    .select("*")
+    .eq("contact_id", contactId);
 
-  // Get activities
+  // Activities
   const { data: activities } = await supabase
-    .from('activities')
-    .select('*')
-    .eq('lead_id', contactId);
+    .from("activities")
+    .select("*")
+    .eq("lead_id", contactId);
 
-  // Get file uploads
+  // File uploads
   const { data: files } = await supabase
-    .from('contact_files')
-    .select('*')
-    .eq('contact_id', contactId);
+    .from("contact_files")
+    .select("*")
+    .eq("contact_id", contactId);
 
-  // Merge and sort timeline
+  // Lead status changes
+  const { data: leadStatusChanges } = await supabase
+    .from("lead_status_changes")
+    .select("*")
+    .eq("lead_id", contactId);
+
+  // Property status changes (via contact_properties)
+  const { data: properties } = await supabase
+    .from("contact_properties")
+    .select("property_id")
+    .eq("contact_id", contactId);
+
+  let propertyStatusChanges: any[] = [];
+  if (properties?.length) {
+    const propertyIds = properties.map((p) => p.property_id);
+    const { data } = await supabase
+      .from("property_status_changes")
+      .select("*")
+      .in("property_id", propertyIds);
+    propertyStatusChanges = data || [];
+  }
+
+  // Merge all events
   const timeline = [
-    ...(statusChanges || []).map(item => ({
+    ...(statusChanges || []).map((item) => ({
       id: item.id,
-      type: 'status_change' as const,
+      type: "contact_status_change" as const,
       timestamp: item.created_at,
-      title: `Status changed to ${item.new_status}`,
-      subtitle: item.reason || '',
-      data: item
+      title: `Contact status changed to ${item.new_status}`,
+      subtitle: item.reason || "",
+      data: item,
     })),
-    ...(activities || []).map(item => ({
+    ...(leadStatusChanges || []).map((item) => ({
       id: item.id,
-      type: 'activity' as const,
+      type: "lead_status_change" as const,
+      timestamp: item.created_at,
+      title: `Lead status changed to ${item.new_status}`,
+      subtitle: item.old_status ? `from ${item.old_status}` : "",
+      data: item,
+    })),
+    ...(propertyStatusChanges || []).map((item) => ({
+      id: item.id,
+      type: "property_status_change" as const,
+      timestamp: item.created_at,
+      title: `Property status changed to ${item.new_status}`,
+      subtitle: item.old_status ? `from ${item.old_status}` : "",
+      data: item,
+    })),
+    ...(activities || []).map((item) => ({
+      id: item.id,
+      type: "activity" as const,
       timestamp: item.created_at,
       title: item.description,
       subtitle: item.type,
-      data: item
+      data: item,
     })),
-    ...(files || []).map(item => ({
+    ...(files || []).map((item) => ({
       id: item.id,
-      type: 'file_upload' as const,
+      type: "file_upload" as const,
       timestamp: item.created_at,
       title: `Uploaded ${item.name}`,
-      subtitle: item.tag || 'document',
-      data: item
-    }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      subtitle: item.tag || "document",
+      data: item,
+    })),
+  ].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
   return { data: timeline, error: null };
 }
-
 // File management with tags
 export async function updateContactFileTag(fileId: string, tag: ContactFileTag) {
   const { data, error } = await supabase
