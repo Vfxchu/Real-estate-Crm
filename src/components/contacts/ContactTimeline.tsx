@@ -1,9 +1,26 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Activity as ActivityIcon, TrendingUp, Phone, Mail, Calendar, Upload } from "lucide-react";
-import { getContactTimeline, type TimelineItem } from "@/services/contacts";
+import {
+  FileText,
+  Activity as ActivityIcon,
+  TrendingUp,
+  Phone,
+  Mail,
+  Calendar,
+  Upload,
+} from "lucide-react";
+import { getContactTimeline } from "@/services/contacts";
 import { format, isToday, isYesterday } from "date-fns";
+
+type TimelineItem = {
+  id: string;
+  type: "status_change" | "lead_change" | "property_change" | "activity" | "file_upload";
+  timestamp: string;
+  title: string;
+  subtitle: string;
+  data: any;
+};
 
 interface ContactTimelineProps {
   contactId: string;
@@ -32,16 +49,19 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
     };
   }, [contactId]);
 
-  const getIcon = (type: TimelineItem["type"]) => {
-    switch (type) {
+  const getIcon = (item: TimelineItem) => {
+    switch (item.type) {
       case "status_change":
-        return <TrendingUp className="h-4 w-4" />;
       case "lead_change":
-        return <TrendingUp className="h-4 w-4" />;
       case "property_change":
         return <TrendingUp className="h-4 w-4" />;
-      case "activity":
+      case "activity": {
+        const sub = item.data?.type;
+        if (sub === "call") return <Phone className="h-4 w-4" />;
+        if (sub === "email") return <Mail className="h-4 w-4" />;
+        if (sub === "meeting") return <Calendar className="h-4 w-4" />;
         return <ActivityIcon className="h-4 w-4" />;
+      }
       case "file_upload":
         return <Upload className="h-4 w-4" />;
       default:
@@ -49,16 +69,21 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
     }
   };
 
-  const getTypeColor = (type: TimelineItem["type"]) => {
-    switch (type) {
+  const getTypeColor = (item: TimelineItem) => {
+    switch (item.type) {
       case "status_change":
         return "bg-blue-500";
       case "lead_change":
         return "bg-cyan-500";
       case "property_change":
         return "bg-amber-500";
-      case "activity":
+      case "activity": {
+        const sub = item.data?.type;
+        if (sub === "call") return "bg-emerald-500";
+        if (sub === "email") return "bg-indigo-500";
+        if (sub === "meeting") return "bg-teal-500";
         return "bg-green-500";
+      }
       case "file_upload":
         return "bg-purple-500";
       default:
@@ -68,26 +93,24 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
 
   const formatHeaderDate = (dateString: string) => {
     const date = new Date(dateString);
-    if (isToday(date)) return `Today`;
-    if (isYesterday(date)) return `Yesterday`;
+    if (isToday(date)) return "Today";
+    if (isYesterday(date)) return "Yesterday";
     return format(date, "EEEE, MMMM d, yyyy");
   };
 
-  const groupByDate = useMemo(() => {
+  const grouped = useMemo(() => {
     const groups = new Map<string, TimelineItem[]>();
     for (const item of timeline) {
       const key = format(new Date(item.timestamp), "yyyy-MM-dd");
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(item);
     }
-    // sort events within each day by time desc
     for (const [k, arr] of groups.entries()) {
       arr.sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
       groups.set(k, arr);
     }
-    // sort days desc
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
   }, [timeline]);
 
@@ -115,7 +138,7 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
 
   return (
     <div className="space-y-6">
-      {groupByDate.map(([dateKey, items]) => (
+      {grouped.map(([dateKey, items]) => (
         <div key={dateKey}>
           <div className="flex items-center gap-2 mb-3">
             <div className="text-sm font-medium text-muted-foreground">
@@ -129,8 +152,8 @@ export function ContactTimeline({ contactId }: ContactTimelineProps) {
               <Card key={`${item.type}-${item.id}`} className="relative">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-full ${getTypeColor(item.type)} text-white`}>
-                      {getIcon(item.type)}
+                    <div className={`p-2 rounded-full ${getTypeColor(item)} text-white`}>
+                      {getIcon(item)}
                     </div>
 
                     <div className="flex-1 min-w-0">
