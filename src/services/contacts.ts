@@ -58,21 +58,43 @@ export async function setContactStatusMode(contactId: string, mode: ContactStatu
   return { data, error };
 }
 
-export async function setContactManualStatus(contactId: string, status: ContactStatusValue) {
+export async function setContactManualStatus(
+  contactId: string,
+  status: ContactStatusValue
+) {
+  // 1. Update the contact/lead record
   const { data, error } = await supabase
-    .from('leads')
-    .update({ 
+    .from("leads")
+    .update({
       status_manual: status,
       status_effective: status,
-      status_mode: 'manual'
+      status_mode: "manual",
     })
-    .eq('id', contactId)
+    .eq("id", contactId)
     .select()
     .single();
 
-  return { data, error };
-}
+  if (error || !data) {
+    return { data, error };
+  }
 
+  // 2. Get current user id (auth.uid)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? null;
+
+  // 3. Insert into contact_status_changes for audit
+  await supabase.from("contact_status_changes").insert({
+    contact_id: contactId,
+    old_status: null, // (optional: fetch previous before update if needed)
+    new_status: status,
+    reason: "manual override",
+    changed_by: userId,
+  });
+
+  return { data, error: null };
+}
 export async function recomputeContactStatus(contactId: string) {
   const { data, error } = await supabase.rpc('recompute_contact_status', {
     p_contact_id: contactId,
