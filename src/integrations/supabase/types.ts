@@ -181,12 +181,17 @@ export type Database = {
           is_recurring: boolean | null
           lead_id: string | null
           location: string | null
+          next_due_at: string | null
           notes: string | null
           notification_sent: boolean | null
           property_id: string | null
           recurrence_end_date: string | null
           recurrence_pattern: string | null
+          reminder_ack_at: string | null
+          reminder_acknowledged: boolean
           reminder_minutes: number | null
+          reminder_offset_min: number
+          snooze_until: string | null
           start_date: string
           status: string
           title: string
@@ -205,12 +210,17 @@ export type Database = {
           is_recurring?: boolean | null
           lead_id?: string | null
           location?: string | null
+          next_due_at?: string | null
           notes?: string | null
           notification_sent?: boolean | null
           property_id?: string | null
           recurrence_end_date?: string | null
           recurrence_pattern?: string | null
+          reminder_ack_at?: string | null
+          reminder_acknowledged?: boolean
           reminder_minutes?: number | null
+          reminder_offset_min?: number
+          snooze_until?: string | null
           start_date: string
           status?: string
           title: string
@@ -229,12 +239,17 @@ export type Database = {
           is_recurring?: boolean | null
           lead_id?: string | null
           location?: string | null
+          next_due_at?: string | null
           notes?: string | null
           notification_sent?: boolean | null
           property_id?: string | null
           recurrence_end_date?: string | null
           recurrence_pattern?: string | null
+          reminder_ack_at?: string | null
+          reminder_acknowledged?: boolean
           reminder_minutes?: number | null
+          reminder_offset_min?: number
+          snooze_until?: string | null
           start_date?: string
           status?: string
           title?: string
@@ -392,6 +407,63 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          buyer_preferences: Json | null
+          created_at: string
+          created_by: string
+          email: string | null
+          full_name: string | null
+          id: string
+          interest_tags: string[] | null
+          marketing_source: string | null
+          phone: string | null
+          status_effective: Database["public"]["Enums"]["contact_status"]
+          status_manual: Database["public"]["Enums"]["contact_status"] | null
+          status_mode: Database["public"]["Enums"]["contact_status_mode"]
+          tenant_preferences: Json | null
+          updated_at: string
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          buyer_preferences?: Json | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          interest_tags?: string[] | null
+          marketing_source?: string | null
+          phone?: string | null
+          status_effective?: Database["public"]["Enums"]["contact_status"]
+          status_manual?: Database["public"]["Enums"]["contact_status"] | null
+          status_mode?: Database["public"]["Enums"]["contact_status_mode"]
+          tenant_preferences?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          buyer_preferences?: Json | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          interest_tags?: string[] | null
+          marketing_source?: string | null
+          phone?: string | null
+          status_effective?: Database["public"]["Enums"]["contact_status"]
+          status_manual?: Database["public"]["Enums"]["contact_status"] | null
+          status_mode?: Database["public"]["Enums"]["contact_status_mode"]
+          tenant_preferences?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           agent_id: string
@@ -465,6 +537,41 @@ export type Database = {
           },
         ]
       }
+      lead_status_changes: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          new_status: string
+          old_status: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          new_status: string
+          old_status?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          new_status?: string
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_status_changes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           agent_id: string | null
@@ -474,6 +581,7 @@ export type Database = {
           budget_sale_band: string | null
           buyer_preferences: Json | null
           category: string | null
+          contact_id: string | null
           contact_pref: string[] | null
           contact_status: string | null
           created_at: string
@@ -515,6 +623,7 @@ export type Database = {
           budget_sale_band?: string | null
           buyer_preferences?: Json | null
           category?: string | null
+          contact_id?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string
@@ -556,6 +665,7 @@ export type Database = {
           budget_sale_band?: string | null
           buyer_preferences?: Json | null
           category?: string | null
+          contact_id?: string | null
           contact_pref?: string[] | null
           contact_status?: string | null
           created_at?: string
@@ -596,6 +706,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "leads_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -912,6 +1029,41 @@ export type Database = {
           },
         ]
       }
+      property_status_changes: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_status: string
+          old_status: string | null
+          property_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status: string
+          old_status?: string | null
+          property_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_status_changes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_audit: {
         Row: {
           action: string
@@ -1089,6 +1241,10 @@ export type Database = {
       }
       recompute_contact_status: {
         Args: { p_contact_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      update_contact_profile_safe: {
+        Args: { p_contact_id: string; p_patch: Json }
         Returns: undefined
       }
     }
