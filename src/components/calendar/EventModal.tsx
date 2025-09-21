@@ -413,6 +413,28 @@ export const EventModal: React.FC<EventModalProps> = ({
               {loading ? 'Saving...' : event ? 'Update Appointment' : 'Schedule Appointment'}
             </Button>
             
+            {event && event.status === 'scheduled' && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    await onSave({ ...event, status: 'completed' });
+                    onClose();
+                  } catch (error) {
+                    console.error('Error marking event as completed:', error);
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Mark Completed
+              </Button>
+            )}
+            
             {event && onDelete && (
               <Button
                 variant="destructive"

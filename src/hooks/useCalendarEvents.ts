@@ -52,6 +52,9 @@ export const useCalendarEvents = () => {
         created_at: event.created_at,
         updated_at: event.updated_at,
         reminder_minutes: event.reminder_minutes,
+        reminder_offset_min: event.reminder_offset_min,
+        snooze_until: event.snooze_until,
+        next_due_at: event.next_due_at,
         notification_sent: event.notification_sent,
         is_recurring: event.is_recurring,
         recurrence_pattern: event.recurrence_pattern,
@@ -88,6 +91,7 @@ export const useCalendarEvents = () => {
           contact_id: eventData.contact_id,
           deal_id: eventData.deal_id,
           reminder_minutes: eventData.reminder_minutes || 15,
+          reminder_offset_min: eventData.reminder_offset_min || 15,
         })
         .select()
         .single();

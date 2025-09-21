@@ -4,6 +4,8 @@ import { Header } from './Header';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { NotificationSystem } from '@/components/calendar/NotificationSystem';
+import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -13,6 +15,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { events, updateEvent } = useCalendarEvents();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -56,6 +59,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
         </main>
       </div>
+
+      {/* Notification System - Global */}
+      <NotificationSystem events={events} onEventUpdate={updateEvent} />
     </div>
   );
 };

@@ -142,6 +142,9 @@ export interface CalendarEvent {
   created_at?: string;
   updated_at?: string;
   reminder_minutes?: number;
+  reminder_offset_min?: number;
+  snooze_until?: string | null;
+  next_due_at?: string | null;
   notification_sent?: boolean;
   is_recurring?: boolean;
   recurrence_pattern?: string | null;

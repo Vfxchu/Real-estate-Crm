@@ -1,21 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { CalendarEvent } from '@/types';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { CalendarEvent } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import {
   Bell,
   Clock,
-  MapPin,
-  User,
-  Phone,
+  CheckCircle,
   Building,
+  Phone,
   Users,
+  Calendar,
   X,
-  Calendar as CalendarIcon,
 } from 'lucide-react';
 
 interface NotificationSystemProps {
@@ -31,7 +30,7 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
   events,
   onEventUpdate,
 }) => {
-  const { user } = useAuth();
+  const { toast } = useToast();
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [dismissedEvents, setDismissedEvents] = useState<Set<string>>(new Set());
 
@@ -41,87 +40,95 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
       const now = new Date();
       const upcoming: UpcomingEvent[] = [];
 
-      events.forEach(event => {
-        if (event.status === 'scheduled' && !dismissedEvents.has(event.id)) {
-          const eventDate = new Date(event.start_date);
-          const minutesUntil = Math.floor((eventDate.getTime() - now.getTime()) / (1000 * 60));
-          
-          // Show notifications for events in the next 60 minutes
-          if (minutesUntil > 0 && minutesUntil <= (event.reminder_minutes || 15)) {
-            upcoming.push({
-              ...event,
-              minutesUntil,
-            });
-          }
+      events.forEach((event) => {
+        if (event.status !== 'scheduled' || !event.next_due_at) return;
+        
+        const dueTime = new Date(event.next_due_at);
+        const minutesUntil = Math.floor((dueTime.getTime() - now.getTime()) / 1000 / 60);
+        
+        // Show events that are due within 15 minutes and not dismissed
+        if (minutesUntil >= -2 && minutesUntil <= 15 && !dismissedEvents.has(event.id)) {
+          upcoming.push({
+            ...event,
+            minutesUntil,
+          });
         }
       });
 
       setUpcomingEvents(upcoming);
     };
 
-    // Check immediately
     checkUpcomingEvents();
+    const interval = setInterval(checkUpcomingEvents, 60000); // Check every minute
 
-    // Then check every minute
-    const interval = setInterval(checkUpcomingEvents, 60000);
     return () => clearInterval(interval);
   }, [events, dismissedEvents]);
 
   // Show toast notifications for imminent events
   useEffect(() => {
-    upcomingEvents.forEach(event => {
-      if (event.minutesUntil <= 5 && event.minutesUntil > 0) {
-        const eventKey = `event-${event.id}-${event.minutesUntil}`;
+    upcomingEvents.forEach((event) => {
+      // Show toast for events due within 5 minutes
+      if (event.minutesUntil <= 5 && event.minutesUntil >= 0) {
+        const storageKey = `notification_${event.id}_${format(new Date(event.start_date), 'yyyy-MM-dd-HH-mm')}`;
+        const lastNotified = sessionStorage.getItem(storageKey);
         
-        // Prevent duplicate notifications
-        if (!localStorage.getItem(eventKey)) {
-          localStorage.setItem(eventKey, 'shown');
-          
-          toast(`Appointment in ${event.minutesUntil} minute${event.minutesUntil > 1 ? 's' : ''}`, {
-            description: `${event.title} ${event.location ? `at ${event.location}` : ''}`,
-            action: {
-              label: 'View',
-              onClick: () => {
-                // Navigate to event or open modal
-                console.log('Navigate to event', event.id);
-              },
-            },
-            duration: 10000,
+        // Don't show duplicate notifications within 10 minutes
+        if (!lastNotified || Date.now() - parseInt(lastNotified) > 10 * 60 * 1000) {
+          toast({
+            title: `Upcoming: ${event.title}`,
+            description: `Starting in ${event.minutesUntil} minute${event.minutesUntil !== 1 ? 's' : ''}`,
+            duration: 8000,
           });
+          sessionStorage.setItem(storageKey, Date.now().toString());
         }
       }
     });
-  }, [upcomingEvents]);
+  }, [upcomingEvents, toast]);
 
-  // Real-time updates via Supabase
+  // Real-time updates from Supabase
   useEffect(() => {
-    if (!user?.id) return;
-
     const channel = supabase
       .channel('calendar-notifications')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'calendar_events',
-          filter: `agent_id=eq.${user.id}`,
+          filter: `agent_id=eq.${supabase.auth.getUser().then(u => u.data.user?.id)}`,
         },
         (payload) => {
-          // Handle real-time calendar updates
-          if (payload.eventType === 'INSERT') {
-            toast.success('New appointment scheduled', {
-              description: payload.new?.title || 'A new appointment has been added to your calendar',
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const event = payload.new as any;
-            if (event?.status === 'cancelled') {
-              toast.info('Appointment cancelled', {
-                description: event.title || 'An appointment has been cancelled',
+          const newEvent = payload.new as CalendarEvent;
+          toast({
+            title: 'New Event Scheduled',
+            description: `${newEvent.title} - ${format(new Date(newEvent.start_date), 'MMM d, h:mm a')}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'calendar_events',
+          filter: `agent_id=eq.${supabase.auth.getUser().then(u => u.data.user?.id)}`,
+        },
+        (payload) => {
+          const updatedEvent = payload.new as CalendarEvent;
+          const oldEvent = payload.old as CalendarEvent;
+          
+          // Notify about status changes
+          if (oldEvent.status !== updatedEvent.status) {
+            if (updatedEvent.status === 'cancelled') {
+              toast({
+                title: 'Event Cancelled',
+                description: updatedEvent.title,
+                variant: 'destructive',
               });
-            } else if (event?.status === 'rescheduled') {
-              toast.info('Appointment rescheduled', {
-                description: event.title || 'An appointment has been rescheduled',
+            } else if (updatedEvent.status === 'rescheduled') {
+              toast({
+                title: 'Event Rescheduled',
+                description: `${updatedEvent.title} - ${format(new Date(updatedEvent.start_date), 'MMM d, h:mm a')}`,
               });
             }
           }
@@ -132,7 +139,7 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [toast]);
 
   const getEventIcon = (type: CalendarEvent['event_type']) => {
     switch (type) {
@@ -140,125 +147,134 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
       case 'contact_meeting': return <Users className="w-4 h-4" />;
       case 'lead_call': return <Phone className="w-4 h-4" />;
       case 'follow_up': return <Clock className="w-4 h-4" />;
-      case 'general': return <CalendarIcon className="w-4 h-4" />;
-      default: return <CalendarIcon className="w-4 h-4" />;
+      default: return <Calendar className="w-4 h-4" />;
     }
   };
 
   const getEventColor = (type: CalendarEvent['event_type']) => {
     switch (type) {
-      case 'property_viewing': return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'contact_meeting': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
-      case 'lead_call': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
-      case 'follow_up': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
-      case 'general': return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
-      default: return 'bg-primary/10 text-primary border-primary/20';
+      case 'property_viewing': return 'bg-green-100 text-green-800 border-green-200';
+      case 'contact_meeting': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'lead_call': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'follow_up': return 'bg-purple-100 text-purple-800 border-purple-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const handleMarkCompleted = async (eventId: string) => {
+    try {
+      await onEventUpdate(eventId, { status: 'completed' });
+      setDismissedEvents(prev => new Set([...prev, eventId]));
+      toast({
+        title: 'Event Completed',
+        description: 'Event has been marked as completed',
+      });
+    } catch (error) {
+      console.error('Error marking event as completed:', error);
+    }
+  };
+
+  const handleSnooze = async (eventId: string, minutes: number) => {
+    try {
+      const snoozeUntil = new Date(Date.now() + minutes * 60 * 1000);
+      await onEventUpdate(eventId, { snooze_until: snoozeUntil.toISOString() });
+      setDismissedEvents(prev => new Set([...prev, eventId]));
+      toast({
+        title: 'Event Snoozed',
+        description: `Reminder snoozed for ${minutes} minutes`,
+      });
+    } catch (error) {
+      console.error('Error snoozing event:', error);
     }
   };
 
   const handleDismiss = (eventId: string) => {
-    setDismissedEvents(prev => new Set(prev).add(eventId));
+    setDismissedEvents(prev => new Set([...prev, eventId]));
   };
 
-  const handleSnooze = (eventId: string) => {
-    // Snooze for 10 minutes
-    setDismissedEvents(prev => new Set(prev).add(eventId));
-    setTimeout(() => {
-      setDismissedEvents(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(eventId);
-        return newSet;
-      });
-    }, 10 * 60 * 1000);
-  };
-
-  if (upcomingEvents.length === 0) return null;
+  if (upcomingEvents.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
-      {upcomingEvents.map(event => (
-        <Card key={event.id} className={`border shadow-lg ${getEventColor(event.event_type)}`}>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <Bell className="w-4 h-4 animate-pulse" />
-                  <Badge variant="secondary" className="text-xs">
-                    {event.minutesUntil}min
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center gap-2 mb-1">
-                  {getEventIcon(event.event_type)}
-                  <span className="font-medium text-sm truncate">{event.title}</span>
-                </div>
-                
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {new Date(event.start_date).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </div>
-                  
-                   {event.lead_id && (
-                     <div className="flex items-center gap-1">
-                       <User className="w-3 h-3" />
-                       <span className="truncate">Lead</span>
-                     </div>
-                   )}
-                  
-                  {event.location && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      <span className="truncate">{event.location}</span>
-                    </div>
-                  )}
-                </div>
+    <div className="fixed top-4 right-4 z-50 max-w-sm space-y-2">
+      {upcomingEvents.map((event) => (
+        <Card key={event.id} className={`border-l-4 ${getEventColor(event.event_type)} shadow-lg`}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-orange-500" />
+                <CardTitle className="text-sm font-medium">
+                  {event.minutesUntil <= 0 ? 'Starting Now!' : `In ${event.minutesUntil}m`}
+                </CardTitle>
               </div>
-              
-              <div className="flex flex-col gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0"
-                  onClick={() => handleDismiss(event.id)}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-                
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 text-xs px-1"
-                  onClick={() => handleSnooze(event.id)}
-                >
-                  10m
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDismiss(event.id)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="w-3 h-3" />
+              </Button>
             </div>
-            
-            <div className="flex gap-2 mt-3">
-              <Button
-                size="sm"
-                className="flex-1 h-7 text-xs"
-                onClick={() => onEventUpdate(event.id, { status: 'completed' })}
-              >
-                Start
-              </Button>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                {getEventIcon(event.event_type)}
+                <span className="font-medium text-sm">{event.title}</span>
+              </div>
               
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => {
-                  // Open event details
-                  console.log('Open event details', event.id);
-                }}
-              >
-                Details
-              </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                {format(new Date(event.start_date), 'h:mm a')}
+                {event.location && (
+                  <>
+                    <span>•</span>
+                    <span>{event.location}</span>
+                  </>
+                )}
+              </div>
+
+              <Badge variant="outline" className={`text-xs ${getEventColor(event.event_type)}`}>
+                {event.event_type.replace('_', ' ')}
+              </Badge>
+
+              <div className="flex gap-1 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleMarkCompleted(event.id)}
+                  className="h-7 px-2 text-xs"
+                >
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Done
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSnooze(event.id, 5)}
+                  className="h-7 px-2 text-xs"
+                >
+                  +5m
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSnooze(event.id, 10)}
+                  className="h-7 px-2 text-xs"
+                >
+                  +10m
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSnooze(event.id, 15)}
+                  className="h-7 px-2 text-xs"
+                >
+                  +15m
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
