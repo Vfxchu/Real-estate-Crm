@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadMeta } from "@/components/leads/LeadMeta";
+import { LeadSlaStatus } from "@/components/leads/LeadSlaStatus";
+import { QuickCallActions } from "@/components/leads/QuickCallActions";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
@@ -403,16 +405,16 @@ export const LeadsManager = () => {
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Contact Status</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Agent</TableHead>
-                  <TableHead>Interest</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-12">Actions</TableHead>
+                   <TableHead>Name</TableHead>
+                   <TableHead>Contact</TableHead>
+                   <TableHead>SLA & Assignment</TableHead>
+                   <TableHead>Status</TableHead>
+                   <TableHead>Priority</TableHead>
+                   <TableHead>Contact Status</TableHead>
+                   <TableHead>Source</TableHead>
+                   <TableHead>Interest</TableHead>
+                   <TableHead>Created</TableHead>
+                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -430,22 +432,25 @@ export const LeadsManager = () => {
                           <p className="text-xs text-muted-foreground">{lead.email}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="text-sm">{lead.phone || 'No phone'}</p>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                            <Phone className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                            <Mail className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                            <MessageSquare className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </TableCell>
+                     <TableCell>
+                       <div className="space-y-1">
+                         <p className="text-sm">{lead.phone || 'No phone'}</p>
+                         <div className="flex gap-1">
+                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                             <Phone className="w-3 h-3" />
+                           </Button>
+                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                             <Mail className="w-3 h-3" />
+                           </Button>
+                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
+                             <MessageSquare className="w-3 h-3" />
+                           </Button>
+                         </div>
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <LeadSlaStatus lead={lead} agentName={lead.profiles?.name} />
+                     </TableCell>
                     <TableCell>
                       <Select value={lead.status} onValueChange={(newStatus) => handleStatusChange(lead.id, newStatus as Lead['status'])}>
                         <SelectTrigger className="w-32">
@@ -485,12 +490,11 @@ export const LeadsManager = () => {
                          </SelectContent>
                        </Select>
                      </TableCell>
-                    <TableCell>{lead.source}</TableCell>
-                    <TableCell>{lead.profiles?.name || 'Unassigned'}</TableCell>
-                    <TableCell>
-                      <LeadMeta lead={lead} layout="table" />
-                    </TableCell>
-                    <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
+                     <TableCell>{lead.source}</TableCell>
+                     <TableCell>
+                       <LeadMeta lead={lead} layout="table" />
+                     </TableCell>
+                     <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
                      <TableCell>
                        <div className="flex items-center gap-1">
                          <Dialog>
@@ -547,31 +551,45 @@ export const LeadsManager = () => {
                                 </div>
                               </div>
                               
-                              <div>
-                                <Label>Notes</Label>
-                                <Textarea
-                                  placeholder="Add notes about this lead..."
-                                  className="mt-2"
-                                  rows={4}
-                                  defaultValue={selectedLead.notes}
-                                />
-                              </div>
+                               <div>
+                                 <Label>SLA & Assignment Status</Label>
+                                 <div className="mt-2">
+                                   <LeadSlaStatus lead={selectedLead} agentName={selectedLead.profiles?.name} />
+                                 </div>
+                               </div>
 
-                              <div className="flex gap-2">
-                                <Button className="btn-primary">Save Changes</Button>
-                                <Button variant="outline">
-                                  <Phone className="w-4 h-4 mr-2" />
-                                  Call
-                                </Button>
-                                <Button variant="outline">
-                                  <Mail className="w-4 h-4 mr-2" />
-                                  Email
-                                </Button>
-                                <Button variant="outline">
-                                  <MessageSquare className="w-4 h-4 mr-2" />
-                                  WhatsApp
-                                </Button>
-                              </div>
+                               <div>
+                                 <Label>Call Actions</Label>
+                                 <div className="mt-2">
+                                   <QuickCallActions lead={selectedLead} onComplete={fetchLeads} />
+                                 </div>
+                               </div>
+
+                               <div>
+                                 <Label>Notes</Label>
+                                 <Textarea
+                                   placeholder="Add notes about this lead..."
+                                   className="mt-2"
+                                   rows={4}
+                                   defaultValue={selectedLead.notes}
+                                 />
+                               </div>
+
+                               <div className="flex gap-2">
+                                 <Button className="btn-primary">Save Changes</Button>
+                                 <Button variant="outline">
+                                   <Phone className="w-4 h-4 mr-2" />
+                                   Call
+                                 </Button>
+                                 <Button variant="outline">
+                                   <Mail className="w-4 h-4 mr-2" />
+                                   Email
+                                 </Button>
+                                 <Button variant="outline">
+                                   <MessageSquare className="w-4 h-4 mr-2" />
+                                   WhatsApp
+                                 </Button>
+                               </div>
                             </div>
                            )}
                            </DialogContent>

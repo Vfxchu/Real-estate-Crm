@@ -84,6 +84,51 @@ export type Database = {
           },
         ]
       }
+      assignment_history: {
+        Row: {
+          agent_id: string
+          assigned_at: string
+          id: string
+          lead_id: string
+          reason: string | null
+          released_at: string | null
+          version: number
+        }
+        Insert: {
+          agent_id: string
+          assigned_at?: string
+          id?: string
+          lead_id: string
+          reason?: string | null
+          released_at?: string | null
+          version?: number
+        }
+        Update: {
+          agent_id?: string
+          assigned_at?: string
+          id?: string
+          lead_id?: string
+          reason?: string | null
+          released_at?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "assignment_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_executions: {
         Row: {
           completed_at: string | null
@@ -275,6 +320,48 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_attempts: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          notes: string | null
+          outcome: Database["public"]["Enums"]["call_outcome"]
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          notes?: string | null
+          outcome: Database["public"]["Enums"]["call_outcome"]
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          outcome?: Database["public"]["Enums"]["call_outcome"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_attempts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "call_attempts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -575,6 +662,8 @@ export type Database = {
       leads: {
         Row: {
           agent_id: string | null
+          assigned_at: string | null
+          assignment_version: number
           bedrooms: string | null
           budget_range: string | null
           budget_rent_band: string | null
@@ -587,10 +676,14 @@ export type Database = {
           created_at: string
           custom_fields: Json | null
           email: string
+          first_outcome_at: string | null
           follow_up_date: string | null
           id: string
           interest_tags: string[] | null
           interested_in: string | null
+          last_assigned_at: string | null
+          last_contact_at: string | null
+          last_outcome: string | null
           lead_source: string | null
           location_address: string | null
           location_lat: number | null
@@ -600,6 +693,7 @@ export type Database = {
           merged_into_id: string | null
           name: string
           notes: string | null
+          outcome_count: number
           phone: string | null
           priority: string
           score: number | null
@@ -613,10 +707,13 @@ export type Database = {
           subtype: string | null
           tags: string[] | null
           tenant_preferences: Json | null
+          unreachable_count: number
           updated_at: string
         }
         Insert: {
           agent_id?: string | null
+          assigned_at?: string | null
+          assignment_version?: number
           bedrooms?: string | null
           budget_range?: string | null
           budget_rent_band?: string | null
@@ -629,10 +726,14 @@ export type Database = {
           created_at?: string
           custom_fields?: Json | null
           email: string
+          first_outcome_at?: string | null
           follow_up_date?: string | null
           id?: string
           interest_tags?: string[] | null
           interested_in?: string | null
+          last_assigned_at?: string | null
+          last_contact_at?: string | null
+          last_outcome?: string | null
           lead_source?: string | null
           location_address?: string | null
           location_lat?: number | null
@@ -642,6 +743,7 @@ export type Database = {
           merged_into_id?: string | null
           name: string
           notes?: string | null
+          outcome_count?: number
           phone?: string | null
           priority?: string
           score?: number | null
@@ -655,10 +757,13 @@ export type Database = {
           subtype?: string | null
           tags?: string[] | null
           tenant_preferences?: Json | null
+          unreachable_count?: number
           updated_at?: string
         }
         Update: {
           agent_id?: string | null
+          assigned_at?: string | null
+          assignment_version?: number
           bedrooms?: string | null
           budget_range?: string | null
           budget_rent_band?: string | null
@@ -671,10 +776,14 @@ export type Database = {
           created_at?: string
           custom_fields?: Json | null
           email?: string
+          first_outcome_at?: string | null
           follow_up_date?: string | null
           id?: string
           interest_tags?: string[] | null
           interested_in?: string | null
+          last_assigned_at?: string | null
+          last_contact_at?: string | null
+          last_outcome?: string | null
           lead_source?: string | null
           location_address?: string | null
           location_lat?: number | null
@@ -684,6 +793,7 @@ export type Database = {
           merged_into_id?: string | null
           name?: string
           notes?: string | null
+          outcome_count?: number
           phone?: string | null
           priority?: string
           score?: number | null
@@ -697,6 +807,7 @@ export type Database = {
           subtype?: string | null
           tags?: string[] | null
           tenant_preferences?: Json | null
+          unreachable_count?: number
           updated_at?: string
         }
         Relationships: [
@@ -1229,6 +1340,16 @@ export type Database = {
         Args: { _role: string; _user_id: string }
         Returns: boolean
       }
+      log_call_outcome: {
+        Args: {
+          p_agent_id: string
+          p_callback_at?: string
+          p_lead_id: string
+          p_notes?: string
+          p_outcome: Database["public"]["Enums"]["call_outcome"]
+        }
+        Returns: undefined
+      }
       log_security_event: {
         Args: {
           p_action: string
@@ -1238,6 +1359,10 @@ export type Database = {
           p_resource_type: string
         }
         Returns: undefined
+      }
+      reassign_overdue_leads: {
+        Args: { p_minutes?: number }
+        Returns: number
       }
       recompute_contact_status: {
         Args: { p_contact_id: string; p_reason?: string }
@@ -1250,6 +1375,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "agent" | "user" | "superadmin"
+      call_outcome:
+        | "interested"
+        | "callback"
+        | "no_answer"
+        | "busy"
+        | "not_interested"
+        | "invalid"
+        | "other"
       contact_file_tag:
         | "id"
         | "poa"
@@ -1396,6 +1529,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "agent", "user", "superadmin"],
+      call_outcome: [
+        "interested",
+        "callback",
+        "no_answer",
+        "busy",
+        "not_interested",
+        "invalid",
+        "other",
+      ],
       contact_file_tag: [
         "id",
         "poa",

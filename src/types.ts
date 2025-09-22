@@ -29,6 +29,16 @@ export interface Lead {
   custom_fields?: any;
   merged_into_id?: string | null;
   
+  // SLA and call tracking fields
+  assigned_at?: string | null;
+  last_assigned_at?: string | null;
+  assignment_version?: number;
+  first_outcome_at?: string | null;
+  last_outcome?: string | null;
+  outcome_count?: number;
+  unreachable_count?: number;
+  last_contact_at?: string | null;
+  
   // Extended CRM fields
   lead_source?: string | null;
   interest_tags?: string[];

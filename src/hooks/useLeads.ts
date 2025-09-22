@@ -54,9 +54,47 @@ export const useLeads = () => {
     try {
       console.log('[LEADS] Creating lead:', leadData);
       
-      // Use the enhanced lead creation service that handles contact sync
-      const { createLead: serviceCreateLead } = await import('@/services/leads');
-      const { data, error } = await serviceCreateLead(leadData as any);
+      // Check for duplicates first (merge logic)
+      const duplicateQuery = supabase.from('leads').select('*');
+      if (leadData.email) {
+        duplicateQuery.eq('email', leadData.email);
+      } else if (leadData.phone) {
+        duplicateQuery.eq('phone', leadData.phone);
+      }
+      
+      const { data: existingLeads } = await duplicateQuery.limit(1);
+      
+      if (existingLeads && existingLeads.length > 0) {
+        const existing = existingLeads[0];
+        
+        // Add activity noting the duplicate attempt
+        await supabase.from('activities').insert({
+          type: 'note',
+          description: `Duplicate lead attempt merged - ${new Date().toLocaleString()}`,
+          lead_id: existing.id,
+          created_by: user?.id
+        });
+        
+        toast({
+          title: 'Duplicate lead merged',
+          description: `This lead already exists and has been updated.`,
+        });
+        
+        return { data: existing, error: null };
+      }
+      
+      // Create new lead - agent assignment will be handled by DB trigger
+      const leadToInsert: any = { ...leadData };
+      delete leadToInsert.agent_id; // Let DB trigger assign agent
+      
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(leadToInsert)
+        .select(`
+          *,
+          profiles!leads_agent_id_fkey(name, email)
+        `)
+        .single();
 
       if (error) throw error;
 

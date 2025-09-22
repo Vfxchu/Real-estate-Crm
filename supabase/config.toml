@@ -1,1 +1,4 @@
 project_id = "lnszidczioariaebsquo"
+
+[functions.sla-monitor]
+verify_jwt = false
