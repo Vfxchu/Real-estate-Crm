@@ -12,6 +12,7 @@ import LeadForm from "@/components/leads/LeadForm";
 import { LeadMeta } from "@/components/leads/LeadMeta";
 import { LeadSlaStatus } from "@/components/leads/LeadSlaStatus";
 import { QuickCallActions } from "@/components/leads/QuickCallActions";
+import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
@@ -35,6 +36,7 @@ import {
   MoreHorizontal,
   UserCheck,
   UserX,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
@@ -56,6 +58,7 @@ export const LeadsManager = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [showLeadDrawer, setShowLeadDrawer] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -177,218 +180,268 @@ export const LeadsManager = () => {
     setSelectedLeads([]);
   };
 
+  const handleRowClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setShowLeadDrawer(true);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Leads Manager</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Manage and track all your leads in one place
-          </p>
+      {/* Sticky Header */}
+      <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Leads</h1>
+            <p className="text-sm text-muted-foreground">
+              {filteredLeads.length} leads • Manage and track all your leads
+            </p>
+          </div>
+          <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            New Lead
+          </Button>
         </div>
-        <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Lead
-        </Button>
+
+        {/* Search and Quick Filters Bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search name, phone, email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 text-sm"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="contacted">Contacted</SelectItem>
+                <SelectItem value="qualified">Qualified</SelectItem>
+                <SelectItem value="negotiating">Negotiating</SelectItem>
+                <SelectItem value="won">Won</SelectItem>
+                <SelectItem value="lost">Lost</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={agentFilter} onValueChange={setAgentFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Agent" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Agents</SelectItem>
+                {[...new Set(leads.map(lead => lead.profiles?.name).filter(Boolean))].map(agentName => (
+                  <SelectItem key={agentName} value={agentName!}>
+                    {agentName}
+                  </SelectItem>
+                ))}
+                <SelectItem value="Unassigned">Unassigned</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="whitespace-nowrap"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              {showAdvancedFilters ? 'Less' : 'More'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Active Filters Chips */}
+        {(statusFilter !== 'all' || agentFilter !== 'all' || priorityFilter !== 'all' || searchTerm) && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {statusFilter !== 'all' && (
+              <Badge variant="secondary" className="text-xs">
+                Status: {statusFilter}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 h-4 w-4 p-0"
+                  onClick={() => setStatusFilter('all')}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+            {agentFilter !== 'all' && (
+              <Badge variant="secondary" className="text-xs">
+                Agent: {agentFilter}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 h-4 w-4 p-0"
+                  onClick={() => setAgentFilter('all')}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+            {priorityFilter !== 'all' && (
+              <Badge variant="secondary" className="text-xs">
+                Priority: {priorityFilter}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 h-4 w-4 p-0"
+                  onClick={() => setPriorityFilter('all')}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+            {searchTerm && (
+              <Badge variant="secondary" className="text-xs">
+                Search: {searchTerm}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-1 h-4 w-4 p-0"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs h-6"
+              onClick={() => {
+                setStatusFilter('all');
+                setPriorityFilter('all');
+                setContactStatusFilter('all');
+                setSourceFilter('all');
+                setCategoryFilter('all');
+                setAgentFilter('all');
+                setDateRangeFilter({ from: '', to: '' });
+                setSearchTerm('');
+              }}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Filters and Actions */}
-      <Card className="card-elevated">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-              <Input
-                placeholder="Search leads by name, email, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Advanced Filters Collapsible */}
+      {showAdvancedFilters && (
+        <Card className="card-elevated">
+          <CardContent className="p-4">
+            <h4 className="font-medium mb-3 text-sm">Advanced Filters</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priority</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Contact Status</Label>
+                <Select value={contactStatusFilter} onValueChange={setContactStatusFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Contact Status</SelectItem>
+                    <SelectItem value="lead">Not Contacted</SelectItem>
+                    <SelectItem value="contacted">Contacted</SelectItem>
+                    <SelectItem value="active_client">Active Client</SelectItem>
+                    <SelectItem value="past_client">Past Client</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Source</Label>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="website">Website</SelectItem>
+                    <SelectItem value="referral">Referral</SelectItem>
+                    <SelectItem value="social">Social Media</SelectItem>
+                    <SelectItem value="advertising">Advertising</SelectItem>
+                    <SelectItem value="cold_call">Cold Call</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="instagram">Instagram</SelectItem>
+                    <SelectItem value="facebook_ads">Facebook Ads</SelectItem>
+                    <SelectItem value="google_ads">Google Ads</SelectItem>
+                    <SelectItem value="walk_in">Walk In</SelectItem>
+                    <SelectItem value="portal">Portal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Category</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="property">Property</SelectItem>
+                    <SelectItem value="requirement">Requirement</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">From Date</Label>
+                <Input
+                  type="date"
+                  value={dateRangeFilter.from}
+                  onChange={(e) => setDateRangeFilter(prev => ({ ...prev, from: e.target.value }))}
+                  className="h-8 text-sm"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full h-8 text-xs"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setPriorityFilter('all');
+                    setContactStatusFilter('all');
+                    setSourceFilter('all');
+                    setCategoryFilter('all');
+                    setAgentFilter('all');
+                    setDateRangeFilter({ from: '', to: '' });
+                    setSearchTerm('');
+                  }}
+                >
+                  Clear All
+                </Button>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-32 md:w-40">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                  <SelectItem value="qualified">Qualified</SelectItem>
-                  <SelectItem value="negotiating">Negotiating</SelectItem>
-                  <SelectItem value="won">Won</SelectItem>
-                  <SelectItem value="lost">Lost</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-full sm:w-32 md:w-40">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Priority</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-               </Select>
-
-               <Button 
-                 variant="outline"
-                 size="sm"
-                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                 className="whitespace-nowrap w-full sm:w-auto"
-               >
-                 <Filter className="w-4 h-4 mr-2" />
-                 {showAdvancedFilters ? 'Hide' : 'More'}
-               </Button>
-
-               <Button variant="outline" size="sm" className="whitespace-nowrap w-full sm:w-auto">
-                 <Download className="w-4 h-4 mr-2" />
-                 Export
-               </Button>
-             </div>
-           </div>
-
-            {/* Advanced Filters */}
-            {showAdvancedFilters && (
-              <div className="mt-4 p-4 border rounded-lg bg-muted/20">
-                <h4 className="font-medium mb-3">Advanced Filters</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                 {/* Contact Status Filter */}
-                 <div>
-                   <Label className="text-sm font-medium">Contact Status</Label>
-                   <Select value={contactStatusFilter} onValueChange={setContactStatusFilter}>
-                     <SelectTrigger className="w-full">
-                       <SelectValue placeholder="Contact Status" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="all">All Contact Status</SelectItem>
-                       <SelectItem value="lead">Not Contacted</SelectItem>
-                       <SelectItem value="contacted">Contacted</SelectItem>
-                       <SelectItem value="active_client">Active Client</SelectItem>
-                       <SelectItem value="past_client">Past Client</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-
-                 {/* Source Filter */}
-                 <div>
-                   <Label className="text-sm font-medium">Source</Label>
-                   <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                     <SelectTrigger className="w-full">
-                       <SelectValue placeholder="Source" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="all">All Sources</SelectItem>
-                       <SelectItem value="website">Website</SelectItem>
-                       <SelectItem value="referral">Referral</SelectItem>
-                       <SelectItem value="social">Social Media</SelectItem>
-                       <SelectItem value="advertising">Advertising</SelectItem>
-                       <SelectItem value="cold_call">Cold Call</SelectItem>
-                       <SelectItem value="email">Email</SelectItem>
-                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                       <SelectItem value="instagram">Instagram</SelectItem>
-                       <SelectItem value="facebook_ads">Facebook Ads</SelectItem>
-                       <SelectItem value="google_ads">Google Ads</SelectItem>
-                       <SelectItem value="walk_in">Walk In</SelectItem>
-                       <SelectItem value="portal">Portal</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-
-                 {/* Category Filter */}
-                 <div>
-                   <Label className="text-sm font-medium">Category</Label>
-                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                     <SelectTrigger className="w-full">
-                       <SelectValue placeholder="Category" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="all">All Categories</SelectItem>
-                       <SelectItem value="property">Property</SelectItem>
-                       <SelectItem value="requirement">Requirement</SelectItem>
-                       <SelectItem value="both">Both</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-
-                 {/* Agent Filter */}
-                 <div>
-                   <Label className="text-sm font-medium">Agent</Label>
-                   <Select value={agentFilter} onValueChange={setAgentFilter}>
-                     <SelectTrigger className="w-full">
-                       <SelectValue placeholder="Agent" />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="all">All Agents</SelectItem>
-                       {[...new Set(leads.map(lead => lead.profiles?.name).filter(Boolean))].map(agentName => (
-                         <SelectItem key={agentName} value={agentName!}>
-                           {agentName}
-                         </SelectItem>
-                       ))}
-                       <SelectItem value="Unassigned">Unassigned</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-
-                 {/* Date Range Filter */}
-                 <div>
-                   <Label className="text-sm font-medium">From Date</Label>
-                   <Input
-                     type="date"
-                     value={dateRangeFilter.from}
-                     onChange={(e) => setDateRangeFilter(prev => ({ ...prev, from: e.target.value }))}
-                     className="w-full"
-                   />
-                 </div>
-
-                 <div>
-                   <Label className="text-sm font-medium">To Date</Label>
-                   <Input
-                     type="date"
-                     value={dateRangeFilter.to}
-                     onChange={(e) => setDateRangeFilter(prev => ({ ...prev, to: e.target.value }))}
-                     className="w-full"
-                   />
-                 </div>
-
-                 {/* Clear Filters Button */}
-                 <div className="flex items-end">
-                   <Button 
-                     variant="outline" 
-                     className="w-full"
-                     onClick={() => {
-                       setStatusFilter('all');
-                       setPriorityFilter('all');
-                       setContactStatusFilter('all');
-                       setSourceFilter('all');
-                       setCategoryFilter('all');
-                       setAgentFilter('all');
-                       setDateRangeFilter({ from: '', to: '' });
-                       setSearchTerm('');
-                     }}
-                   >
-                     Clear All Filters
-                   </Button>
-                 </div>
-               </div>
-             </div>
-           )}
-        </CardContent>
-      </Card>
-
-      {/* Leads Table */}
+      {/* Leads List */}
       <Card className="card-elevated">
-        <CardHeader>
-          <CardTitle>
-            Leads ({filteredLeads.length})
-          </CardTitle>
-        </CardHeader>
         <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center items-center py-12">
@@ -418,183 +471,71 @@ export const LeadsManager = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-muted/30">
-                    <TableCell>
+                 {filteredLeads.map((lead) => (
+                   <TableRow 
+                     key={lead.id} 
+                     className="hover:bg-muted/50 cursor-pointer transition-colors" 
+                     onClick={() => handleRowClick(lead)}
+                   >
+                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selectedLeads.includes(lead.id)}
                         onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
                       />
                     </TableCell>
-                    <TableCell>
-                      <div>
-                          <p className="font-medium">{lead.name}</p>
-                          <p className="text-xs text-muted-foreground">{lead.email}</p>
-                      </div>
-                    </TableCell>
                      <TableCell>
                        <div className="space-y-1">
-                         <p className="text-sm">{lead.phone || 'No phone'}</p>
-                         <div className="flex gap-1">
-                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                             <Phone className="w-3 h-3" />
-                           </Button>
-                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                             <Mail className="w-3 h-3" />
-                           </Button>
-                           <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                             <MessageSquare className="w-3 h-3" />
-                           </Button>
-                         </div>
+                         <p className="font-medium text-sm">{lead.name}</p>
+                         <p className="text-xs text-muted-foreground">{lead.email}</p>
                        </div>
                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="text-sm">{lead.phone || 'No phone'}</p>
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
+                              <Phone className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
+                              <Mail className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
+                              <MessageSquare className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </TableCell>
                      <TableCell>
                        <LeadSlaStatus lead={lead} agentName={lead.profiles?.name} />
                      </TableCell>
-                    <TableCell>
-                      <Select value={lead.status} onValueChange={(newStatus) => handleStatusChange(lead.id, newStatus as Lead['status'])}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue>
-                            <Badge className={getStatusColor(lead.status)}>
-                              {lead.status}
-                            </Badge>
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="contacted">Contacted</SelectItem>
-                          <SelectItem value="qualified">Qualified</SelectItem>
-                          <SelectItem value="negotiating">Negotiating</SelectItem>
-                          <SelectItem value="won">Won</SelectItem>
-                          <SelectItem value="lost">Lost</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getPriorityColor(lead.priority)}>
-                        {lead.priority}
-                      </Badge>
-                    </TableCell>
-                     <TableCell>
-                       <Select value={lead.contact_status || 'lead'} onValueChange={(newStatus) => handleContactStatusChange(lead.id, newStatus)}>
-                         <SelectTrigger className="w-36">
-                           <SelectValue>
-                             <span className="text-sm">{getContactStatusDisplay(lead.contact_status || 'lead')}</span>
-                           </SelectValue>
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="lead">Not Contacted</SelectItem>
-                           <SelectItem value="contacted">Contacted</SelectItem>
-                           <SelectItem value="active_client">Active Client</SelectItem>
-                           <SelectItem value="past_client">Past Client</SelectItem>
-                         </SelectContent>
-                       </Select>
+                     <TableCell onClick={(e) => e.stopPropagation()}>
+                       <Badge className={`${getStatusColor(lead.status)} text-xs`}>
+                         {lead.status}
+                       </Badge>
                      </TableCell>
-                     <TableCell>{lead.source}</TableCell>
+                     <TableCell>
+                       <Badge variant="outline" className={`${getPriorityColor(lead.priority)} text-xs`}>
+                         {lead.priority}
+                       </Badge>
+                     </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {getContactStatusDisplay(lead.contact_status || 'lead')}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm capitalize">{lead.source}</span>
+                      </TableCell>
                      <TableCell>
                        <LeadMeta lead={lead} layout="table" />
                      </TableCell>
-                     <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
-                     <TableCell>
-                       <div className="flex items-center gap-1">
-                         <Dialog>
-                           <DialogTrigger asChild>
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               className="h-8 w-8 p-0"
-                               onClick={() => setSelectedLead(lead)}
-                             >
-                               <Eye className="w-4 h-4" />
-                             </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Lead Details - {selectedLead?.name}</DialogTitle>
-                          </DialogHeader>
-                          {selectedLead && (
-                            <div className="space-y-6">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Name</Label>
-                                  <p className="font-medium">{selectedLead.name}</p>
-                                </div>
-                                <div>
-                                  <Label>Email</Label>
-                                  <p>{selectedLead.email}</p>
-                                </div>
-                                <div>
-                                  <Label>Phone</Label>
-                                  <p>{selectedLead.phone}</p>
-                                </div>
-                                <div>
-                                  <Label>Status</Label>
-                                  <Badge className={getStatusColor(selectedLead.status)}>
-                                    {selectedLead.status}
-                                  </Badge>
-                                </div>
-                                <div>
-                                  <Label>Priority</Label>
-                                  <Badge variant="outline" className={getPriorityColor(selectedLead.priority)}>
-                                    {selectedLead.priority}
-                                  </Badge>
-                                </div>
-                                <div>
-                                  <Label>Source</Label>
-                                  <p>{selectedLead.source}</p>
-                                </div>
-                                <div className="col-span-2">
-                                  <Label>Interest & Property Details</Label>
-                                  <div className="mt-2">
-                                    <LeadMeta lead={selectedLead as any} layout="card" />
-                                  </div>
-                                </div>
-                              </div>
-                              
-                               <div>
-                                 <Label>SLA & Assignment Status</Label>
-                                 <div className="mt-2">
-                                   <LeadSlaStatus lead={selectedLead} agentName={selectedLead.profiles?.name} />
-                                 </div>
-                               </div>
-
-                               <div>
-                                 <Label>Call Actions</Label>
-                                 <div className="mt-2">
-                                   <QuickCallActions lead={selectedLead} onComplete={fetchLeads} />
-                                 </div>
-                               </div>
-
-                               <div>
-                                 <Label>Notes</Label>
-                                 <Textarea
-                                   placeholder="Add notes about this lead..."
-                                   className="mt-2"
-                                   rows={4}
-                                   defaultValue={selectedLead.notes}
-                                 />
-                               </div>
-
-                               <div className="flex gap-2">
-                                 <Button className="btn-primary">Save Changes</Button>
-                                 <Button variant="outline">
-                                   <Phone className="w-4 h-4 mr-2" />
-                                   Call
-                                 </Button>
-                                 <Button variant="outline">
-                                   <Mail className="w-4 h-4 mr-2" />
-                                   Email
-                                 </Button>
-                                 <Button variant="outline">
-                                   <MessageSquare className="w-4 h-4 mr-2" />
-                                   WhatsApp
-                                 </Button>
-                               </div>
-                            </div>
-                           )}
-                           </DialogContent>
-                          </Dialog>
-                          
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </span>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">                          
                           {/* Admin-only Edit Button */}
                           {profile?.role === 'admin' && (
                             <Button
@@ -621,8 +562,8 @@ export const LeadsManager = () => {
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
-                       </div>
-                     </TableCell>
+                        </div>
+                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -631,6 +572,17 @@ export const LeadsManager = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Lead Detail Drawer */}
+      <LeadDetailDrawer
+        lead={selectedLead}
+        open={showLeadDrawer}
+        onClose={() => {
+          setShowLeadDrawer(false);
+          setSelectedLead(null);
+        }}
+        onUpdate={fetchLeads}
+      />
 
       {/* Add Lead Form */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
