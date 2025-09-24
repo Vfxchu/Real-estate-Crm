@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { deleteLead } from '@/services/leads';
 import ClearableSelect from '@/components/ui/ClearableSelect';
 import ContactForm from '@/components/contacts/ContactForm';
-import ContactProfileDrawer from '@/components/contacts/ContactProfileDrawer';
+import ContactDetailDrawer from '@/components/contacts/ContactDetailDrawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 
