@@ -64,26 +64,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Use setTimeout to prevent authentication deadlock
           setTimeout(async () => {
             try {
-              // Fetch profile and role securely
-              const [profileResult, userRole] = await Promise.all([
-                supabase
-                  .from('profiles')
-                  .select('*')
-                  .eq('user_id', session.user.id)
-                  .single(),
-                getCurrentUserRole()
-              ]);
+          // Fetch profile and role securely
+          const [profileResult, userRole] = await Promise.all([
+            supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single(),
+            getCurrentUserRole()
+          ]);
 
-              if (profileResult.error) {
-                console.error('Error fetching profile:', profileResult.error);
-                setProfile(null);
-              } else {
-                // Use secure role from user_roles table
-                setProfile({
-                  ...profileResult.data,
-                  role: userRole
-                } as UserProfile);
-              }
+          if (profileResult.error) {
+            console.error('Error fetching profile:', profileResult.error);
+            // Create a fallback profile if none exists
+            const fallbackProfile: UserProfile = {
+              id: session.user.id,
+              user_id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+              role: userRole,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            setProfile(fallbackProfile);
+          } else {
+            // Use secure role from user_roles table
+            setProfile({
+              ...profileResult.data,
+              role: userRole
+            } as UserProfile);
+          }
             } catch (error) {
               console.error('Error during profile fetch:', formatErrorForUser(error, 'profile fetch'));
               setProfile(null);
@@ -116,7 +126,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ]).then(([profileResult, userRole]) => {
           if (profileResult.error) {
             console.error('Error fetching profile:', profileResult.error);
-            setProfile(null);
+            // Create a fallback profile if none exists
+            const fallbackProfile: UserProfile = {
+              id: session.user.id,
+              user_id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+              role: userRole,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            setProfile(fallbackProfile);
           } else {
             // Use secure role from user_roles table
             setProfile({
