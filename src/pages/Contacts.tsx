@@ -103,39 +103,6 @@ export default function Contacts() {
   const dupes = useMemo(() => potentialDuplicates(rows), [rows, potentialDuplicates]);
   const columns = getColumnsByInterestType(interestType);
 
-  // Enable cross-module synchronization
-  useSync({
-    onLeadsChange: fetchRows,
-    onContactsChange: fetchRows,
-    onActivitiesChange: fetchRows,
-  });
-
-  // Update URL params (avoid empty strings)
-  const updateUrlParam = (key: string, value: string | number | undefined) => {
-    const params = new URLSearchParams(searchParams);
-    if (value && value !== 'all' && value !== '') {
-      params.set(key, String(value));
-    } else {
-      params.delete(key);
-    }
-    // Reset page when filters change (except when changing page itself)
-    if (key !== 'page') {
-      params.delete('page');
-    }
-    setSearchParams(params);
-  };
-
-  // Sync search input with URL
-  useEffect(() => {
-    if (debouncedSearch !== q) {
-      updateUrlParam('q', debouncedSearch);
-    }
-  }, [debouncedSearch]);
-
-  useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
-
   const fetchRows = async () => {
     setLoading(true);
     try {
@@ -171,6 +138,40 @@ export default function Contacts() {
       setLoading(false);
     }
   };
+
+  // Enable cross-module synchronization
+  useSync({
+    onLeadsChange: fetchRows,
+    onContactsChange: fetchRows,
+    onActivitiesChange: fetchRows,
+  });
+
+  // Update URL params (avoid empty strings)
+  const updateUrlParam = (key: string, value: string | number | undefined) => {
+    const params = new URLSearchParams(searchParams);
+    if (value && value !== 'all' && value !== '') {
+      params.set(key, String(value));
+    } else {
+      params.delete(key);
+    }
+    // Reset page when filters change (except when changing page itself)
+    if (key !== 'page') {
+      params.delete('page');
+    }
+    setSearchParams(params);
+  };
+
+  // Sync search input with URL
+  useEffect(() => {
+    if (debouncedSearch !== q) {
+      updateUrlParam('q', debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    setSearchInput(q);
+  }, [q]);
+
 
   useEffect(() => {
     fetchRows();
