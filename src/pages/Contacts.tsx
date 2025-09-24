@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useContacts, type ContactStatus } from '@/hooks/useContacts';
+import { useSync } from '@/hooks/useSync';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,6 +102,13 @@ export default function Contacts() {
   
   const dupes = useMemo(() => potentialDuplicates(rows), [rows, potentialDuplicates]);
   const columns = getColumnsByInterestType(interestType);
+
+  // Enable cross-module synchronization
+  useSync({
+    onLeadsChange: fetchRows,
+    onContactsChange: fetchRows,
+    onActivitiesChange: fetchRows,
+  });
 
   // Update URL params (avoid empty strings)
   const updateUrlParam = (key: string, value: string | number | undefined) => {

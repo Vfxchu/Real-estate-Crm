@@ -13,6 +13,7 @@ import { asOptional } from '@/lib/schema-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Lead } from '@/types';
 import { createLead, updateLead } from '@/services/leads';
+import { linkPropertyToContact } from '@/services/contacts';
 import { uploadFile } from '@/services/storage';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,6 +88,8 @@ interface UnifiedContactFormProps {
   className?: string;
   mode?: 'lead' | 'contact' | 'property'; // Different modes for different contexts
   title?: string;
+  initialPropertyId?: string; // Property to link to when creating contact
+  propertyRole?: 'interested_buyer' | 'interested_tenant' | 'owner' | 'landlord';
 }
 
 const interestTagOptions = [
@@ -164,7 +167,9 @@ export default function UnifiedContactForm({
   onCancel,
   className,
   mode = 'contact',
-  title
+  title,
+  initialPropertyId,
+  propertyRole = 'interested_buyer'
 }: UnifiedContactFormProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -348,6 +353,19 @@ export default function UnifiedContactForm({
         // Create automatic tasks for leads
         if (mode === 'lead' || data.contact_status === 'lead') {
           await createAutomaticTasks(result.data?.id);
+        }
+
+        // Link to property if specified
+        if (initialPropertyId && result.data?.id && propertyRole) {
+          try {
+            await linkPropertyToContact({
+              contactId: result.data.id,
+              propertyId: initialPropertyId,
+              role: propertyRole as any
+            });
+          } catch (linkError) {
+            console.error('Failed to link property:', linkError);
+          }
         }
       }
 

@@ -22,6 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
 import { BEDROOM_OPTIONS } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
+import UnifiedContactForm from "@/components/forms/UnifiedContactForm";
+import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import {
   Search,
   Plus,
@@ -40,6 +42,7 @@ import {
   Coins,
   Calendar,
   Share2,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -124,6 +127,8 @@ export const Properties = () => {
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [propertyToShare, setPropertyToShare] = useState<Property | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [selectedPropertyForContact, setSelectedPropertyForContact] = useState<Property | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [activeTab, setActiveTab] = useState('residential');
   const [currency, setCurrency] = useState('AED');
@@ -326,6 +331,11 @@ export const Properties = () => {
   const handleScheduleViewing = (property: Property) => {
     // Navigate to calendar with property pre-filled
     navigate(`/calendar?property=${property.id}&action=schedule-viewing`);
+  };
+
+  const handleAddContactToProperty = (property: Property) => {
+    setSelectedPropertyForContact(property);
+    setShowAddContact(true);
   };
 
   const updateFilter = (key: keyof FilterState, value: string) => {
@@ -722,6 +732,14 @@ export const Properties = () => {
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleAddContactToProperty(property)}
+                      title="Add Contact for this property"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
                      <Button 
                        size="sm" 
                        variant="ghost"
@@ -829,6 +847,14 @@ export const Properties = () => {
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleAddContactToProperty(property)}
+                      title="Add Contact for this property"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
                      <Button 
                        size="sm" 
                        variant="ghost"
@@ -935,6 +961,35 @@ export const Properties = () => {
           fetchStats();
         }}
       />
+
+      {/* Add Contact Dialog */}
+      <ResponsiveDialog
+        open={showAddContact}
+        onOpenChange={setShowAddContact}
+        title={`Add Contact - ${selectedPropertyForContact?.title || 'Property'}`}
+        maxWidth="max-w-4xl"
+      >
+        <UnifiedContactForm
+          mode="contact"
+          initialPropertyId={selectedPropertyForContact?.id}
+          propertyRole="interested_buyer"
+          onSuccess={(contactData) => {
+            setShowAddContact(false);
+            setSelectedPropertyForContact(null);
+            toast({
+              title: 'Contact Added',
+              description: 'Contact created and linked to property successfully'
+            });
+            // Refresh events
+            window.dispatchEvent(new CustomEvent('contacts:updated'));
+            window.dispatchEvent(new CustomEvent('properties:refresh'));
+          }}
+          onCancel={() => {
+            setShowAddContact(false);
+            setSelectedPropertyForContact(null);
+          }}
+        />
+      </ResponsiveDialog>
     </div>
   );
 };
