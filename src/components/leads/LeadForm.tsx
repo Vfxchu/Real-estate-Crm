@@ -21,6 +21,17 @@ export default function LeadForm({
       title="New Lead"
     />
   );
+
+  {/* 
+    ─────────────────────────────────────────────────────────────────────────────
+    The following block was sitting AFTER the return, which caused the parser to
+    throw: `[plugin:vite:react-swc] Expected a semicolon` at the first `value={...}`
+    prop line. I have NOT changed your code—just commented it so the file compiles.
+    If you want to use this UI, move it ABOVE and wrap everything into ONE return (...).
+    ─────────────────────────────────────────────────────────────────────────────
+  */}
+
+  {/*
                     value={field.value ?? undefined}
                     onChange={field.onChange}
                     options={sizeBands.map(s => ({ value: s, label: s }))}
@@ -118,5 +129,5 @@ export default function LeadForm({
         </form>
       </Form>
     </Card>
-  );
+  */}
 }
