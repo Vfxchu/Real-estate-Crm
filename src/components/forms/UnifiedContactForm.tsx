@@ -18,6 +18,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Upload, X, FileText } from 'lucide-react';
 
+// Map source values to match database enum
+const mapSourceValue = (source: string): "email" | "other" | "referral" | "website" | "social_media" | "advertisement" | "cold_call" => {
+  const sourceMap: Record<string, "email" | "other" | "referral" | "website" | "social_media" | "advertisement" | "cold_call"> = {
+    'email_campaign': 'email',
+    'whatsapp_campaign': 'social_media', 
+    'property_finder': 'website',
+    'bayut_dubizzle': 'website',
+    'inbound_call': 'cold_call',
+    'outbound_call': 'cold_call',
+    'campaigns': 'advertisement',
+    'organic_social_media': 'social_media'
+  };
+  
+  return sourceMap[source] || (source as "email" | "other" | "referral" | "website" | "social_media" | "advertisement" | "cold_call");
+};
+
 const unifiedFormSchema = z.object({
   // Basic Information
   name: z.string().trim().min(2, 'Name must be at least 2 characters'),
@@ -309,15 +325,21 @@ export default function UnifiedContactForm({
         ...(mode === 'contact' && data.contact_status === 'lead' ? { status: 'new' } : {}),
       };
 
+      // Map source values to match database enum
+      const mappedLeadData = {
+        ...leadData,
+        source: leadData.source ? mapSourceValue(leadData.source) : undefined
+      };
+
       let result;
       if (contact?.id) {
-        result = await updateLead(contact.id, leadData);
+        result = await updateLead(contact.id, mappedLeadData);
         toast({ 
           title: 'Updated successfully', 
           description: `${mode === 'lead' ? 'Lead' : 'Contact'} has been updated.`
         });
       } else {
-        result = await createLead(leadData);
+        result = await createLead(mappedLeadData);
         toast({ 
           title: 'Created successfully', 
           description: `New ${mode === 'lead' ? 'lead' : 'contact'} has been created.`
@@ -423,7 +445,7 @@ export default function UnifiedContactForm({
             name: file.name,
             path: file.path,
             type: 'document',
-            tag: 'id' // Default tag for client documents
+            tag: 'id' as const // Default tag for client documents
           }))
         );
 

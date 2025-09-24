@@ -727,7 +727,7 @@ export default function Contacts() {
         </DialogContent>
       </Dialog>
 
-      <ContactProfileDrawer
+      <ContactDetailDrawer
         contact={rows.find(r => r.id === drawerId) || null}
         open={!!drawerId}
         onClose={() => setDrawerId(null)}
