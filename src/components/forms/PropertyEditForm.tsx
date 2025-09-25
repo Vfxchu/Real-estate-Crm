@@ -14,6 +14,7 @@ import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
 import { Property } from "@/hooks/useProperties";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
+import { PROPERTY_SEGMENTS, getSubtypeOptions, OFFER_TYPES, PROPERTY_STATUS, VIEW_OPTIONS } from "@/constants/property";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 
 const propertySchema = z.object({
@@ -33,6 +34,7 @@ const propertySchema = z.object({
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
+  view: z.string().optional(),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -71,6 +73,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
       permit_number: property.permit_number || '',
       owner_contact_id: property.owner_contact_id || '',
       agent_id: property.agent_id || user?.id || '',
+      view: property.view || '',
     },
   });
 
@@ -207,6 +210,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         owner_contact_id: data.owner_contact_id || null,
         agent_id: isAdmin && data.agent_id ? data.agent_id : user.id,
         images: uploadedImages.length > 0 ? uploadedImages : null,
+        view: data.view || null,
       };
 
       // Update property
@@ -559,6 +563,32 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
                       <SelectItem value="vacant">Vacant</SelectItem>
                       <SelectItem value="rented">Rented</SelectItem>
                       <SelectItem value="in_development">In Development</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="view"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>View</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select view" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="">No View Selected</SelectItem>
+                      {VIEW_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

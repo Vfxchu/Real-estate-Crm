@@ -31,6 +31,7 @@ export interface Property {
   location_place_id?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  view?: string | null;
   created_at: string;
   updated_at: string;
   profiles?: {

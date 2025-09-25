@@ -283,7 +283,7 @@ export const Properties = () => {
         if (filters.city && !property.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
         if (filters.assignedAgent && property.agent_id !== filters.assignedAgent) return false;
         if (filters.ownerContact && property.owner_contact_id !== filters.ownerContact) return false;
-        if (filters.view && (property as any).view !== filters.view) return false;
+        if (filters.view && property.view !== filters.view) return false;
       }
 
       return true;
