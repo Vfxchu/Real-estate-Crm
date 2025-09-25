@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { AddPropertyForm } from "@/components/forms/AddPropertyForm";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -19,7 +18,7 @@ import { ExportPropertyDialog } from "@/components/properties/PropertyExportDial
 import { useProperties, Property } from "@/hooks/useProperties";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions } from "@/constants/property";
+import { PROPERTY_SEGMENTS, OFFER_TYPES, PROPERTY_STATUS, CITIES, getSubtypeOptions, LOCATIONS, VIEW_OPTIONS, SORT_OPTIONS } from "@/constants/property";
 import { BEDROOM_OPTIONS } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import UnifiedContactForm from "@/components/forms/UnifiedContactForm";
@@ -42,7 +41,6 @@ import {
   Coins,
   Calendar,
   Share2,
-  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -65,10 +63,10 @@ const formatCurrency = (amount: number, currency = 'AED') => {
   }).format(amount);
 };
 
-// Filter state interface - aligned with PropertyForm schema
+// Filter state interface
 interface FilterState {
   search: string;
-  segment: string;
+  propertyType: string;
   subtype: string;
   offerType: string;
   status: string;
@@ -82,11 +80,13 @@ interface FilterState {
   minPlotArea: string;
   maxPlotArea: string;
   city: string;
-  featured: string;
+  assignedAgent: string;
   ownerContact: string;
+  view: string;
+  sort: string;
 }
 
-// Property stats interface - removed avgPrice
+// Property stats interface
 interface PropertyStats {
   total: number;
   availableForSale: number;
@@ -130,8 +130,8 @@ export const Properties = () => {
   const [showAddContact, setShowAddContact] = useState(false);
   const [selectedPropertyForContact, setSelectedPropertyForContact] = useState<Property | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
-  const [activeTab, setActiveTab] = useState('residential');
   const [currency, setCurrency] = useState('AED');
+  const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [stats, setStats] = useState<PropertyStats>({
     total: 0,
     availableForSale: 0,
@@ -142,10 +142,10 @@ export const Properties = () => {
 
   const { toast } = useToast();
 
-  // Initialize filters from URL params - aligned with schema
+  // Initialize filters from URL params
   const [filters, setFilters] = useState<FilterState>({
     search: searchParams.get('search') || '',
-    segment: searchParams.get('segment') || '',
+    propertyType: searchParams.get('propertyType') || '',
     subtype: searchParams.get('subtype') || '',
     offerType: searchParams.get('offerType') || '',
     status: searchParams.get('status') || '',
@@ -159,8 +159,10 @@ export const Properties = () => {
     minPlotArea: searchParams.get('minPlotArea') || '',
     maxPlotArea: searchParams.get('maxPlotArea') || '',
     city: searchParams.get('city') || '',
-    featured: searchParams.get('featured') || '',
+    assignedAgent: searchParams.get('assignedAgent') || '',
     ownerContact: searchParams.get('ownerContact') || '',
+    view: searchParams.get('view') || '',
+    sort: searchParams.get('sort') || 'date_new_old',
   });
 
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -184,8 +186,8 @@ export const Properties = () => {
         .select('price, offer_type, status, segment');
 
       // Apply filters to stats query
-      if (filters.segment) {
-        query = query.eq('segment', filters.segment);
+      if (filters.propertyType) {
+        query = query.eq('segment', filters.propertyType);
       }
       if (filters.status) {
         query = query.eq('status', filters.status);
@@ -226,18 +228,28 @@ export const Properties = () => {
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    
+    // Load agents for admin filter
+    const loadAgents = async () => {
+      if (isAdmin) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('user_id, name, email')
+          .eq('role', 'agent')
+          .eq('status', 'active');
+          
+        if (data) {
+          setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+        }
+      }
+    };
+    
+    loadAgents();
+  }, [fetchStats, isAdmin]);
 
-  // Filter properties based on current filters and active tab
+  // Filter and sort properties
   const filteredProperties = useMemo(() => {
-    return properties.filter(property => {
-      // Tab filtering
-      const tabMatch = activeTab === 'residential' 
-        ? property.segment === 'residential' || !property.segment
-        : property.segment === 'commercial';
-
-      if (!tabMatch) return false;
-
+    let filtered = properties.filter(property => {
       // Search filtering
       if (debouncedSearch) {
         const searchLower = debouncedSearch.toLowerCase();
@@ -248,8 +260,8 @@ export const Properties = () => {
         if (!matchesSearch) return false;
       }
 
-      // Basic filters - use segment instead of propertyType
-      if (filters.segment && property.segment !== filters.segment) return false;
+      // Basic filters
+      if (filters.propertyType && property.segment !== filters.propertyType) return false;
       if (filters.subtype && property.subtype !== filters.subtype) return false;
       if (filters.offerType && property.offer_type !== filters.offerType) return false;
       if (filters.status && property.status !== filters.status) return false;
@@ -266,20 +278,38 @@ export const Properties = () => {
         if (filters.maxBathrooms && (property.bathrooms || 0) > parseInt(filters.maxBathrooms)) return false;
         if (filters.minBuiltUpArea && (property.area_sqft || 0) < parseInt(filters.minBuiltUpArea)) return false;
         if (filters.maxBuiltUpArea && (property.area_sqft || 0) > parseInt(filters.maxBuiltUpArea)) return false;
-        // Note: Plot area would need to be added to Property interface if needed
         if (filters.minPlotArea && (property.area_sqft || 0) < parseInt(filters.minPlotArea)) return false;
         if (filters.maxPlotArea && (property.area_sqft || 0) > parseInt(filters.maxPlotArea)) return false;
         if (filters.city && !property.city?.toLowerCase().includes(filters.city.toLowerCase())) return false;
-        if (filters.featured && ((property.featured ? 'yes' : 'no') !== filters.featured)) return false;
+        if (filters.assignedAgent && property.agent_id !== filters.assignedAgent) return false;
         if (filters.ownerContact && property.owner_contact_id !== filters.ownerContact) return false;
+        if (filters.view && (property as any).view !== filters.view) return false;
       }
 
       return true;
     });
-  }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab]);
+
+    // Apply sorting
+    switch (filters.sort) {
+      case 'date_old_new':
+        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case 'price_low_high':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_high_low':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'date_new_old':
+      default:
+        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+
+    return filtered;
+  }, [properties, filters, debouncedSearch, isAdvancedMode]);
 
   const handleDeleteProperty = async (property: Property) => {
-    // Only allow deletion if user is admin or owns the property
     if (!isAdmin && property.agent_id !== user?.id) {
       toast({
         title: 'Access denied',
@@ -297,7 +327,7 @@ export const Properties = () => {
     setDeleting(propertyToDelete.id);
     try {
       await deleteProperty(propertyToDelete.id);
-      await fetchStats(); // Refresh stats after deletion
+      await fetchStats();
       setPropertyToDelete(null);
     } finally {
       setDeleting(null);
@@ -305,7 +335,6 @@ export const Properties = () => {
   };
 
   const handleEditProperty = (property: Property) => {
-    // Only allow editing if user is admin or owns the property
     if (!isAdmin && property.agent_id !== user?.id) {
       toast({
         title: 'Access denied',
@@ -329,8 +358,8 @@ export const Properties = () => {
   };
 
   const handleScheduleViewing = (property: Property) => {
-    // Navigate to calendar with property pre-filled
-    navigate(`/calendar?property=${property.id}&action=schedule-viewing`);
+    // Navigate to calendar with property pre-filled for viewing
+    navigate(`/calendar?property=${property.id}&action=schedule-viewing&type=property_viewing`);
   };
 
   const handleAddContactToProperty = (property: Property) => {
@@ -345,7 +374,7 @@ export const Properties = () => {
   const clearFilters = () => {
     setFilters({
       search: '',
-      segment: '',
+      propertyType: '',
       subtype: '',
       offerType: '',
       status: '',
@@ -359,8 +388,10 @@ export const Properties = () => {
       minPlotArea: '',
       maxPlotArea: '',
       city: '',
-      featured: '',
+      assignedAgent: '',
       ownerContact: '',
+      view: '',
+      sort: 'date_new_old',
     });
   };
 
@@ -390,8 +421,6 @@ export const Properties = () => {
       default: return <Home className="w-4 h-4" />;
     }
   };
-
-  // Remove local getSubtypeOptions function since we import it
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -466,23 +495,23 @@ export const Properties = () => {
               </div>
               <div className="flex gap-2 flex-wrap">
                 <ClearableSelect
-                  value={filters.segment}
+                  value={filters.propertyType}
                   onChange={(value) => {
-                    updateFilter('segment', value || '');
-                    updateFilter('subtype', ''); // Clear subtype when segment changes
+                    updateFilter('propertyType', value || '');
+                    updateFilter('subtype', '');
                   }}
                   options={PROPERTY_SEGMENTS}
-                  placeholder="Property Segment"
+                  placeholder="Property Type"
                   className="w-40"
                 />
                 
                 <ClearableSelect
                   value={filters.subtype}
                   onChange={(value) => updateFilter('subtype', value || '')}
-                  options={getSubtypeOptions(filters.segment)}
+                  options={getSubtypeOptions(filters.propertyType)}
                   placeholder="Subtype"
                   className="w-40"
-                  disabled={!filters.segment}
+                  disabled={!filters.propertyType}
                 />
                 
                 <ClearableSelect
@@ -491,6 +520,14 @@ export const Properties = () => {
                   options={OFFER_TYPES}
                   placeholder="Offer Type"
                   className="w-32"
+                />
+
+                <ClearableSelect
+                  value={filters.sort}
+                  onChange={(value) => updateFilter('sort', value || 'date_new_old')}
+                  options={SORT_OPTIONS}
+                  placeholder="Sort by"
+                  className="w-40"
                 />
                 
                 <div className="flex items-center gap-2">
@@ -600,30 +637,46 @@ export const Properties = () => {
                     <SearchableContactCombobox
                       value={filters.ownerContact}
                       onChange={(value) => updateFilter('ownerContact', value || '')}
-                      placeholder="Any Owner"
+                      placeholder="Select owner contact"
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>
-                    <ClearableSelect
+                    <Input
+                      placeholder="Enter city..."
                       value={filters.city}
-                      onChange={(value) => updateFilter('city', value || '')}
-                      options={CITIES}
-                      placeholder="Any City"
+                      onChange={(e) => updateFilter('city', e.target.value)}
+                      className="text-sm"
                     />
                   </div>
                   
+                  {isAdmin && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Assigned Agent</Label>
+                      <Select value={filters.assignedAgent} onValueChange={(value) => updateFilter('assignedAgent', value || '')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select agent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All Agents</SelectItem>
+                          {agents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Featured</Label>
+                    <Label className="text-sm font-medium">View</Label>
                     <ClearableSelect
-                      value={filters.featured}
-                      onChange={(value) => updateFilter('featured', value || '')}
-                      options={[
-                        { value: 'yes', label: 'Featured Only' },
-                        { value: 'no', label: 'Non-Featured' },
-                      ]}
-                      placeholder="Any"
+                      value={filters.view}
+                      onChange={(value) => updateFilter('view', value || '')}
+                      options={VIEW_OPTIONS}
+                      placeholder="Any View"
                     />
                   </div>
                 </div>
@@ -633,25 +686,50 @@ export const Properties = () => {
         </CardContent>
       </Card>
 
-      {/* Property Gallery with Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      {/* Properties List */}
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <TabsList className="grid w-fit grid-cols-2">
-            <TabsTrigger value="residential">
-              Residential ({properties.filter(p => p.segment === 'residential' || !p.segment).length})
-            </TabsTrigger>
-            <TabsTrigger value="commercial">
-              Commercial ({properties.filter(p => p.segment === 'commercial').length})
-            </TabsTrigger>
-          </TabsList>
-          
-          <div className="text-sm text-muted-foreground">
-            Showing {filteredProperties.length} properties
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Showing {filteredProperties.length} of {properties.length} properties
+          </p>
         </div>
 
-        <TabsContent value="residential" className="space-y-6">
-          {/* Properties Grid */}
+        {/* Properties Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="card-elevated">
+                <CardContent className="p-6">
+                  <div className="animate-pulse space-y-4">
+                    <div className="bg-muted h-48 rounded"></div>
+                    <div className="space-y-2">
+                      <div className="bg-muted h-4 rounded w-3/4"></div>
+                      <div className="bg-muted h-4 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredProperties.length === 0 ? (
+          <Card className="card-elevated">
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Home className="w-16 h-16 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No properties found</h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                {getActiveFilterCount() > 0
+                  ? "Try adjusting your filters to see more results"
+                  : "Get started by adding your first property listing"
+                }
+              </p>
+              {getActiveFilterCount() > 0 && (
+                <Button variant="outline" onClick={clearFilters} className="mt-4">
+                  Clear Filters
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property) => (
               <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
@@ -735,10 +813,10 @@ export const Properties = () => {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => handleAddContactToProperty(property)}
-                      title="Add Contact for this property"
+                      onClick={() => handleScheduleViewing(property)}
+                      title="Schedule a viewing for this property"
                     >
-                      <UserPlus className="w-4 h-4" />
+                      <Calendar className="w-4 h-4" />
                     </Button>
                      <Button 
                        size="sm" 
@@ -773,148 +851,15 @@ export const Properties = () => {
               </Card>
             ))}
           </div>
-        </TabsContent>
+        )}
+      </div>
 
-        <TabsContent value="commercial" className="space-y-6">
-          {/* Properties Grid - Same structure but filtered for commercial */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property) => (
-              <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
-                <div className="relative">
-                  <PropertyGallery 
-                    images={property.images} 
-                    propertyId={property.id}
-                    propertyTitle={property.title}
-                  />
-                  {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold line-clamp-1">{property.title}</h3>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3" />
-                        {property.address}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Badge className={getStatusColor(property.status)}>
-                        {property.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {property.offer_type}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {getTypeIcon(property.property_type)}
-                      <span className="text-sm capitalize">{property.property_type}</span>
-                      {property.subtype && (
-                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
-                      )}
-                    </div>
-                    <div className="text-lg font-bold text-primary">
-                      {formatCurrency(property.price, currency)}
-                    </div>
-                  </div>
-
-                  {property.area_sqft && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Square className="w-4 h-4" />
-                      <span>{property.area_sqft.toLocaleString()} sq ft</span>
-                    </div>
-                  )}
-
-                  <div className="text-sm text-muted-foreground">
-                    Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => handleViewProperty(property)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleAddContactToProperty(property)}
-                      title="Add Contact for this property"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                    </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost"
-                       onClick={() => handleShareProperty(property)}
-                     >
-                       <Share2 className="w-4 h-4" />
-                     </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost"
-                       onClick={() => handleEditProperty(property)}
-                       disabled={!isAdmin && property.agent_id !== user?.id}
-                       title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
-                     >
-                       <Edit className="w-4 h-4" />
-                     </Button>
-                     {isAdmin && (
-                       <Button 
-                         size="sm" 
-                         variant="ghost" 
-                         className="text-destructive hover:text-destructive"
-                         onClick={() => handleDeleteProperty(property)}
-                         disabled={deleting === property.id}
-                         title="Delete property"
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </Button>
-                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Empty State */}
-      {filteredProperties.length === 0 && !loading && (
-        <Card className="card-elevated">
-          <CardContent className="p-12 text-center">
-            {activeTab === 'residential' ? (
-              <Home className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            ) : (
-              <Building className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            )}
-            <h3 className="text-lg font-semibold mb-2">No {activeTab} properties found</h3>
-            <p className="text-muted-foreground">
-              {getActiveFilterCount() > 0
-                ? 'Try adjusting your filters or search terms'
-                : `Start by adding your first ${activeTab} property`
-              }
-            </p>
-            {getActiveFilterCount() > 0 && (
-              <Button variant="outline" onClick={clearFilters} className="mt-4">
-                Clear all filters
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Property Add Dialog */}
+      <AddPropertyForm
+        open={showAddProperty}
+        onOpenChange={setShowAddProperty}
+        onSuccess={fetchStats}
+      />
 
       {/* Property Edit Sidebar */}
       <PropertyEditSidebar
@@ -922,8 +867,8 @@ export const Properties = () => {
         open={showEditSidebar}
         onOpenChange={setShowEditSidebar}
         onSuccess={() => {
-          setPropertyToEdit(null);
           fetchStats();
+          setPropertyToEdit(null);
         }}
       />
 
@@ -937,58 +882,35 @@ export const Properties = () => {
         onShare={handleShareProperty}
       />
 
-      {/* Export Property Dialog */}
+      {/* Property Delete Dialog */}
+      <PropertyDeleteDialog
+        open={!!propertyToDelete}
+        onOpenChange={(open) => !open && setPropertyToDelete(null)}
+        onConfirm={confirmDeleteProperty}
+        isDeleting={!!deleting}
+      />
+
+      {/* Property Export Dialog */}
       <ExportPropertyDialog
         property={propertyToShare}
         open={showShareDialog}
         onOpenChange={setShowShareDialog}
       />
 
-      {/* Property Delete Dialog */}
-      <PropertyDeleteDialog
-        open={!!propertyToDelete}
-        onOpenChange={(open) => !open && setPropertyToDelete(null)}
-        onConfirm={confirmDeleteProperty}
-        propertyTitle={propertyToDelete?.title || ''}
-        isDeleting={!!deleting}
-      />
-
-      {/* Add Property Form */}
-      <AddPropertyForm 
-        open={showAddProperty} 
-        onOpenChange={setShowAddProperty}
-        onSuccess={() => {
-          fetchStats();
-        }}
-      />
-
       {/* Add Contact Dialog */}
       <ResponsiveDialog
         open={showAddContact}
         onOpenChange={setShowAddContact}
-        title={`Add Contact - ${selectedPropertyForContact?.title || 'Property'}`}
-        maxWidth="max-w-4xl"
+        title="Add Contact"
       >
-        <UnifiedContactForm
-          mode="contact"
-          initialPropertyId={selectedPropertyForContact?.id}
-          propertyRole="interested_buyer"
-          onSuccess={(contactData) => {
-            setShowAddContact(false);
-            setSelectedPropertyForContact(null);
-            toast({
-              title: 'Contact Added',
-              description: 'Contact created and linked to property successfully'
-            });
-            // Refresh events
-            window.dispatchEvent(new CustomEvent('contacts:updated'));
-            window.dispatchEvent(new CustomEvent('properties:refresh'));
-          }}
-          onCancel={() => {
-            setShowAddContact(false);
-            setSelectedPropertyForContact(null);
-          }}
-        />
+        {selectedPropertyForContact && (
+          <UnifiedContactForm
+            onSuccess={() => {
+              setShowAddContact(false);
+              setSelectedPropertyForContact(null);
+            }}
+          />
+        )}
       </ResponsiveDialog>
     </div>
   );

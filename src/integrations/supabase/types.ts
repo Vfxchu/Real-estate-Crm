@@ -1008,6 +1008,7 @@ export type Database = {
           title: string
           unit_number: string | null
           updated_at: string
+          view: string | null
           wp_id: number | null
           wp_permalink: string | null
           wp_slug: string | null
@@ -1044,6 +1045,7 @@ export type Database = {
           title: string
           unit_number?: string | null
           updated_at?: string
+          view?: string | null
           wp_id?: number | null
           wp_permalink?: string | null
           wp_slug?: string | null
@@ -1080,6 +1082,7 @@ export type Database = {
           title?: string
           unit_number?: string | null
           updated_at?: string
+          view?: string | null
           wp_id?: number | null
           wp_permalink?: string | null
           wp_slug?: string | null
