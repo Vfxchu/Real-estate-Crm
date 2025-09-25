@@ -490,26 +490,8 @@ export default function UnifiedContactForm({
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Basic Information
               </h3>
-            {/* Client Address Field - moved here for better visibility */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="client_address"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Client Address</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Enter client's residential address..."
-                        className="min-h-[80px] resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -576,11 +558,12 @@ export default function UnifiedContactForm({
               </div>
             </div>
 
-            {/* NEW: Client Address */}
+            {/* Client Information */}
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Client Information
               </h3>
+              
               <FormField
                 control={form.control}
                 name="client_address"
@@ -589,8 +572,8 @@ export default function UnifiedContactForm({
                     <FormLabel>Client Address</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Enter client's full address..."
-                        className="min-h-[80px]"
+                        placeholder="Enter client's residential address..."
+                        className="min-h-[80px] resize-none"
                         {...field}
                       />
                     </FormControl>
@@ -599,7 +582,7 @@ export default function UnifiedContactForm({
                 )}
               />
 
-              {/* NEW: Client Documents Upload */}
+              {/* Client Documents Upload */}
               <div>
                 <label className="text-sm font-medium">Client Documents</label>
                 <div className="mt-2 space-y-2">
