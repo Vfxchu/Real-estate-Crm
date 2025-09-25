@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useContacts } from "@/hooks/useContacts";
-import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import ContactForm from "@/components/contacts/ContactForm";
 import { Lead } from "@/types";
 
@@ -27,18 +27,34 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   className,
   disabled
 }) => {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [search, setSearch] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
   const [contacts, setContacts] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const { list: listContacts } = useContacts();
 
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session?.user);
+    };
+    
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Load contacts
   const loadContacts = async (searchTerm = "") => {
     // Don't load if not authenticated
-    if (!user) {
+    if (!isAuthenticated) {
       console.log('User not authenticated, skipping contact loading');
       return;
     }
@@ -68,33 +84,33 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   };
 
   useEffect(() => {
-    if (open && user) {
+    if (open && isAuthenticated) {
       loadContacts(search);
     }
-  }, [open, user]);
+  }, [open, isAuthenticated]);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {
-    if (!open || !user) return;
+    if (!open || !isAuthenticated) return;
     
     const timeoutId = setTimeout(() => {
       loadContacts(search);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [search, open, user]);
+  }, [search, open, isAuthenticated]);
 
   // Listen for new contacts created and data sync
   useEffect(() => {
-    if (!user) return;
+    if (!isAuthenticated) return;
 
     const handleContactsChanged = () => {
-      if (open) {
+      if (open && isAuthenticated) {
         loadContacts(search);
       }
     };
     const handleContactsUpdated = () => {
-      if (open) {
+      if (open && isAuthenticated) {
         loadContacts(search);
       }
     };
@@ -105,7 +121,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
       window.removeEventListener('leads:changed', handleContactsChanged);
       window.removeEventListener('contacts:updated', handleContactsUpdated);
     };
-  }, [search, open, user]);
+  }, [search, open, isAuthenticated]);
 
   const selectedContact = contacts.find(c => c.id === value);
 

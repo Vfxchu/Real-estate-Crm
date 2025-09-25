@@ -274,8 +274,8 @@ export const Properties = () => {
           const propertyBedroomEnum = property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} BHK`;
           if (propertyBedroomEnum !== filters.bedrooms) return false;
         }
-        if (filters.minBathrooms && (property.bathrooms || 0) < parseInt(filters.minBathrooms)) return false;
-        if (filters.maxBathrooms && (property.bathrooms || 0) > parseInt(filters.maxBathrooms)) return false;
+        if (filters.minBathrooms && (property.bathrooms || 0) < parseFloat(filters.minBathrooms)) return false;
+        if (filters.maxBathrooms && (property.bathrooms || 0) > parseFloat(filters.maxBathrooms)) return false;
         if (filters.minBuiltUpArea && (property.area_sqft || 0) < parseInt(filters.minBuiltUpArea)) return false;
         if (filters.maxBuiltUpArea && (property.area_sqft || 0) > parseInt(filters.maxBuiltUpArea)) return false;
         if (filters.minPlotArea && (property.area_sqft || 0) < parseInt(filters.minPlotArea)) return false;
@@ -632,14 +632,16 @@ export const Properties = () => {
                     </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Owner Contact</Label>
-                    <SearchableContactCombobox
-                      value={filters.ownerContact}
-                      onChange={(value) => updateFilter('ownerContact', value || '')}
-                      placeholder="Select owner contact"
-                    />
-                  </div>
+                  {user && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Owner Contact</Label>
+                      <SearchableContactCombobox
+                        value={filters.ownerContact}
+                        onChange={(value) => updateFilter('ownerContact', value || '')}
+                        placeholder="Select owner contact"
+                      />
+                    </div>
+                  )}
                   
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">City</Label>

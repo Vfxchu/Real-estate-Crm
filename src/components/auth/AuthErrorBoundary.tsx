@@ -33,6 +33,8 @@ export class AuthErrorBoundary extends React.Component<AuthErrorBoundaryProps, A
 
   render() {
     if (this.state.hasError) {
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      
       return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-background">
           <div className="w-full max-w-md space-y-4">
@@ -41,6 +43,15 @@ export class AuthErrorBoundary extends React.Component<AuthErrorBoundaryProps, A
               <AlertTitle>Authentication Error</AlertTitle>
               <AlertDescription className="mt-2">
                 There was an issue connecting to the authentication service. This might be temporary.
+                {isDevelopment && this.state.error && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs">Error Details</summary>
+                    <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+                      {this.state.error.message}
+                      {this.state.error.stack && '\n\nStack:\n' + this.state.error.stack}
+                    </pre>
+                  </details>
+                )}
               </AlertDescription>
             </Alert>
             <Button 
