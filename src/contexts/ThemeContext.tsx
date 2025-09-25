@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'dark-blue';
+type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
@@ -31,7 +31,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     const root = document.documentElement;
     
     // Remove all theme classes
-    root.classList.remove('light', 'dark', 'dark-blue');
+    root.classList.remove('light', 'dark');
     
     // Add the current theme class
     root.classList.add(theme);

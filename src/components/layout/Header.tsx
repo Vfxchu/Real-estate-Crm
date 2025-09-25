@@ -43,8 +43,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
         return <Sun className="w-4 h-4" />;
       case 'dark':
         return <Moon className="w-4 h-4" />;
-      case 'dark-blue':
-        return <Palette className="w-4 h-4" />;
       default:
         return <Sun className="w-4 h-4" />;
     }
@@ -104,10 +102,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
             <DropdownMenuItem onClick={() => setTheme('dark')}>
               <Moon className="w-4 h-4 mr-2" />
               Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('dark-blue')}>
-              <Palette className="w-4 h-4 mr-2" />
-              Dark Blue
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

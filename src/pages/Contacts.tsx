@@ -386,7 +386,7 @@ export default function Contacts() {
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="whitespace-nowrap">
                   <Filter className="mr-2 h-4 w-4" />
-                  {isMobile ? 'More' : 'More Filters'}
+                  {isMobile ? 'Advanced' : 'Advanced Search'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80" align="end">
