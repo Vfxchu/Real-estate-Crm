@@ -22,6 +22,7 @@ import ContactForm from '@/components/contacts/ContactForm';
 import ContactDetailDrawer from '@/components/contacts/ContactDetailDrawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
 
 type StatusFilter = 'all' | ContactStatus;
 type InterestFilter = 'all' | 'buyer' | 'seller' | 'landlord' | 'tenant' | 'investor';
@@ -97,6 +98,14 @@ export default function Contacts() {
   const [addOpen, setAddOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
+  // Advanced filter states
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [interestFilter, setInterestFilter] = useState<InterestFilter>('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [dateRangeFilter, setDateRangeFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  
   // 300ms debounced search
   const debouncedSearch = useDebounced(searchInput, 300);
   
@@ -106,25 +115,35 @@ export default function Contacts() {
   const fetchRows = async () => {
     setLoading(true);
     try {
+      // Apply advanced filters if enabled
+      const filters: any = {
+        source: source || undefined,
+        segment: segment || undefined,
+        subtype: subtype || undefined,
+        bedrooms: bedrooms || undefined,
+        size_band: sizeBand || undefined,
+        location_address: locationFilter || location || undefined,
+        interest_tags: interestTags || undefined,
+        category: category || undefined,
+        budget_sale_band: budgetSaleBand || undefined,
+        budget_rent_band: budgetRentBand || undefined,
+        contact_pref: contactPref || undefined,
+      };
+
+      // Apply advanced filters
+      if (showAdvancedFilters) {
+        if (statusFilter !== 'all') filters.contact_status = statusFilter;
+        if (interestFilter !== 'all') filters.interest_type = interestFilter;
+        if (sourceFilter !== 'all') filters.source = sourceFilter;
+      }
+
       const { data, total: rowTotal, error } = await list({
-        q: q,
-        status_category: status === 'all' ? 'all' : status,
-        interest_type: interestType,
+        q: debouncedSearch,
+        status_category: statusFilter === 'all' ? status : statusFilter,
+        interest_type: interestFilter === 'all' ? interestType : interestFilter,
         page,
         pageSize,
-        filters: {
-          source: source || undefined,
-          segment: segment || undefined,
-          subtype: subtype || undefined,
-          bedrooms: bedrooms || undefined,
-          size_band: sizeBand || undefined,
-          location_address: location || undefined,
-          interest_tags: interestTags || undefined,
-          category: category || undefined,
-          budget_sale_band: budgetSaleBand || undefined,
-          budget_rent_band: budgetRentBand || undefined,
-          contact_pref: contactPref || undefined,
-        },
+        filters,
       });
       
       if (error) {
@@ -132,8 +151,37 @@ export default function Contacts() {
         return;
       }
       
-      setRows(data || []);
-      setTotal(rowTotal || 0);
+      // Filter for closed leads that should appear as contacts
+      let contactData = data || [];
+      
+      // Add closed leads as contacts if they don't already exist
+      if (status === 'all' || status === 'active_client' || status === 'past_client') {
+        try {
+          const { data: closedLeads } = await supabase
+            .from('leads')
+            .select('*, profiles(name, email)')
+            .in('status', ['won', 'lost']);
+            
+          if (closedLeads) {
+            const closedAsContacts = closedLeads.map(lead => ({
+              ...lead,
+              contact_status: lead.status === 'won' ? 'active_client' : 'past_client',
+              // Make sure these are treated as contacts, not leads
+              is_closed_lead: true
+            }));
+            
+            // Filter duplicates and merge
+            const existingIds = contactData.map(c => c.id);
+            const newContacts = closedAsContacts.filter(c => !existingIds.includes(c.id));
+            contactData = [...contactData, ...newContacts];
+          }
+        } catch (closedLeadError) {
+          console.error('Failed to fetch closed leads:', closedLeadError);
+        }
+      }
+      
+      setRows(contactData);
+      setTotal(rowTotal || contactData.length);
     } finally {
       setLoading(false);
     }
@@ -175,7 +223,7 @@ export default function Contacts() {
 
   useEffect(() => {
     fetchRows();
-  }, [page, pageSize, q, status, interestType, source, segment, subtype, bedrooms, sizeBand, location, interestTags, category, budgetSaleBand, budgetRentBand, contactPref]);
+  }, [page, pageSize, q, status, interestType, source, segment, subtype, bedrooms, sizeBand, locationFilter, location, interestTags, category, budgetSaleBand, budgetRentBand, contactPref, statusFilter, interestFilter, sourceFilter, ownerFilter, dateRangeFilter]);
 
   // Refresh when any part of the app creates/updates leads
   useEffect(() => {
@@ -382,14 +430,14 @@ export default function Contacts() {
               className="w-32 sm:w-36"
             />
             
-            <Popover open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
-                  <Filter className="mr-2 h-4 w-4" />
-                  {isMobile ? 'Advanced' : 'Advanced Search'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
+            <div className="flex flex-wrap gap-2">
+              <Switch
+                checked={showAdvancedFilters}
+                onCheckedChange={setShowAdvancedFilters}
+                id="advanced-mode"
+              />
+              <Label htmlFor="advanced-mode" className="text-sm">Advanced Search</Label>
+            </div>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   <div>
                     <label className="text-sm font-medium">Source</label>

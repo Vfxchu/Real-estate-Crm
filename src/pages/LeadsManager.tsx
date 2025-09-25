@@ -66,19 +66,26 @@ export const LeadsManager = () => {
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
     const updateData: Partial<Lead> = { status: newStatus };
     
-    // Auto-update contact_status based on lead status (matching our database function)
+    // Auto-update contact_status based on lead status
     if (newStatus === 'contacted' || newStatus === 'qualified' || newStatus === 'negotiating') {
       updateData.contact_status = 'contacted';
     } else if (newStatus === 'won') {
       updateData.contact_status = 'active_client';
+      // Create activity log for status change
+      await addActivity(leadId, 'status_change', `Lead converted to Active Client - Won`);
     } else if (newStatus === 'lost') {
       updateData.contact_status = 'past_client';
+      // Create activity log for status change
+      await addActivity(leadId, 'status_change', `Lead converted to Past Client - Lost`);
     } else if (newStatus === 'new') {
       updateData.contact_status = 'lead';
     }
     
     await updateLead(leadId, updateData);
     await addActivity(leadId, 'status_change', `Status changed to ${newStatus}`);
+    
+    // Refresh the leads list to hide won/lost leads
+    fetchLeads();
   };
 
   const handleContactStatusChange = async (leadId: string, newContactStatus: string) => {
@@ -111,6 +118,11 @@ export const LeadsManager = () => {
   };
 
   const filteredLeads = leads.filter(lead => {
+    // Hide closed leads (won/lost) - they should appear in Contacts
+    if (lead.status === 'won' || lead.status === 'lost') {
+      return false;
+    }
+
     const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          lead.phone?.includes(searchTerm) ||
@@ -450,123 +462,131 @@ export const LeadsManager = () => {
           ) : (
             <div className="overflow-x-auto">
               <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                      onCheckedChange={handleSelectAll}
-                    />
-                  </TableHead>
-                   <TableHead>Name</TableHead>
-                   <TableHead>Contact</TableHead>
-                   <TableHead>SLA & Assignment</TableHead>
-                   <TableHead>Status</TableHead>
-                   <TableHead>Priority</TableHead>
-                   <TableHead>Contact Status</TableHead>
-                   <TableHead>Source</TableHead>
-                   <TableHead>Interest</TableHead>
-                   <TableHead>Created</TableHead>
-                   <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead className="w-12">
+                     <Checkbox
+                       checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
+                       onCheckedChange={handleSelectAll}
+                     />
+                   </TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Interest</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Actions</TableHead>
+                 </TableRow>
+               </TableHeader>
               <TableBody>
-                 {filteredLeads.map((lead) => (
-                   <TableRow 
-                     key={lead.id} 
-                     className="hover:bg-muted/50 cursor-pointer transition-colors" 
-                     onClick={() => handleRowClick(lead)}
-                   >
-                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedLeads.includes(lead.id)}
-                        onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                      />
-                    </TableCell>
-                     <TableCell>
-                       <div className="space-y-1">
-                         <p className="font-medium text-sm">{lead.name}</p>
-                         <p className="text-xs text-muted-foreground">{lead.email}</p>
-                       </div>
+                  {filteredLeads.map((lead) => (
+                    <TableRow 
+                      key={lead.id} 
+                      className="hover:bg-muted/50 cursor-pointer transition-colors" 
+                      onClick={() => handleRowClick(lead)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                       <Checkbox
+                         checked={selectedLeads.includes(lead.id)}
+                         onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                       />
                      </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="text-sm">{lead.phone || 'No phone'}</p>
-                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
-                              <Phone className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
-                              <Mail className="w-3 h-3" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 hover:bg-primary/10">
-                              <MessageSquare className="w-3 h-3" />
-                            </Button>
-                          </div>
+                          <p className="font-medium text-sm">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">{lead.email}</p>
                         </div>
                       </TableCell>
-                     <TableCell>
-                       <LeadSlaStatus lead={lead} agentName={lead.profiles?.name} />
-                     </TableCell>
-                     <TableCell onClick={(e) => e.stopPropagation()}>
-                       <Badge className={`${getStatusColor(lead.status)} text-xs`}>
-                         {lead.status}
-                       </Badge>
-                     </TableCell>
-                     <TableCell>
-                       <Badge variant="outline" className={`${getPriorityColor(lead.priority)} text-xs`}>
-                         {lead.priority}
-                       </Badge>
-                     </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {getContactStatusDisplay(lead.contact_status || 'lead')}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm capitalize">{lead.source}</span>
-                      </TableCell>
-                     <TableCell>
-                       <LeadMeta lead={lead} layout="table" />
-                     </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(lead.created_at).toLocaleDateString()}
-                        </span>
-                      </TableCell>
+                       <TableCell>
+                         <div className="space-y-1">
+                           <p className="text-sm">{lead.phone || 'No phone'}</p>
+                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                             <Button 
+                               size="sm" 
+                               variant="ghost" 
+                               className="h-6 w-6 p-0 hover:bg-primary/10"
+                               onClick={() => lead.phone && window.open(`tel:${lead.phone}`, '_self')}
+                               disabled={!lead.phone}
+                             >
+                               <Phone className="w-3 h-3" />
+                             </Button>
+                             <Button 
+                               size="sm" 
+                               variant="ghost" 
+                               className="h-6 w-6 p-0 hover:bg-primary/10"
+                               onClick={() => lead.email && window.open(`mailto:${lead.email}`, '_blank')}
+                               disabled={!lead.email}
+                             >
+                               <Mail className="w-3 h-3" />
+                             </Button>
+                             <Button 
+                               size="sm" 
+                               variant="ghost" 
+                               className="h-6 w-6 p-0 hover:bg-primary/10"
+                               onClick={() => lead.phone && window.open(`https://wa.me/${lead.phone?.replace(/[^\d]/g, '')}`, '_blank')}
+                               disabled={!lead.phone}
+                             >
+                               <MessageSquare className="w-3 h-3" />
+                             </Button>
+                           </div>
+                         </div>
+                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">                          
-                          {/* Admin-only Edit Button */}
-                          {profile?.role === 'admin' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => {
-                                setEditingLead(lead);
-                                setShowEditForm(true);
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                          )}
-                          
-                          {profile?.role === 'admin' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteLead(lead.id)}
-                              disabled={deleting === lead.id}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
+                        <Badge className={`${getStatusColor(lead.status)} text-xs`}>
+                          {lead.status}
+                        </Badge>
                       </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                       <TableCell>
+                         <span className="text-sm capitalize">{lead.source}</span>
+                       </TableCell>
+                      <TableCell>
+                        <LeadMeta lead={lead} layout="table" />
+                      </TableCell>
+                       <TableCell>
+                         <span className="text-sm text-muted-foreground">
+                           {new Date(lead.created_at).toLocaleDateString()}
+                         </span>
+                       </TableCell>
+                       <TableCell>
+                         <span className="text-sm text-muted-foreground">
+                           {lead.profiles?.name || 'Unassigned'}
+                         </span>
+                       </TableCell>
+                       <TableCell onClick={(e) => e.stopPropagation()}>
+                         <div className="flex items-center gap-1">                          
+                           {/* Admin-only Edit Button */}
+                           {profile?.role === 'admin' && (
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               className="h-8 w-8 p-0"
+                               onClick={() => {
+                                 setEditingLead(lead);
+                                 setShowEditForm(true);
+                               }}
+                             >
+                               <Edit className="w-4 h-4" />
+                             </Button>
+                           )}
+                           
+                           {profile?.role === 'admin' && (
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                               onClick={() => handleDeleteLead(lead.id)}
+                               disabled={deleting === lead.id}
+                             >
+                               <Trash2 className="w-4 h-4" />
+                             </Button>
+                           )}
+                         </div>
+                       </TableCell>
+                   </TableRow>
+                 ))}
+               </TableBody>
               </Table>
             </div>
           )}
