@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useContacts } from "@/hooks/useContacts";
+import { useAuth } from "@/contexts/AuthContext";
 import ContactForm from "@/components/contacts/ContactForm";
 import { Lead } from "@/types";
 
@@ -26,6 +27,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   className,
   disabled
 }) => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
@@ -35,6 +37,12 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
 
   // Load contacts
   const loadContacts = async (searchTerm = "") => {
+    // Don't load if not authenticated
+    if (!user) {
+      console.log('User not authenticated, skipping contact loading');
+      return;
+    }
+
     setLoading(true);
     try {
       console.log('Loading contacts with search term:', searchTerm);
@@ -60,29 +68,35 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   };
 
   useEffect(() => {
-    if (open) {
+    if (open && user) {
       loadContacts(search);
     }
-  }, [open]);
+  }, [open, user]);
 
   // Debounce search to avoid too many API calls
   useEffect(() => {
-    if (!open) return;
+    if (!open || !user) return;
     
     const timeoutId = setTimeout(() => {
       loadContacts(search);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [search, open]);
+  }, [search, open, user]);
 
   // Listen for new contacts created and data sync
   useEffect(() => {
+    if (!user) return;
+
     const handleContactsChanged = () => {
-      loadContacts(search);
+      if (open) {
+        loadContacts(search);
+      }
     };
     const handleContactsUpdated = () => {
-      loadContacts(search);
+      if (open) {
+        loadContacts(search);
+      }
     };
 
     window.addEventListener('leads:changed', handleContactsChanged);
@@ -91,7 +105,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
       window.removeEventListener('leads:changed', handleContactsChanged);
       window.removeEventListener('contacts:updated', handleContactsUpdated);
     };
-  }, [search]);
+  }, [search, open, user]);
 
   const selectedContact = contacts.find(c => c.id === value);
 
