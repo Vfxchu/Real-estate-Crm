@@ -887,6 +887,7 @@ export const Properties = () => {
         open={!!propertyToDelete}
         onOpenChange={(open) => !open && setPropertyToDelete(null)}
         onConfirm={confirmDeleteProperty}
+        propertyTitle={propertyToDelete?.title || ''}
         isDeleting={!!deleting}
       />
 

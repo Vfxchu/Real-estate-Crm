@@ -355,16 +355,19 @@ export const propertyAutomation = {
           });
 
         // Reopen related leads marked as lost due to availability
-        await supabase
-          .from('leads')
-          .update({ status: 'contacted' })
-          .eq('status', 'lost')
-          .in('id', 
-            supabase
-              .from('contact_properties')
-              .select('contact_id')
-              .eq('property_id', propertyId)
-          );
+        const { data: contactProperties } = await supabase
+          .from('contact_properties')
+          .select('contact_id')
+          .eq('property_id', propertyId);
+
+        if (contactProperties && contactProperties.length > 0) {
+          const contactIds = contactProperties.map(cp => cp.contact_id);
+          await supabase
+            .from('leads')
+            .update({ status: 'contacted' })
+            .eq('status', 'lost')
+            .in('id', contactIds);
+        }
       }
 
       // Log status change activity
