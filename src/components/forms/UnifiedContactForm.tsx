@@ -480,7 +480,7 @@ export default function UnifiedContactForm({
 
   return (
     <div className={className}>
-      <Card className="p-4 md:p-6">
+      <Card className="p-4 md:p-6 border-0 shadow-none">
         {title && <h2 className="text-lg font-semibold mb-4">{title}</h2>}
         
         <Form {...form}>
@@ -490,7 +490,26 @@ export default function UnifiedContactForm({
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Basic Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Client Address Field - moved here for better visibility */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="client_address"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Client Address</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter client's residential address..."
+                        className="min-h-[80px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
                 <FormField
                   control={form.control}
                   name="name"

@@ -22,7 +22,8 @@ import ContactForm from '@/components/contacts/ContactForm';
 import ContactDetailDrawer from '@/components/contacts/ContactDetailDrawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type StatusFilter = 'all' | ContactStatus;
 type InterestFilter = 'all' | 'buyer' | 'seller' | 'landlord' | 'tenant' | 'investor';
@@ -98,7 +99,7 @@ export default function Contacts() {
   const [addOpen, setAddOpen] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
-  // Advanced filter states
+  // Advanced filter states 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [interestFilter, setInterestFilter] = useState<InterestFilter>('all');
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -219,7 +220,6 @@ export default function Contacts() {
   useEffect(() => {
     setSearchInput(q);
   }, [q]);
-
 
   useEffect(() => {
     fetchRows();
@@ -420,7 +420,7 @@ export default function Contacts() {
               options={[
                 { value: 'all', label: 'All Interests' },
                 { value: 'buyer', label: 'Buyers' },
-                { value: 'seller', label: 'Sellers' },
+                { value: 'seller', label: 'Sellers' },  
                 { value: 'landlord', label: 'Landlords' },
                 { value: 'tenant', label: 'Tenants' },
                 { value: 'investor', label: 'Investors' },
@@ -430,7 +430,7 @@ export default function Contacts() {
               className="w-32 sm:w-36"
             />
             
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2">
               <Switch
                 checked={showAdvancedFilters}
                 onCheckedChange={setShowAdvancedFilters}
@@ -438,9 +438,51 @@ export default function Contacts() {
               />
               <Label htmlFor="advanced-mode" className="text-sm">Advanced Search</Label>
             </div>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  <div>
-                    <label className="text-sm font-medium">Source</label>
+          </div>
+        </div>
+
+        {/* Advanced Search Panel */}
+        {showAdvancedFilters && (
+          <Card className="card-elevated">
+            <CardContent className="p-4">
+              <div className="border-t pt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Status</Label>
+                    <ClearableSelect
+                      value={status}
+                      onChange={(value) => updateUrlParam('status', value)}
+                      options={[
+                        { value: 'all', label: 'All Status' },
+                        { value: 'lead', label: 'Lead' },
+                        { value: 'active_client', label: 'Active Client' },
+                        { value: 'past_client', label: 'Past Client' },
+                      ]}
+                      placeholder="Any Status"
+                      allowClear={false}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Interest Type</Label>
+                    <ClearableSelect
+                      value={interestType}
+                      onChange={(value) => updateUrlParam('interest_type', value)}
+                      options={[
+                        { value: 'all', label: 'All Interests' },
+                        { value: 'buyer', label: 'Buyer' },
+                        { value: 'seller', label: 'Seller' },
+                        { value: 'landlord', label: 'Landlord' },
+                        { value: 'tenant', label: 'Tenant' },  
+                        { value: 'investor', label: 'Investor' },
+                      ]}
+                      placeholder="Any Interest"
+                      allowClear={false}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Source</Label>
                     <ClearableSelect
                       value={source}
                       onChange={(value) => updateUrlParam('source', value)}
@@ -459,119 +501,91 @@ export default function Contacts() {
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">Category</label>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Owner/Agent</Label>
                     <ClearableSelect
-                      value={category}
-                      onChange={(value) => updateUrlParam('category', value)}
+                      value={ownerFilter}
+                      onChange={setOwnerFilter}
                       options={[
-                        { value: "property", label: "Property" },
-                        { value: "requirement", label: "Requirement" }
+                        { value: 'all', label: 'All Owners' },
+                        ...([...new Set(rows.map(c => c.profiles?.name).filter(Boolean))].map(ownerName => ({ 
+                          value: ownerName!, 
+                          label: ownerName! 
+                        }))),
+                        { value: 'Unassigned', label: 'Unassigned' },
                       ]}
-                      placeholder="All categories"
-                      allowClear={true}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium">Property Type</label>
-                    <ClearableSelect
-                      value={segment}
-                      onChange={(value) => updateUrlParam('segment', value)}
-                      options={[
-                        { value: "residential", label: "Residential" },
-                        { value: "commercial", label: "Commercial" }
-                      ]}
-                      placeholder="All types"
-                      allowClear={true}
+                      placeholder="Any Owner"
+                      allowClear={false}
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">Subtype</label>
-                    <ClearableSelect
-                      value={subtype}
-                      onChange={(value) => updateUrlParam('subtype', value)}
-                      options={[
-                        { value: "Apartment", label: "Apartment" },
-                        { value: "Townhouse", label: "Townhouse" },
-                        { value: "Villa", label: "Villa" },
-                        { value: "Plot", label: "Plot" },
-                        { value: "Building", label: "Building" },
-                        { value: "Office", label: "Office" },
-                        { value: "Shop", label: "Shop" }
-                      ]}
-                      placeholder="All subtypes"
-                      allowClear={true}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium">Bedrooms</label>
-                    <ClearableSelect
-                      value={bedrooms}
-                      onChange={(value) => updateUrlParam('bedrooms', value)}
-                      options={[
-                        { value: "Studio", label: "Studio" },
-                        { value: "1BR", label: "1BR" },
-                        { value: "2BR", label: "2BR" },
-                        { value: "3BR", label: "3BR" },
-                        { value: "4BR", label: "4BR" },
-                        { value: "5BR", label: "5BR" },
-                        { value: "6+ BR", label: "6+ BR" }
-                      ]}
-                      placeholder="All bedrooms"
-                      allowClear={true}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Sale Budget</label>
-                    <ClearableSelect
-                      value={budgetSaleBand}
-                      onChange={(value) => updateUrlParam('budget_sale_band', value)}
-                      options={[
-                        { value: "under 500k", label: "Under AED 500K" },
-                        { value: "500k-1m", label: "AED 500K - 1M" },
-                        { value: "1m-2m", label: "AED 1M - 2M" },
-                        { value: "2m-5m", label: "AED 2M - 5M" },
-                        { value: "above 5m", label: "Above AED 5M" }
-                      ]}
-                      placeholder="All sale budgets"
-                      allowClear={true}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Rent Budget</label>
-                    <ClearableSelect
-                      value={budgetRentBand}
-                      onChange={(value) => updateUrlParam('budget_rent_band', value)}
-                      options={[
-                        { value: "under 50k", label: "Under AED 50K/year" },
-                        { value: "50k-100k", label: "AED 50K - 100K/year" },
-                        { value: "100k-200k", label: "AED 100K - 200K/year" },
-                        { value: "200k-500k", label: "AED 200K - 500K/year" },
-                        { value: "above 500k", label: "Above AED 500K/year" }
-                      ]}
-                      placeholder="All rent budgets"
-                      allowClear={true}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium">Location</label>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Address/Location</Label>
                     <Input
                       placeholder="Enter location..."
-                      value={location || ''}
-                      onChange={(e) => updateUrlParam('location', e.target.value)}
+                      value={locationFilter}
+                      onChange={(e) => setLocationFilter(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Created From</Label>
+                    <Input
+                      type="date"
+                      value={dateRangeFilter.from}
+                      onChange={(e) => setDateRangeFilter(prev => ({ ...prev, from: e.target.value }))}
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Created To</Label>
+                    <Input
+                      type="date"
+                      value={dateRangeFilter.to}
+                      onChange={(e) => setDateRangeFilter(prev => ({ ...prev, to: e.target.value }))}
+                      className="text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Tags</Label>
+                    <Input
+                      placeholder="Search tags..."
+                      value={interestTags || ''}
+                      onChange={(e) => updateUrlParam('interest_tags', e.target.value)}
+                      className="text-sm"
                     />
                   </div>
                 </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
+
+                <div className="flex items-end gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      updateUrlParam('status', 'all');
+                      updateUrlParam('interest_type', 'all');
+                      updateUrlParam('source', '');
+                      setOwnerFilter('all');
+                      setLocationFilter('');
+                      setDateRangeFilter({ from: '', to: '' });
+                      updateUrlParam('interest_tags', '');
+                      setSearchInput('');
+                    }}
+                  >
+                    Reset Filters
+                  </Button>
+                  
+                  <Button variant="outline" size="sm">
+                    Save View
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Content */}
@@ -600,28 +614,28 @@ export default function Contacts() {
               </CardContent>
             </Card>
           ) : (
-            rows.map((contact) => <ContactCard key={contact.id} contact={contact} />)
+            rows.map(contact => <ContactCard key={contact.id} contact={contact} />)
           )}
         </div>
       ) : (
         /* Desktop Table View */
-        <div className="rounded-md border">
+        <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead>Contact</TableHead>  
                 <TableHead>Status</TableHead>
-                <TableHead>Interest</TableHead>
-                <TableHead>Requirements</TableHead>
+                <TableHead>Interest Tags</TableHead>
+                <TableHead>Property</TableHead>
                 <TableHead>Budget</TableHead>
                 <TableHead>Updated</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                [...Array(pageSize)].map((_, i) => (
+                [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
                     {[...Array(8)].map((_, j) => (
                       <TableCell key={j}>

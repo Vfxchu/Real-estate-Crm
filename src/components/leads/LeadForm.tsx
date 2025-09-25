@@ -1,6 +1,7 @@
 import React from "react";
 import { Lead } from "@/types";
 import UnifiedContactForm from "@/components/forms/UnifiedContactForm";
+import { Card } from "@/components/ui/card";
 
 export type LeadFormContext = "agent" | "admin";
 
@@ -14,11 +15,14 @@ export default function LeadForm({
   defaultValues?: Partial<Lead>;
 }) {
   return (
-    <UnifiedContactForm
-      contact={defaultValues as Lead}
-      onSuccess={onSuccess}
-      mode="lead"
-      title="New Lead"
-    />
+    <Card className="p-4 md:p-6 border-0 shadow-none">
+      <UnifiedContactForm
+        contact={defaultValues as Lead}
+        onSuccess={onSuccess}
+        mode="lead"
+        title="Lead Details"
+        className="space-y-6"
+      />
+    </Card>
   );
 }
