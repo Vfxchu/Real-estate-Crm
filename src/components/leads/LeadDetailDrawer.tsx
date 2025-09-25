@@ -231,9 +231,6 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                   {editMode ? 'Cancel' : 'Edit'}
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         </SheetHeader>
@@ -257,7 +254,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activities">Activities</TabsTrigger>
-                  <TabsTrigger value="calendar">Calendar</TabsTrigger>
+                  <TabsTrigger value="calendar">Tasks & Events</TabsTrigger>
                   <TabsTrigger value="status">Status</TabsTrigger>
                   <TabsTrigger value="deals">Deals</TabsTrigger>
                 </TabsList>
@@ -379,7 +376,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4" />
-                        Upcoming & Past Events
+                        Tasks & Events
                       </CardTitle>
                     </CardHeader>
                     <CardContent>

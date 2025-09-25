@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -242,15 +243,14 @@ export const LeadsManager = () => {
                 <SelectItem value="Unassigned">Unassigned</SelectItem>
               </SelectContent>
             </Select>
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="whitespace-nowrap"
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              {showAdvancedFilters ? 'Less' : 'More'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showAdvancedFilters}
+                onCheckedChange={setShowAdvancedFilters}
+                id="advanced-mode"
+              />
+              <Label htmlFor="advanced-mode" className="text-sm">Advanced</Label>
+            </div>
           </div>
         </div>
 

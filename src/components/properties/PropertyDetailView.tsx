@@ -168,13 +168,6 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                   Schedule Viewing
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>
