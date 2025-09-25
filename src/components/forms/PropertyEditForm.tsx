@@ -576,14 +576,14 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>View</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)} value={field.value || '__none__'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select view" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No View Selected</SelectItem>
+                      <SelectItem value="__none__">No View Selected</SelectItem>
                       {VIEW_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}

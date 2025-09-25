@@ -656,12 +656,12 @@ export const Properties = () => {
                   {isAdmin && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Assigned Agent</Label>
-                      <Select value={filters.assignedAgent} onValueChange={(value) => updateFilter('assignedAgent', value || '')}>
+                      <Select value={filters.assignedAgent || '__all__'} onValueChange={(value) => updateFilter('assignedAgent', value === '__all__' ? '' : value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select agent" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Agents</SelectItem>
+                          <SelectItem value="__all__">All Agents</SelectItem>
                           {agents.map((agent) => (
                             <SelectItem key={agent.id} value={agent.id}>
                               {agent.name}

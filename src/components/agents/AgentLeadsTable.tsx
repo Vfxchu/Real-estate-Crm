@@ -128,7 +128,12 @@ export const AgentLeadsTable: React.FC<AgentLeadsTableProps> = ({
       lead.phone?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    const matchesAgent = agentFilter === 'all' || lead.agent_id === agentFilter;
+    const matchesAgent =
+      agentFilter === 'all'
+        ? true
+        : agentFilter === 'unassigned'
+          ? !lead.agent_id
+          : lead.agent_id === agentFilter;
     
     return matchesSearch && matchesStatus && matchesAgent;
   });
@@ -266,7 +271,7 @@ export const AgentLeadsTable: React.FC<AgentLeadsTableProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Agents</SelectItem>
-                <SelectItem value="">Unassigned</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
                 {agents.map((agent) => (
                   <SelectItem key={agent.user_id} value={agent.user_id}>
                     {agent.name}
