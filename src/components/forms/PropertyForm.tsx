@@ -17,6 +17,7 @@ import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } fro
 import { useContacts } from "@/hooks/useContacts";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
+import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -25,18 +26,19 @@ const propertySchema = z.object({
   offer_type: z.enum(['rent', 'sale'], { required_error: "Offer type is required" }),
   price: z.number().min(0, "Price must be greater than 0"),
   description: z.string().optional(),
-  location: z.string().min(1, "General location is required"),
+  location: z.string().min(1, "Location is required"),
   address: z.string().min(1, "Address is required"),
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
   bedrooms: z.string().optional(),
-  bathrooms: z.number().min(0).optional(),
+  bathrooms: z.number().min(0).step(0.5).optional(),
   area_sqft: z.number().min(0).optional(),
   plot_area_sqft: z.number().min(0).optional(),
   status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
+  view: z.string().optional(),
 });
 
 type PropertyFormData = z.infer<typeof propertySchema>;
@@ -111,6 +113,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       permit_number: '',
       owner_contact_id: '',
       agent_id: user?.id || '',
+      view: '',
     },
   });
 
@@ -136,6 +139,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         permit_number: editProperty.permit_number || '',
         owner_contact_id: editProperty.owner_contact_id || '',
         agent_id: editProperty.agent_id || user?.id || '',
+        view: (editProperty as any)?.view || '',
       });
       
       // Set existing images
@@ -162,6 +166,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         permit_number: '',
         owner_contact_id: '',
         agent_id: user?.id || '',
+        view: '',
       });
       setUploadedImages([]);
       setUploadedLayouts([]);
@@ -354,6 +359,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         owner_contact_id: data.owner_contact_id || null,
         agent_id: isAdmin && data.agent_id ? data.agent_id : user.id,
         images: uploadedImages.length > 0 ? uploadedImages : null,
+        view: data.view || null,
       };
 
       let propertyData;
@@ -637,10 +643,21 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   name="location"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>General Location *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Downtown Dubai, Marina, Business Bay" {...field} />
-                      </FormControl>
+                      <FormLabel>Location *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[200px]">
+                          {LOCATIONS.map((location) => (
+                            <SelectItem key={location.value} value={location.value}>
+                              {location.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -781,22 +798,50 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   control={form.control}
                   name="plot_area_sqft"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Plot Area (sq ft)</FormLabel>
+                  <FormItem>
+                    <FormLabel>Plot Area (sq ft)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0"
+                        placeholder="Enter area in sqft" 
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* View Field */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="view"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>View</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0"
-                          placeholder="Enter area in sqft" 
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select view type" />
+                        </SelectTrigger>
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                      <SelectContent>
+                        {VIEW_OPTIONS.map((view) => (
+                          <SelectItem key={view.value} value={view.value}>
+                            {view.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
