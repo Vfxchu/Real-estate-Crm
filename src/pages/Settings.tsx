@@ -274,7 +274,7 @@ export const Settings = () => {
 
               <Separator />
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div
                   className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                     theme === 'light' ? 'border-primary bg-primary/10' : 'border-border'
@@ -293,16 +293,6 @@ export const Settings = () => {
                 >
                   <div className="w-full h-12 bg-gray-900 border rounded mb-2"></div>
                   <p className="text-sm font-medium">Dark</p>
-                </div>
-
-                <div
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    theme === 'dark-blue' ? 'border-primary bg-primary/10' : 'border-border'
-                  }`}
-                  onClick={() => setTheme('dark-blue')}
-                >
-                  <div className="w-full h-12 bg-blue-900 border rounded mb-2"></div>
-                  <p className="text-sm font-medium">Dark Blue</p>
                 </div>
               </div>
             </CardContent>

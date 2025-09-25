@@ -555,7 +555,7 @@ export default function ContactDetailDrawer({
                                   <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium capitalize">{item.type.replace('_', ' ')}</p>
-                                    <p className="text-sm text-muted-foreground mt-1">{item.details || item.type}</p>
+                                    <p className="text-sm text-muted-foreground mt-1">{item.subtitle}</p>
                                     <p className="text-xs text-muted-foreground mt-2">
                                       {format(new Date(item.timestamp), 'MMM dd, yyyy HH:mm')}
                                     </p>
