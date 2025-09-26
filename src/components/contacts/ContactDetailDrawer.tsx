@@ -22,6 +22,8 @@ import ContactTasksEventsTab from './ContactTasksEventsTab';
 import ContactNotesComposer from './ContactNotesComposer';
 import ContactRecentNotes from './ContactRecentNotes';
 import ContactDealsSection from './ContactDealsSection';
+import { ContactPropertiesTab } from './ContactPropertiesTab';
+import { ContactDocumentsTab } from './ContactDocumentsTab';
 
 interface ContactDetailDrawerProps {
   contact: any;
@@ -281,11 +283,13 @@ export default function ContactDetailDrawer({
           <ScrollArea className="h-full">
             <div className="p-4 sm:p-6">
               <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activities">Activities</TabsTrigger>
                   <TabsTrigger value="tasks-events">Tasks & Events</TabsTrigger>
                   <TabsTrigger value="deals">Deals</TabsTrigger>
+                  <TabsTrigger value="properties">Properties</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -297,25 +301,6 @@ export default function ContactDetailDrawer({
                     />
                   ) : (
                     <div className="space-y-4">
-                      {/* Quick Notes - at top of sidebar */}
-                      <div className="bg-muted/30 rounded-lg p-3">
-                        <ContactRecentNotes contactId={contact.id} />
-                        <div className="mt-3">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => {
-                              // Scroll to the notes composer at bottom
-                              const notesComposer = document.getElementById('notes-composer');
-                              notesComposer?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            className="w-full"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Add Note
-                          </Button>
-                        </div>
-                      </div>
 
                       {/* Contact Information Card */}
                       <Card>
@@ -469,6 +454,14 @@ export default function ContactDetailDrawer({
 
                 <TabsContent value="deals" className="space-y-4">
                   <ContactDealsSection contactId={contact.id} />
+                </TabsContent>
+
+                <TabsContent value="properties" className="space-y-4">
+                  <ContactPropertiesTab contactId={contact.id} />
+                </TabsContent>
+
+                <TabsContent value="documents" className="space-y-4">
+                  <ContactDocumentsTab contactId={contact.id} />
                 </TabsContent>
               </Tabs>
             </div>
