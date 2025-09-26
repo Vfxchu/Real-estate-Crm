@@ -661,12 +661,7 @@ export const LeadsManager = () => {
                         />
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium truncate max-w-[200px]">{lead.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            ID: {lead.id.slice(0, 8)}...
-                          </div>
-                        </div>
+                        <div className="text-sm font-medium truncate max-w-[200px]">{lead.name}</div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
