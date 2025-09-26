@@ -21,6 +21,7 @@ import { useLeads } from "@/hooks/useLeads";
 import { LeadMeta } from "./LeadMeta";
 import { LeadSlaStatus } from "./LeadSlaStatus";
 import { QuickCallActions } from "./QuickCallActions";
+import { LeadDocumentsTab } from "./LeadDocumentsTab";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LeadDetailDrawerProps {
@@ -251,12 +252,13 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           <ScrollArea className="h-full">
             <div className="p-6">
               <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activities">Activities</TabsTrigger>
                   <TabsTrigger value="calendar">Tasks & Events</TabsTrigger>
                   <TabsTrigger value="status">Status</TabsTrigger>
                   <TabsTrigger value="deals">Deals</TabsTrigger>
+                  <TabsTrigger value="documents">Documents</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
@@ -498,6 +500,10 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                       </div>
                     </CardContent>
                   </Card>
+                </TabsContent>
+
+                <TabsContent value="documents" className="space-y-4">
+                  <LeadDocumentsTab lead={lead} />
                 </TabsContent>
               </Tabs>
             </div>

@@ -41,10 +41,12 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLeads, type Lead } from '@/hooks/useLeads';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const LeadsManager = () => {
   const { profile } = useAuth();
   const { leads, loading, updateLead, addActivity, deleteLead, fetchLeads } = useLeads();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -452,144 +454,337 @@ export const LeadsManager = () => {
         </Card>
       )}
 
-      {/* Leads List */}
-      <Card className="card-elevated">
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-               <TableHeader>
-                 <TableRow>
-                   <TableHead className="w-12">
-                     <Checkbox
-                       checked={selectedLeads.length === filteredLeads.length && filteredLeads.length > 0}
-                       onCheckedChange={handleSelectAll}
-                     />
-                   </TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Interest</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Owner</TableHead>
-                    <TableHead>Actions</TableHead>
-                 </TableRow>
-               </TableHeader>
-              <TableBody>
-                  {filteredLeads.map((lead) => (
-                    <TableRow 
-                      key={lead.id} 
-                      className="hover:bg-muted/50 cursor-pointer transition-colors" 
-                      onClick={() => handleRowClick(lead)}
+      {/* Mobile and Desktop Content */}
+      <div className="block md:hidden">
+        {/* Mobile Grid View */}
+        {loading ? (
+          <div className="grid gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="p-4">
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-5 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-4 bg-muted rounded w-2/3"></div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : filteredLeads.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Search className="w-12 h-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+            <p className="text-lg font-medium">No leads found</p>
+            <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or filters</p>
+            <Button onClick={() => setShowAddForm(true)}>Add New Lead</Button>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {filteredLeads.map((lead) => (
+              <Card 
+                key={lead.id} 
+                className="p-4 cursor-pointer hover:shadow-md transition-all"
+                onClick={() => handleRowClick(lead)}
+              >
+                <div className="space-y-3">
+                  {/* Lead Name */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-lg truncate flex-1">{lead.name}</h3>
+                    <Badge className={getStatusColor(lead.status)}>
+                      {lead.status}
+                    </Badge>
+                  </div>
+                  
+                  {/* Contact Details */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-muted-foreground" />
+                      <span>{lead.phone || 'No phone'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span className="truncate">{lead.email}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Tags */}
+                  {lead.interest_tags && lead.interest_tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {lead.interest_tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                      {lead.interest_tags.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{lead.interest_tags.length - 3} more
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Requirements */}
+                  {(lead.segment || lead.budget_sale_band || lead.budget_rent_band) && (
+                    <div className="text-sm text-muted-foreground">
+                      {lead.segment && <div>Looking for: {lead.segment}</div>}
+                      {lead.budget_sale_band && <div>Budget Range: {lead.budget_sale_band}</div>}
+                      {lead.budget_rent_band && <div>Rent Budget: {lead.budget_rent_band}</div>}
+                    </div>
+                  )}
+                  
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingLead(lead);
+                        setShowEditForm(true);
+                      }}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                       <Checkbox
-                         checked={selectedLeads.includes(lead.id)}
-                         onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
-                       />
-                     </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm">{lead.name}</p>
-                          <p className="text-xs text-muted-foreground">{lead.email}</p>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Lead
+                    </Button>
+                    {(profile?.role === 'admin' || lead.agent_id === profile?.user_id) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLead(lead.id);
+                        }}
+                        disabled={deleting === lead.id}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        {deleting === lead.id ? (
+                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                        Delete Lead
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <Card className="card-elevated hidden md:block">
+        {selectedLeads.length > 0 && (
+          <div className="p-4 border-b bg-muted/30">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedLeads.length} lead{selectedLeads.length !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction('assign')}>
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Assign
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction('status')}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Update Status
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleBulkAction('export')}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <CardContent className="p-0">
+          <div className="relative overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b">
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedLeads.length === filteredLeads.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="text-xs font-medium">Lead</TableHead>
+                  <TableHead className="text-xs font-medium">Contact Details</TableHead>
+                  <TableHead className="text-xs font-medium">Tags</TableHead>
+                  <TableHead className="text-xs font-medium">Status</TableHead>
+                  <TableHead className="text-xs font-medium">Requirements</TableHead>
+                  <TableHead className="text-xs font-medium">Agent</TableHead>
+                  <TableHead className="text-xs font-medium">Created</TableHead>
+                  <TableHead className="text-xs font-medium text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={9}>
+                        <div className="flex items-center space-x-4 py-2">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                          <div className="space-y-2 flex-1">
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                            <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                          </div>
                         </div>
                       </TableCell>
-                       <TableCell>
-                         <div className="space-y-1">
-                           <p className="text-sm">{lead.phone || 'No phone'}</p>
-                           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                             <Button 
-                               size="sm" 
-                               variant="ghost" 
-                               className="h-6 w-6 p-0 hover:bg-primary/10"
-                               onClick={() => lead.phone && window.open(`tel:${lead.phone}`, '_self')}
-                               disabled={!lead.phone}
-                             >
-                               <Phone className="w-3 h-3" />
-                             </Button>
-                             <Button 
-                               size="sm" 
-                               variant="ghost" 
-                               className="h-6 w-6 p-0 hover:bg-primary/10"
-                               onClick={() => lead.email && window.open(`mailto:${lead.email}`, '_blank')}
-                               disabled={!lead.email}
-                             >
-                               <Mail className="w-3 h-3" />
-                             </Button>
-                             <Button 
-                               size="sm" 
-                               variant="ghost" 
-                               className="h-6 w-6 p-0 hover:bg-primary/10"
-                               onClick={() => lead.phone && window.open(`https://wa.me/${lead.phone?.replace(/[^\d]/g, '')}`, '_blank')}
-                               disabled={!lead.phone}
-                             >
-                               <MessageSquare className="w-3 h-3" />
-                             </Button>
-                           </div>
-                         </div>
-                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Badge className={`${getStatusColor(lead.status)} text-xs`}>
-                          {lead.status}
-                        </Badge>
-                      </TableCell>
-                       <TableCell>
-                         <span className="text-sm capitalize">{lead.source}</span>
-                       </TableCell>
+                    </TableRow>
+                  ))
+                ) : filteredLeads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12">
+                      <div className="text-muted-foreground">
+                        <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg font-medium">No leads found</p>
+                        <p className="text-sm">Try adjusting your search or filters</p>
+                        <Button className="mt-4" onClick={() => setShowAddForm(true)}>
+                          Add New Lead
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <TableRow 
+                      key={lead.id} 
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleRowClick(lead)}
+                    >
                       <TableCell>
-                        <LeadMeta lead={lead} layout="table" />
+                        <Checkbox
+                          checked={selectedLeads.includes(lead.id)}
+                          onCheckedChange={(checked) => handleSelectLead(lead.id, !!checked)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
                       </TableCell>
-                       <TableCell>
-                         <span className="text-sm text-muted-foreground">
-                           {new Date(lead.created_at).toLocaleDateString()}
-                         </span>
-                       </TableCell>
-                       <TableCell>
-                         <span className="text-sm text-muted-foreground">
-                           {lead.profiles?.name || 'Unassigned'}
-                         </span>
-                       </TableCell>
-                       <TableCell onClick={(e) => e.stopPropagation()}>
-                         <div className="flex items-center gap-1">                          
-                           {/* Admin-only Edit Button */}
-                           {profile?.role === 'admin' && (
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               className="h-8 w-8 p-0"
-                               onClick={() => {
-                                 setEditingLead(lead);
-                                 setShowEditForm(true);
-                               }}
-                             >
-                               <Edit className="w-4 h-4" />
-                             </Button>
-                           )}
-                           
-                           {profile?.role === 'admin' && (
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                               onClick={() => handleDeleteLead(lead.id)}
-                               disabled={deleting === lead.id}
-                             >
-                               <Trash2 className="w-4 h-4" />
-                             </Button>
-                           )}
-                         </div>
-                       </TableCell>
-                   </TableRow>
-                 ))}
-               </TableBody>
-              </Table>
-            </div>
-          )}
+                      <TableCell className="font-medium">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium truncate max-w-[200px]">{lead.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            ID: {lead.id.slice(0, 8)}...
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            <span>{lead.phone || 'No phone'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Mail className="w-3 h-3 text-muted-foreground" />
+                            <span className="truncate">{lead.email}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[150px]">
+                          {lead.interest_tags && lead.interest_tags.length > 0 ? (
+                            lead.interest_tags.slice(0, 2).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No tags</span>
+                          )}
+                          {lead.interest_tags && lead.interest_tags.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{lead.interest_tags.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Badge className={getStatusColor(lead.status)}>
+                            {lead.status}
+                          </Badge>
+                          <div className="text-xs text-muted-foreground">
+                            {getContactStatusDisplay(lead.contact_status || 'lead')}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
+                          {lead.segment && (
+                            <div>Looking for: {lead.segment}</div>
+                          )}
+                          {lead.budget_sale_band && (
+                            <div>Budget: {lead.budget_sale_band}</div>
+                          )}
+                          {lead.budget_rent_band && (
+                            <div>Rent: {lead.budget_rent_band}</div>
+                          )}
+                          {!lead.segment && !lead.budget_sale_band && !lead.budget_rent_band && (
+                            <span className="text-muted-foreground">No requirements</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {lead.profiles?.name || 'Unassigned'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRowClick(lead);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingLead(lead);
+                              setShowEditForm(true);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          {(profile?.role === 'admin' || lead.agent_id === profile?.user_id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLead(lead.id);
+                              }}
+                              disabled={deleting === lead.id}
+                              className="h-8 w-8 p-0"
+                            >
+                              {deleting === lead.id ? (
+                                <div className="w-4 h-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                              ) : (
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
