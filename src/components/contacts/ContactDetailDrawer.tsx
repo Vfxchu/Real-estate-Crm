@@ -17,7 +17,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, deleteFile } from '@/services/storage';
 import ContactForm from './ContactForm';
-import { ContactEnhancedTabs } from './ContactEnhancedTabs';
+import ContactActivitiesTab from './ContactActivitiesTab';
+import ContactTasksEventsTab from './ContactTasksEventsTab';
 import ContactNotesComposer from './ContactNotesComposer';
 import ContactRecentNotes from './ContactRecentNotes';
 import ContactDealsSection from './ContactDealsSection';
@@ -459,17 +460,11 @@ export default function ContactDetailDrawer({
                 </TabsContent>
 
                 <TabsContent value="activities" className="space-y-4">
-                  <ContactEnhancedTabs 
-                    contact={contact} 
-                    onUpdate={handleContactUpdated}
-                  />
+                  <ContactActivitiesTab contactId={contact.id} />
                 </TabsContent>
 
                 <TabsContent value="tasks-events" className="space-y-4">
-                  <ContactEnhancedTabs 
-                    contact={contact} 
-                    onUpdate={handleContactUpdated}
-                  />
+                  <ContactTasksEventsTab contactId={contact.id} />
                 </TabsContent>
 
                 <TabsContent value="deals" className="space-y-4">
