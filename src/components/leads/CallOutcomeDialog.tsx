@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { logOutcome, CallOutcome, formatCallOutcome } from '@/services/crm';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DealLostWorkflowDialog } from './DealLostWorkflowDialog';
+import { TaskCreationDialog } from './TaskCreationDialog';
 
 interface CallOutcomeDialogProps {
   isOpen: boolean;
@@ -63,11 +65,23 @@ export function CallOutcomeDialog({
   const [callbackDate, setCallbackDate] = useState<Date>();
   const [callbackTime, setCallbackTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDealLostWorkflow, setShowDealLostWorkflow] = useState(false);
+  const [showTaskCreation, setShowTaskCreation] = useState(false);
+  const [taskCreationType, setTaskCreationType] = useState<'follow_up' | 'meeting' | 'under_offer' | 'closure'>('follow_up');
   const { toast } = useToast();
 
   // Get available outcomes based on current status and gating rules
-  const getAvailableOutcomes = () => {
-    // Get lead's selected outcomes to implement idempotency
+  const getAvailableOutcomes = async () => {
+    // Get lead's current outcomes_selected for idempotency
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('custom_fields')
+      .eq('id', leadId)
+      .single();
+    
+    const customFields = lead?.custom_fields as any || {};
+    const selectedOutcomes = customFields.outcomes_selected || [];
+    
     let outcomes = businessOutcomes.filter(outcome => {
       // Hide Deal Won until Under Offer stage
       if (outcome.value === 'deal_won' && leadStatus !== 'negotiating') {
@@ -77,6 +91,11 @@ export function CallOutcomeDialog({
       // In Contacted stage, hide advanced outcomes
       if (leadStatus === 'contacted' && 
           ['under_offer', 'deal_lost', 'deal_won'].includes(outcome.value)) {
+        return false;
+      }
+      
+      // Implement idempotency - hide already selected outcomes except meeting_scheduled
+      if (selectedOutcomes.includes(outcome.value) && outcome.value !== 'meeting_scheduled') {
         return false;
       }
       
@@ -100,6 +119,13 @@ export function CallOutcomeDialog({
       return;
     }
 
+    // Special handling for deal_lost - show workflow dialog
+    if (businessOutcome === 'deal_lost') {
+      onOpenChange(false);
+      setShowDealLostWorkflow(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const selectedOutcome = businessOutcomes.find(o => o.value === businessOutcome);
@@ -113,6 +139,16 @@ export function CallOutcomeDialog({
         datetime.setHours(hours, minutes, 0, 0);
         callbackAt = datetime.toISOString();
       }
+
+      // Get current custom_fields to preserve existing data
+      const { data: currentLead } = await supabase
+        .from('leads')
+        .select('custom_fields')
+        .eq('id', leadId)
+        .single();
+
+      const currentCustomFields = (currentLead?.custom_fields as any) || {};
+      const currentOutcomes = currentCustomFields.outcomes_selected || [];
 
       // Prepare rich description JSON
       const descriptionData: any = {
@@ -128,22 +164,23 @@ export function CallOutcomeDialog({
         descriptionData.callback_at = callbackAt;
       }
 
+      // Update custom_fields with idempotency tracking
+      const updatedCustomFields = {
+        ...currentCustomFields,
+        outcomes_selected: [...new Set([...currentOutcomes, businessOutcome])]
+      };
+
       // Handle invalid marking
       if (businessOutcome === 'invalid') {
-        // Update lead custom_fields to mark as invalid
-        const { error: updateError } = await supabase
-          .from('leads')
-          .update({
-            custom_fields: {
-              invalid: 'true',
-              invalid_at: new Date().toISOString(),
-              outcomes_selected: [businessOutcome]
-            }
-          })
-          .eq('id', leadId);
-
-        if (updateError) throw updateError;
+        updatedCustomFields.invalid = 'true';
+        updatedCustomFields.invalid_at = new Date().toISOString();
       }
+
+      // Update lead custom_fields
+      await supabase
+        .from('leads')
+        .update({ custom_fields: updatedCustomFields })
+        .eq('id', leadId);
 
       // Log the outcome with mapped DB enum
       await logOutcome({
@@ -153,13 +190,26 @@ export function CallOutcomeDialog({
         callbackAt
       });
 
+      // Auto-create follow-up tasks for certain outcomes
+      const needsTask = ['interested', 'meeting_scheduled', 'under_offer'].includes(businessOutcome);
+      if (needsTask) {
+        const taskType = businessOutcome === 'meeting_scheduled' ? 'meeting' 
+                        : businessOutcome === 'under_offer' ? 'under_offer'
+                        : 'follow_up';
+        
+        setTaskCreationType(taskType);
+        setShowTaskCreation(true);
+      }
+
       toast({
         title: 'Call outcome recorded',
         description: `Lead outcome: ${selectedOutcome.label}`,
       });
 
-      onComplete();
-      onOpenChange(false);
+      if (!needsTask) {
+        onComplete();
+        onOpenChange(false);
+      }
       
       // Reset form
       setBusinessOutcome(undefined);
@@ -179,33 +229,42 @@ export function CallOutcomeDialog({
   };
 
   const needsCallbackTime = businessOutcome === 'call_back_request';
+  const [availableOutcomes, setAvailableOutcomes] = useState<typeof businessOutcomes>([]);
+
+  // Load available outcomes when dialog opens
+  React.useEffect(() => {
+    if (isOpen) {
+      getAvailableOutcomes().then(setAvailableOutcomes);
+    }
+  }, [isOpen, leadId, leadStatus]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Record Call Outcome</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            Lead: {leadName}
-          </p>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Record Call Outcome</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Lead: {leadName}
+            </p>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="outcome">Call Outcome</Label>
-            <Select value={businessOutcome} onValueChange={(value) => setBusinessOutcome(value as BusinessOutcome)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select outcome" />
-              </SelectTrigger>
-              <SelectContent>
-                {getAvailableOutcomes().map((outcome) => (
-                  <SelectItem key={outcome.value} value={outcome.value}>
-                    {outcome.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="outcome">Call Outcome</Label>
+              <Select value={businessOutcome} onValueChange={(value) => setBusinessOutcome(value as BusinessOutcome)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select outcome" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableOutcomes.map((outcome) => (
+                    <SelectItem key={outcome.value} value={outcome.value}>
+                      {outcome.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
           {needsReason && (
             <div className="space-y-2">
@@ -295,24 +354,51 @@ export function CallOutcomeDialog({
             />
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!businessOutcome || (needsReason && !reason) || loading}
-              className="flex-1"
-            >
-              {loading ? 'Recording...' : 'Record Outcome'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!businessOutcome || (needsReason && !reason) || loading}
+                className="flex-1"
+              >
+                {loading ? 'Recording...' : 'Record Outcome'}
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deal Lost Workflow Dialog */}
+      <DealLostWorkflowDialog
+        isOpen={showDealLostWorkflow}
+        onOpenChange={setShowDealLostWorkflow}
+        leadId={leadId}
+        leadName={leadName}
+        onComplete={onComplete}
+      />
+
+      {/* Task Creation Dialog */}
+      <TaskCreationDialog
+        isOpen={showTaskCreation}
+        onOpenChange={(open) => {
+          setShowTaskCreation(open);
+          if (!open) {
+            onComplete();
+            onOpenChange(false);
+          }
+        }}
+        leadId={leadId}
+        leadName={leadName}
+        taskType={taskCreationType}
+        businessOutcome={businessOutcome}
+        onComplete={onComplete}
+      />
+    </>
   );
 }

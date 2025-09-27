@@ -98,10 +98,34 @@ export const useLeads = () => {
 
       if (error) throw error;
 
+      // Auto-create follow-up task for new lead
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser && data) {
+        await supabase.from('calendar_events').insert({
+          title: 'Follow-up New Lead',
+          event_type: 'task',
+          start_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours
+          end_date: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 hours
+          lead_id: data.id,
+          agent_id: data.agent_id || currentUser.id,
+          created_by: currentUser.id,
+          description: 'Initial follow-up call for new lead',
+          status: 'scheduled'
+        });
+
+        // Log activity
+        await supabase.from('activities').insert({
+          type: 'task_created',
+          description: 'Automatic follow-up task created for new lead',
+          lead_id: data.id,
+          created_by: currentUser.id
+        });
+      }
+
       // Data already includes profile from service, no additional fetch needed
       const leadWithProfile = data;
 
-      console.log('[LEADS] Lead created successfully and synced with contacts');
+      console.log('[LEADS] Lead created successfully with auto-follow-up task');
       setLeads(prev => [leadWithProfile as Lead, ...prev]);
       
       // Trigger sync events
@@ -110,7 +134,7 @@ export const useLeads = () => {
       
       toast({
         title: 'Lead created',
-        description: 'New lead has been added and synced with contacts.',
+        description: 'New lead has been added with automatic follow-up task.',
       });
 
       return { data: leadWithProfile, error: null };

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Clock, Edit2, Save, X } from 'lucide-react';
+import { CalendarIcon, Clock, Edit2, Save, X, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ interface CalendarEvent {
   event_type: string;
   description?: string;
   status?: string;
+  lead_id?: string;
 }
 
 interface TaskEventItemProps {
@@ -28,6 +29,7 @@ interface TaskEventItemProps {
 
 export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description || '');
   const [startDate, setStartDate] = useState(new Date(event.start_date));
@@ -52,7 +54,7 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
         .insert([{
           type: 'status_change',
           description: `Task "${event.title}" marked as ${newStatus}`,
-          lead_id: event.id, // This should be lead_id from the event
+          lead_id: event.lead_id,
           created_by: (await supabase.auth.getUser()).data.user?.id || ''
         }]);
 
@@ -95,7 +97,7 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
         .insert([{
           type: 'note',
           description: `Task "${title}" updated`,
-          lead_id: event.id, // This should be lead_id from the event
+          lead_id: event.lead_id,
           created_by: (await supabase.auth.getUser()).data.user?.id || ''
         }]);
 
@@ -123,6 +125,73 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
     setStartDate(new Date(event.start_date));
     setStartTime(format(new Date(event.start_date), 'HH:mm'));
     setIsEditing(false);
+  };
+
+  const handleReschedule = async () => {
+    setLoading(true);
+    try {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const updatedDate = new Date(startDate);
+      updatedDate.setHours(hours, minutes, 0, 0);
+
+      const { error } = await supabase
+        .from('calendar_events')
+        .update({
+          start_date: updatedDate.toISOString(),
+        })
+        .eq('id', event.id);
+
+      if (error) throw error;
+
+      // For meeting events, reset the meeting_scheduled outcome to allow rescheduling
+      if (event.event_type === 'meeting' && event.lead_id) {
+        const { data: lead } = await supabase
+          .from('leads')
+          .select('custom_fields')
+          .eq('id', event.lead_id)
+          .single();
+
+        const customFields = (lead?.custom_fields as any) || {};
+        const outcomes = customFields.outcomes_selected || [];
+        const updatedOutcomes = outcomes.filter((o: string) => o !== 'meeting_scheduled');
+
+        await supabase
+          .from('leads')
+          .update({
+            custom_fields: {
+              ...customFields,
+              outcomes_selected: updatedOutcomes
+            }
+          })
+          .eq('id', event.lead_id);
+      }
+
+      // Log activity
+      await supabase
+        .from('activities')
+        .insert([{
+          type: 'task_rescheduled',
+          description: `Task "${event.title}" rescheduled to ${format(updatedDate, 'PPp')}`,
+          lead_id: event.lead_id,
+          created_by: (await supabase.auth.getUser()).data.user?.id || ''
+        }]);
+
+      toast({
+        title: 'Task rescheduled',
+        description: `Rescheduled to ${format(updatedDate, 'PPp')}`,
+      });
+
+      setIsRescheduling(false);
+      onUpdate();
+    } catch (error: any) {
+      toast({
+        title: 'Error rescheduling',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -215,15 +284,101 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
               )}>
                 {event.title}
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="h-6 w-6 p-0"
-              >
-                <Edit2 className="w-3 h-3" />
-              </Button>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="h-6 w-6 p-0"
+                  title="Edit task"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsRescheduling(true)}
+                  className="h-6 w-6 p-0"
+                  title="Reschedule"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
+
+            {/* Reschedule Section */}
+            {isRescheduling && (
+              <div className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Reschedule Task</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsRescheduling(false)}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "justify-start text-left font-normal flex-1",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? format(startDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(date) => date && setStartDate(date)}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="pl-10 w-32"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsRescheduling(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleReschedule}
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading ? 'Saving...' : 'Reschedule'}
+                  </Button>
+                </div>
+              </div>
+            )}
             
             <p className="text-xs text-muted-foreground">
               {format(new Date(event.start_date), "PPP 'at' p")}
