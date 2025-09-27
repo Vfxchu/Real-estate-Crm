@@ -10,6 +10,7 @@ import { CalendarIcon, Clock } from 'lucide-react';
 import { format, addMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { logOutcome, CallOutcome, formatCallOutcome } from '@/services/crm';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface CallOutcomeDialogProps {
@@ -17,64 +18,152 @@ interface CallOutcomeDialogProps {
   onOpenChange: (open: boolean) => void;
   leadId: string;
   leadName: string;
+  leadStatus?: string;
   onComplete: () => void;
 }
 
-const callOutcomes: CallOutcome[] = [
-  'interested',
-  'callback', 
-  'no_answer',
-  'busy',
-  'not_interested',
-  'invalid',
-  'other'
+type BusinessOutcome = 'call_back_request' | 'no_answer' | 'interested' | 'meeting_scheduled' | 'under_offer' | 'deal_won' | 'deal_lost' | 'invalid';
+
+const INVALID_REASONS = [
+  'Developer', 'Agent', 'Marketing', 'Job Request', 'Test/Junk Data',
+  'Incorrect Contact Details', 'Existing Client', 'Only Researching/Browsing',
+  'No Answer After Multiple Attempts'
+];
+
+const DEAL_LOST_REASONS = [
+  'Property Not Available', 'Seller Backed Out', 'Financing Issues',
+  'Lost to Competitor', 'Legal/Compliance Issue', 'Couldn\'t Find Suitable Property',
+  'No Answer After Multiple Attempts', 'Offer Rejected (Client Will Not Raise)',
+  'Budget Too Low'
+];
+
+// Business outcomes mapping to DB enum
+const businessOutcomes: { value: BusinessOutcome; label: string; dbOutcome: CallOutcome }[] = [
+  { value: 'call_back_request', label: 'Call Back Request', dbOutcome: 'callback' },
+  { value: 'no_answer', label: 'No Answer', dbOutcome: 'no_answer' },
+  { value: 'interested', label: 'Interested', dbOutcome: 'interested' },
+  { value: 'meeting_scheduled', label: 'Meeting Scheduled', dbOutcome: 'interested' },
+  { value: 'under_offer', label: 'Under Offer', dbOutcome: 'other' },
+  { value: 'deal_won', label: 'Deal Won', dbOutcome: 'other' },
+  { value: 'deal_lost', label: 'Deal Lost', dbOutcome: 'not_interested' },
+  { value: 'invalid', label: 'Invalid', dbOutcome: 'invalid' }
 ];
 
 export function CallOutcomeDialog({ 
   isOpen, 
   onOpenChange, 
   leadId, 
-  leadName, 
+  leadName,
+  leadStatus = 'new',
   onComplete 
 }: CallOutcomeDialogProps) {
-  const [outcome, setOutcome] = useState<CallOutcome>();
+  const [businessOutcome, setBusinessOutcome] = useState<BusinessOutcome>();
+  const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const [callbackDate, setCallbackDate] = useState<Date>();
   const [callbackTime, setCallbackTime] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Get available outcomes based on current status and gating rules
+  const getAvailableOutcomes = () => {
+    // Get lead's selected outcomes to implement idempotency
+    let outcomes = businessOutcomes.filter(outcome => {
+      // Hide Deal Won until Under Offer stage
+      if (outcome.value === 'deal_won' && leadStatus !== 'negotiating') {
+        return false;
+      }
+      
+      // In Contacted stage, hide advanced outcomes
+      if (leadStatus === 'contacted' && 
+          ['under_offer', 'deal_lost', 'deal_won'].includes(outcome.value)) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    return outcomes;
+  };
+
+  const needsReason = businessOutcome === 'deal_lost' || businessOutcome === 'invalid';
+  const reasonOptions = businessOutcome === 'deal_lost' ? DEAL_LOST_REASONS : INVALID_REASONS;
+
   const handleSubmit = async () => {
-    if (!outcome) return;
+    if (!businessOutcome) return;
+    if (needsReason && !reason) {
+      toast({
+        title: 'Reason required',
+        description: `Please select a reason for ${businessOutcome.replace('_', ' ')}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setLoading(true);
     try {
+      const selectedOutcome = businessOutcomes.find(o => o.value === businessOutcome);
+      if (!selectedOutcome) return;
+
       let callbackAt: string | undefined;
       
-      if (outcome === 'callback' && callbackDate) {
+      if (businessOutcome === 'call_back_request' && callbackDate) {
         const [hours, minutes] = callbackTime ? callbackTime.split(':').map(Number) : [9, 0];
         const datetime = new Date(callbackDate);
         datetime.setHours(hours, minutes, 0, 0);
         callbackAt = datetime.toISOString();
       }
 
+      // Prepare rich description JSON
+      const descriptionData: any = {
+        business_outcome: businessOutcome,
+        note: notes.trim() || undefined
+      };
+
+      if (needsReason && reason) {
+        descriptionData.reason = reason;
+      }
+
+      if (callbackAt) {
+        descriptionData.callback_at = callbackAt;
+      }
+
+      // Handle invalid marking
+      if (businessOutcome === 'invalid') {
+        // Update lead custom_fields to mark as invalid
+        const { error: updateError } = await supabase
+          .from('leads')
+          .update({
+            custom_fields: {
+              invalid: 'true',
+              invalid_at: new Date().toISOString(),
+              outcomes_selected: [businessOutcome]
+            }
+          })
+          .eq('id', leadId);
+
+        if (updateError) throw updateError;
+      }
+
+      // Log the outcome with mapped DB enum
       await logOutcome({
         leadId,
-        outcome,
-        notes: notes.trim() || undefined,
+        outcome: selectedOutcome.dbOutcome,
+        notes: JSON.stringify(descriptionData),
         callbackAt
       });
 
       toast({
         title: 'Call outcome recorded',
-        description: `Lead outcome: ${formatCallOutcome(outcome)}`,
+        description: `Lead outcome: ${selectedOutcome.label}`,
       });
 
       onComplete();
       onOpenChange(false);
       
       // Reset form
-      setOutcome(undefined);
+      setBusinessOutcome(undefined);
+      setReason('');
       setNotes('');
       setCallbackDate(undefined);
       setCallbackTime('');
@@ -89,7 +178,7 @@ export function CallOutcomeDialog({
     }
   };
 
-  const needsCallbackTime = outcome === 'callback';
+  const needsCallbackTime = businessOutcome === 'call_back_request';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -104,19 +193,37 @@ export function CallOutcomeDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="outcome">Call Outcome</Label>
-            <Select value={outcome} onValueChange={(value) => setOutcome(value as CallOutcome)}>
+            <Select value={businessOutcome} onValueChange={(value) => setBusinessOutcome(value as BusinessOutcome)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select outcome" />
               </SelectTrigger>
               <SelectContent>
-                {callOutcomes.map((outcomeOption) => (
-                  <SelectItem key={outcomeOption} value={outcomeOption}>
-                    {formatCallOutcome(outcomeOption)}
+                {getAvailableOutcomes().map((outcome) => (
+                  <SelectItem key={outcome.value} value={outcome.value}>
+                    {outcome.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {needsReason && (
+            <div className="space-y-2">
+              <Label htmlFor="reason">Reason *</Label>
+              <Select value={reason} onValueChange={setReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reasonOptions.map((reasonOption) => (
+                    <SelectItem key={reasonOption} value={reasonOption}>
+                      {reasonOption}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {needsCallbackTime && (
             <div className="space-y-4">
@@ -198,7 +305,7 @@ export function CallOutcomeDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!outcome || loading}
+              disabled={!businessOutcome || (needsReason && !reason) || loading}
               className="flex-1"
             >
               {loading ? 'Recording...' : 'Record Outcome'}

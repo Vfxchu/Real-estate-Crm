@@ -11,16 +11,59 @@ export interface CallOutcomeRequest {
 
 /**
  * Log a call outcome for a lead and automatically create appropriate calendar events
+ * Enhanced to handle business outcomes and status transitions
  */
 export async function logOutcome(request: CallOutcomeRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
+  // Parse business outcome from notes if it's JSON
+  let businessOutcome;
+  let parsedNotes = request.notes;
+  
+  try {
+    if (request.notes && request.notes.startsWith('{')) {
+      const parsed = JSON.parse(request.notes);
+      businessOutcome = parsed.business_outcome;
+      parsedNotes = parsed.note || null;
+    }
+  } catch (e) {
+    // If not JSON, treat as regular notes
+  }
+
+  // Handle status transitions based on business outcome
+  if (businessOutcome) {
+    let newStatus;
+    switch (businessOutcome) {
+      case 'interested':
+      case 'meeting_scheduled':
+        newStatus = 'qualified';
+        break;
+      case 'under_offer':
+        newStatus = 'negotiating';
+        break;
+      case 'deal_won':
+        newStatus = 'won';
+        break;
+      case 'deal_lost':
+        newStatus = 'lost';
+        break;
+      // For invalid, status is handled via custom_fields in the dialog
+    }
+
+    if (newStatus) {
+      await supabase
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', request.leadId);
+    }
+  }
+
   const { error } = await supabase.rpc('log_call_outcome', {
     p_lead_id: request.leadId,
     p_agent_id: user.id,
     p_outcome: request.outcome,
-    p_notes: request.notes || null,
+    p_notes: parsedNotes,
     p_callback_at: request.callbackAt || null
   });
 

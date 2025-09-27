@@ -91,6 +91,7 @@ export function QuickCallActions({ lead, onComplete }: QuickCallActionsProps) {
         onOpenChange={setShowDialog}
         leadId={lead.id}
         leadName={lead.name}
+        leadStatus={lead.status}
         onComplete={onComplete}
       />
     </div>

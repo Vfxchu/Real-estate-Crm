@@ -22,6 +22,7 @@ import { LeadMeta } from "./LeadMeta";
 import { LeadSlaStatus } from "./LeadSlaStatus";
 import { QuickCallActions } from "./QuickCallActions";
 import { LeadDocumentsTab } from "./LeadDocumentsTab";
+import { TaskEventItem } from "./TaskEventItem";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LeadDetailDrawerProps {
@@ -208,7 +209,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
               </SheetTitle>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge className={getStatusColor(lead.status)}>
-                  {lead.status}
+                  {lead.status === 'negotiating' ? 'Under Offer' : lead.status}
                 </Badge>
                 <Badge variant="outline" className={getPriorityColor(lead.priority)}>
                   {lead.priority} priority
@@ -385,28 +386,14 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                       {events.length > 0 ? (
                         <div className="space-y-3">
                           {events.map((event) => (
-                            <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                              <Calendar className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium">{event.title}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {new Date(event.start_date).toLocaleString()}
-                                </p>
-                                {event.description && (
-                                  <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
-                                )}
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {event.event_type}
-                                  </Badge>
-                                  {event.status && (
-                                    <Badge variant={event.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
-                                      {event.status}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                            <TaskEventItem
+                              key={event.id}
+                              event={event}
+                              onUpdate={() => {
+                                loadCalendarEvents();
+                                loadActivities();
+                              }}
+                            />
                           ))}
                         </div>
                       ) : (
@@ -444,7 +431,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                             <SelectItem value="new">New</SelectItem>
                             <SelectItem value="contacted">Contacted</SelectItem>
                             <SelectItem value="qualified">Qualified</SelectItem>
-                            <SelectItem value="negotiating">Negotiating</SelectItem>
+                            <SelectItem value="negotiating">Under Offer</SelectItem>
                             <SelectItem value="won">Won</SelectItem>
                             <SelectItem value="lost">Lost</SelectItem>
                           </SelectContent>

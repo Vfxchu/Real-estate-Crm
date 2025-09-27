@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadForm from "@/components/leads/LeadForm";
 import { LeadMeta } from "@/components/leads/LeadMeta";
 import { LeadSlaStatus } from "@/components/leads/LeadSlaStatus";
@@ -48,6 +49,7 @@ export const LeadsManager = () => {
   const { leads, loading, updateLead, addActivity, deleteLead, fetchLeads } = useLeads();
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [contactStatusFilter, setContactStatusFilter] = useState<string>('all');
@@ -119,9 +121,79 @@ export const LeadsManager = () => {
     }
   };
 
-  const filteredLeads = leads.filter(lead => {
-    // Hide closed leads (won/lost) - they should appear in Contacts
+  // Status tab mapping
+  const statusTabMapping = {
+    'All': null,
+    'New': 'new',
+    'Contacted': 'contacted', 
+    'Qualified': 'qualified',
+    'Under Offer': 'negotiating', // Label mapping
+    'Won': 'won',
+    'Lost': 'lost',
+    'Invalid': 'computed' // custom_fields check
+  };
+
+  // Helper functions for time-based visibility
+  const getLastStatusChangeDate = (lead: Lead) => {
+    // For won/lost leads, get from lead_status_changes (simulated via updated_at for now)
     if (lead.status === 'won' || lead.status === 'lost') {
+      return lead.updated_at;
+    }
+    
+    // For invalid, get from custom_fields
+    if (lead.custom_fields?.invalid === 'true') {
+      return lead.custom_fields?.invalid_at;
+    }
+    
+    return null;
+  };
+
+  const shouldShowInLeads = (statusChangedAt: string | null) => {
+    if (!statusChangedAt) return true;
+    
+    const changedAt = new Date(statusChangedAt);
+    // Convert to Asia/Dubai timezone for month-end calculation
+    const monthEnd = new Date(changedAt.getFullYear(), changedAt.getMonth() + 1, 1);
+    return new Date() < monthEnd;
+  };
+
+  const shouldShowLead = (lead: Lead) => {
+    // Handle won/lost with 30-day window
+    if (lead.status === 'won' || lead.status === 'lost') {
+      const lastStatusChange = getLastStatusChangeDate(lead);
+      return shouldShowInLeads(lastStatusChange);
+    }
+    
+    // Handle invalid with custom_fields check + 30-day window
+    if (lead.custom_fields?.invalid === 'true') {
+      const invalidDate = lead.custom_fields?.invalid_at;
+      return invalidDate ? shouldShowInLeads(invalidDate) : false;
+    }
+    
+    return true; // Show all other statuses
+  };
+
+  const filterByTab = (leads: Lead[], activeTab: string) => {
+    return leads.filter(lead => {
+      if (!shouldShowLead(lead)) return false;
+      
+      switch(activeTab) {
+        case 'All': return true;
+        case 'New': return lead.status === 'new';
+        case 'Contacted': return lead.status === 'contacted';
+        case 'Qualified': return lead.status === 'qualified';
+        case 'Under Offer': return lead.status === 'negotiating';
+        case 'Won': return lead.status === 'won';
+        case 'Lost': return lead.status === 'lost';
+        case 'Invalid': return lead.custom_fields?.invalid === 'true';
+        default: return true;
+      }
+    });
+  };
+
+  const filteredLeads = leads.filter(lead => {
+    // Apply tab filtering first
+    if (!filterByTab([lead], activeTab).length) {
       return false;
     }
 
@@ -160,6 +232,11 @@ export const LeadsManager = () => {
       case 'lost': return 'bg-destructive text-destructive-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const getStatusLabel = (status: Lead['status']) => {
+    if (status === 'negotiating') return 'Under Offer';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const getPriorityColor = (priority: Lead['priority']) => {
@@ -215,6 +292,22 @@ export const LeadsManager = () => {
             <Plus className="w-4 h-4 mr-2" />
             New Lead
           </Button>
+        </div>
+
+        {/* Status Tabs */}
+        <div className="mt-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-8 h-10">
+              <TabsTrigger value="All" className="text-xs">All</TabsTrigger>
+              <TabsTrigger value="New" className="text-xs">New</TabsTrigger>
+              <TabsTrigger value="Contacted" className="text-xs">Contacted</TabsTrigger>
+              <TabsTrigger value="Qualified" className="text-xs">Qualified</TabsTrigger>
+              <TabsTrigger value="Under Offer" className="text-xs">Under Offer</TabsTrigger>
+              <TabsTrigger value="Won" className="text-xs">Won</TabsTrigger>
+              <TabsTrigger value="Lost" className="text-xs">Lost</TabsTrigger>
+              <TabsTrigger value="Invalid" className="text-xs">Invalid</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Search and Quick Filters Bar */}
@@ -488,9 +581,9 @@ export const LeadsManager = () => {
                   {/* Lead Name */}
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium text-lg truncate flex-1">{lead.name}</h3>
-                    <Badge className={getStatusColor(lead.status)}>
-                      {lead.status}
-                    </Badge>
+                           <Badge className={getStatusColor(lead.status)}>
+                             {getStatusLabel(lead.status)}
+                           </Badge>
                   </div>
                   
                   {/* Contact Details */}
@@ -505,21 +598,24 @@ export const LeadsManager = () => {
                     </div>
                   </div>
                   
-                  {/* Tags */}
-                  {lead.interest_tags && lead.interest_tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {lead.interest_tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {lead.interest_tags.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{lead.interest_tags.length - 3} more
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                   {/* Tags (excluding Seller/Landlord) */}
+                   {lead.interest_tags && lead.interest_tags.length > 0 && (
+                     <div className="flex flex-wrap gap-1">
+                       {lead.interest_tags
+                         .filter(tag => !['Seller', 'Landlord'].includes(tag))
+                         .slice(0, 3)
+                         .map((tag) => (
+                           <Badge key={tag} variant="secondary" className="text-xs">
+                             {tag}
+                           </Badge>
+                         ))}
+                       {lead.interest_tags.filter(tag => !['Seller', 'Landlord'].includes(tag)).length > 3 && (
+                         <Badge variant="outline" className="text-xs">
+                           +{lead.interest_tags.filter(tag => !['Seller', 'Landlord'].includes(tag)).length - 3} more
+                         </Badge>
+                       )}
+                     </div>
+                   )}
                   
                   {/* Requirements */}
                   {(lead.segment || lead.budget_sale_band || lead.budget_rent_band) && (
@@ -676,32 +772,35 @@ export const LeadsManager = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-[150px]">
-                          {lead.interest_tags && lead.interest_tags.length > 0 ? (
-                            lead.interest_tags.slice(0, 2).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No tags</span>
-                          )}
-                          {lead.interest_tags && lead.interest_tags.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{lead.interest_tags.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                         <div className="flex flex-wrap gap-1 max-w-[150px]">
+                           {lead.interest_tags && lead.interest_tags.length > 0 ? (
+                             lead.interest_tags
+                               .filter(tag => !['Seller', 'Landlord'].includes(tag))
+                               .slice(0, 2)
+                               .map((tag) => (
+                                 <Badge key={tag} variant="secondary" className="text-xs">
+                                   {tag}
+                                 </Badge>
+                               ))
+                           ) : (
+                             <span className="text-xs text-muted-foreground">No tags</span>
+                           )}
+                           {lead.interest_tags && lead.interest_tags.filter(tag => !['Seller', 'Landlord'].includes(tag)).length > 2 && (
+                             <Badge variant="outline" className="text-xs">
+                               +{lead.interest_tags.filter(tag => !['Seller', 'Landlord'].includes(tag)).length - 2}
+                             </Badge>
+                           )}
+                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <Badge className={getStatusColor(lead.status)}>
-                            {lead.status}
-                          </Badge>
-                          <div className="text-xs text-muted-foreground">
-                            {getContactStatusDisplay(lead.contact_status || 'lead')}
-                          </div>
-                        </div>
+                         <div className="space-y-1">
+                           <Badge className={getStatusColor(lead.status)}>
+                             {getStatusLabel(lead.status)}
+                           </Badge>
+                           <div className="text-xs text-muted-foreground">
+                             {getContactStatusDisplay(lead.contact_status || 'lead')}
+                           </div>
+                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1 text-sm">
