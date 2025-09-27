@@ -23,6 +23,7 @@ import { LeadSlaStatus } from "./LeadSlaStatus";
 import { QuickCallActions } from "./QuickCallActions";
 import { LeadDocumentsTab } from "./LeadDocumentsTab";
 import { TaskEventItem } from "./TaskEventItem";
+import { CallOutcomeDialog } from "./CallOutcomeDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LeadDetailDrawerProps {
@@ -64,6 +65,8 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCallOutcomeDialog, setShowCallOutcomeDialog] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || lead?.agent_id === user?.id;
@@ -75,6 +78,52 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       loadCalendarEvents();
     }
   }, [lead?.id, open]);
+
+  // Listen for call outcome dialog events
+  useEffect(() => {
+    const handleCallOutcomeDialog = (event: CustomEvent) => {
+      const { leadId, taskId, leadName } = event.detail;
+      if (leadId === lead?.id) {
+        setSelectedTaskId(taskId);
+        setShowCallOutcomeDialog(true);
+      }
+    };
+
+    window.addEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
+    return () => {
+      window.removeEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
+    };
+  }, [lead?.id]);
+
+  const handleCallOutcomeComplete = async () => {
+    // Mark the completed task as completed and refresh data
+    if (selectedTaskId) {
+      try {
+        await supabase
+          .from('calendar_events')
+          .update({ status: 'completed' })
+          .eq('id', selectedTaskId);
+
+        // Log activity for task completion
+        await supabase
+          .from('activities')
+          .insert([{
+            type: 'task_completed',
+            description: `Follow-up task completed with outcome recorded`,
+            lead_id: lead?.id,
+            created_by: (await supabase.auth.getUser()).data.user?.id || ''
+          }]);
+      } catch (error) {
+        console.error('Error marking task as completed:', error);
+      }
+    }
+    
+    setSelectedTaskId(null);
+    setShowCallOutcomeDialog(false);
+    loadCalendarEvents();
+    loadActivities();
+    onUpdate?.();
+  };
 
   const loadActivities = async () => {
     if (!lead?.id) return;
@@ -520,6 +569,16 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         </div>
       </SheetContent>
+      
+      {/* Call Outcome Dialog */}
+      <CallOutcomeDialog
+        isOpen={showCallOutcomeDialog}
+        onOpenChange={setShowCallOutcomeDialog}
+        leadId={lead?.id || ''}
+        leadName={lead?.name || ''}
+        leadStatus={lead?.status}
+        onComplete={handleCallOutcomeComplete}
+      />
     </Sheet>
   );
 };

@@ -190,26 +190,21 @@ export function CallOutcomeDialog({
         callbackAt
       });
 
-      // Auto-create follow-up tasks for certain outcomes
-      const needsTask = ['interested', 'meeting_scheduled', 'under_offer'].includes(businessOutcome);
-      if (needsTask) {
-        const taskType = businessOutcome === 'meeting_scheduled' ? 'meeting' 
-                        : businessOutcome === 'under_offer' ? 'under_offer'
-                        : 'follow_up';
-        
-        setTaskCreationType(taskType);
-        setShowTaskCreation(true);
-      }
+      // Auto-create follow-up tasks for ALL outcomes (as per spec)
+      const taskType = businessOutcome === 'meeting_scheduled' ? 'meeting' 
+                      : businessOutcome === 'under_offer' ? 'under_offer'
+                      : businessOutcome === 'deal_won' ? 'closure'
+                      : 'follow_up';
+      
+      setTaskCreationType(taskType);
+      setShowTaskCreation(true);
 
       toast({
         title: 'Call outcome recorded',
         description: `Lead outcome: ${selectedOutcome.label}`,
       });
 
-      if (!needsTask) {
-        onComplete();
-        onOpenChange(false);
-      }
+      // All outcomes require task creation as per final spec
       
       // Reset form
       setBusinessOutcome(undefined);

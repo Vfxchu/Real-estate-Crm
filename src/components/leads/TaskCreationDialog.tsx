@@ -100,25 +100,16 @@ export function TaskCreationDialog({
 
       const config = taskConfig[taskType];
       
-      // Create calendar event/task
-      await supabase.from('calendar_events').insert({
+      // Create the follow-up task using the automation service
+      const { createFollowUpTask } = await import('@/services/task-automation');
+      
+      const taskEvent = await createFollowUpTask({
+        leadId,
         title: config.title,
-        event_type: taskType === 'meeting' ? 'meeting' : 'task',
-        start_date: taskDateTime.toISOString(),
-        end_date: addHours(taskDateTime, 1).toISOString(),
-        lead_id: leadId,
-        agent_id: user.id,
-        created_by: user.id,
         description: `${config.description} - ${businessOutcome ? `Following ${businessOutcome}` : 'Scheduled task'}`,
-        status: 'scheduled'
-      });
-
-      // Log activity
-      await supabase.from('activities').insert({
-        type: 'task_created',
-        description: `${config.title} scheduled for ${format(taskDateTime, 'PPp')}`,
-        lead_id: leadId,
-        created_by: user.id
+        dueAt: taskDateTime,
+        eventType: taskType === 'meeting' ? 'meeting' : 'follow_up',
+        businessOutcome
       });
 
       toast({
@@ -126,12 +117,12 @@ export function TaskCreationDialog({
         description: `${config.title} scheduled for ${format(taskDateTime, 'PPp')}`,
       });
 
-      onComplete();
-      onOpenChange(false);
+      onComplete?.();
       
       // Reset form
       setSelectedDate(undefined);
       setSelectedTime('');
+      onOpenChange(false);
     } catch (error: any) {
       toast({
         title: 'Error creating task',

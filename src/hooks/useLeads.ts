@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 import type { Lead } from "@/types";
 export type { Lead } from "@/types";
@@ -98,28 +99,41 @@ export const useLeads = () => {
 
       if (error) throw error;
 
-      // Auto-create follow-up task for new lead
+      // Auto-create follow-up task for new lead (due in 1 hour)
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (currentUser && data) {
-        await supabase.from('calendar_events').insert({
-          title: 'Follow-up New Lead',
-          event_type: 'task',
-          start_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours
-          end_date: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // 3 hours
-          lead_id: data.id,
-          agent_id: data.agent_id || currentUser.id,
-          created_by: currentUser.id,
-          description: 'Initial follow-up call for new lead',
-          status: 'scheduled'
-        });
+        const followUpTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+        const endTime = new Date(followUpTime.getTime() + 60 * 60 * 1000); // 1 hour duration
 
-        // Log activity
-        await supabase.from('activities').insert({
-          type: 'task_created',
-          description: 'Automatic follow-up task created for new lead',
-          lead_id: data.id,
-          created_by: currentUser.id
-        });
+        const { data: taskEvent, error: taskError } = await supabase
+          .from('calendar_events')
+          .insert({
+            title: `Follow up with ${data.name}`,
+            event_type: 'follow_up',
+            start_date: followUpTime.toISOString(),
+            end_date: endTime.toISOString(),
+            lead_id: data.id,
+            agent_id: data.agent_id || currentUser.id,
+            created_by: currentUser.id,
+            description: `Initial follow-up call for new lead: ${data.name}`,
+            status: 'scheduled',
+            reminder_minutes: 15,
+            reminder_offset_min: 15
+          })
+          .select()
+          .single();
+
+        if (taskError) {
+          console.error('Error creating follow-up task:', taskError);
+        } else {
+          // Log activity
+          await supabase.from('activities').insert({
+            type: 'task_created',
+            description: `Auto-created follow-up task due at ${format(followUpTime, 'PPp')}`,
+            lead_id: data.id,
+            created_by: currentUser.id
+          });
+        }
       }
 
       // Data already includes profile from service, no additional fetch needed

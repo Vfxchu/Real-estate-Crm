@@ -40,6 +40,19 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const handleStatusToggle = async () => {
     const newStatus = event.status === 'completed' ? 'scheduled' : 'completed';
     
+    // If completing a follow-up task, open the call outcome dialog
+    if (newStatus === 'completed' && (event.event_type === 'follow_up' || event.event_type === 'task') && event.lead_id) {
+      // Trigger the call outcome dialog
+      window.dispatchEvent(new CustomEvent('open-call-outcome-dialog', {
+        detail: { 
+          leadId: event.lead_id,
+          taskId: event.id,
+          leadName: event.title.replace('Follow up with ', '') || 'Lead'
+        }
+      }));
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from('calendar_events')
