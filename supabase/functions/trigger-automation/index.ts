@@ -67,10 +67,11 @@ serve(async (req) => {
     }
 
     const results: any[] = [];
-    let currentExecution: any = null;
 
     // Execute each workflow
     for (const workflow of workflows) {
+      let currentExecution: any = null;
+      
       try {
         // Create execution record
         const { data: execution, error: executionError } = await supabase
@@ -82,6 +83,7 @@ serve(async (req) => {
           })
           .select()
           .single();
+        
         currentExecution = execution;
 
         if (executionError) {
