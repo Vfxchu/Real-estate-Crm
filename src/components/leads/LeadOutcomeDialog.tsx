@@ -121,11 +121,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
 
       // Deal Won is always available for all stages
 
-      // In Contacted stage, hide advanced outcomes
-      if (currentStage === 'contacted') {
-        available = available.filter(o => !['Under Offer', 'Deal Won', 'Deal Lost'].includes(o));
-      }
-
       // Remove one-time outcomes that were already used
       available = available.filter(o => {
         if (['Interested', 'Under Offer'].includes(o)) {
