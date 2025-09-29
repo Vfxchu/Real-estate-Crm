@@ -64,9 +64,10 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    console.error('Error in n8n-webhook function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (err) {
+    console.error('Error in n8n-webhook function:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -66,7 +66,8 @@ serve(async (req) => {
       });
     }
 
-    const results = [];
+    const results: any[] = [];
+    let currentExecution: any = null;
 
     // Execute each workflow
     for (const workflow of workflows) {
@@ -81,6 +82,7 @@ serve(async (req) => {
           })
           .select()
           .single();
+        currentExecution = execution;
 
         if (executionError) {
           console.error('Error creating execution record:', executionError);
@@ -144,25 +146,26 @@ serve(async (req) => {
             error: 'No webhook URL configured'
           });
         }
-      } catch (error) {
-        console.error('Error executing workflow:', workflow.id, error);
+      } catch (err) {
+        console.error('Error executing workflow:', workflow.id, err);
+        const message = err instanceof Error ? err.message : String(err);
         
         // Update execution with error
-        if (execution?.id) {
+        if (currentExecution?.id) {
           await supabase
             .from('automation_executions')
             .update({
               status: 'failed',
-              error_message: error.message,
+              error_message: message,
               completed_at: new Date().toISOString()
             })
-            .eq('id', execution.id);
+            .eq('id', currentExecution.id);
         }
 
         results.push({
           workflowId: workflow.id,
           status: 'failed', 
-          error: error.message
+          error: message
         });
       }
     }
@@ -176,9 +179,10 @@ serve(async (req) => {
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    console.error('Error in trigger-automation function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (err) {
+    console.error('Error in trigger-automation function:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

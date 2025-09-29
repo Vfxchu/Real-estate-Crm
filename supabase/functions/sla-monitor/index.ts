@@ -44,12 +44,12 @@ serve(async (req) => {
       }
     );
 
-  } catch (error) {
-    console.error('[SLA Monitor] Function error:', error);
-    
+  } catch (err) {
+    console.error('[SLA Monitor] Function error:', err);
+    const message = err instanceof Error ? err.message : String(err);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: message,
         timestamp: new Date().toISOString()
       }),
       {
