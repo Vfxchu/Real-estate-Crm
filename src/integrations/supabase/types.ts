@@ -230,6 +230,7 @@ export type Database = {
           notes: string | null
           notification_sent: boolean | null
           property_id: string | null
+          recurrence_data: Json | null
           recurrence_end_date: string | null
           recurrence_pattern: string | null
           reminder_ack_at: string | null
@@ -239,6 +240,7 @@ export type Database = {
           snooze_until: string | null
           start_date: string
           status: string
+          task_id: string | null
           title: string
           updated_at: string
         }
@@ -259,6 +261,7 @@ export type Database = {
           notes?: string | null
           notification_sent?: boolean | null
           property_id?: string | null
+          recurrence_data?: Json | null
           recurrence_end_date?: string | null
           recurrence_pattern?: string | null
           reminder_ack_at?: string | null
@@ -268,6 +271,7 @@ export type Database = {
           snooze_until?: string | null
           start_date: string
           status?: string
+          task_id?: string | null
           title: string
           updated_at?: string
         }
@@ -288,6 +292,7 @@ export type Database = {
           notes?: string | null
           notification_sent?: boolean | null
           property_id?: string | null
+          recurrence_data?: Json | null
           recurrence_end_date?: string | null
           recurrence_pattern?: string | null
           reminder_ack_at?: string | null
@@ -297,6 +302,7 @@ export type Database = {
           snooze_until?: string | null
           start_date?: string
           status?: string
+          task_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -551,6 +557,27 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_lost_reasons: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           agent_id: string
@@ -623,6 +650,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      invalid_reasons: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string
+        }
+        Relationships: []
+      }
+      lead_outcomes: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          lead_id: string
+          notes: string | null
+          outcome: string
+          reason_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lead_id: string
+          notes?: string | null
+          outcome: string
+          reason_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+          notes?: string | null
+          outcome?: string
+          reason_id?: string | null
+        }
+        Relationships: []
       }
       lead_status_changes: {
         Row: {
@@ -1217,6 +1295,57 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          assigned_to: string
+          calendar_event_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          due_at: string
+          id: string
+          lead_id: string | null
+          origin: string
+          status: string
+          sync_origin: string | null
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string
+          calendar_event_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_at: string
+          id?: string
+          lead_id?: string | null
+          origin?: string
+          status?: string
+          sync_origin?: string | null
+          title: string
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string
+          calendar_event_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          due_at?: string
+          id?: string
+          lead_id?: string | null
+          origin?: string
+          status?: string
+          sync_origin?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           agent_id: string | null
@@ -1331,6 +1460,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_followup_outcome: {
+        Args: {
+          p_client_still_with_us?: boolean
+          p_due_at: string
+          p_lead_id: string
+          p_notes?: string
+          p_outcome: string
+          p_reason_id?: string
+          p_title?: string
+        }
+        Returns: {
+          calendar_event_id: string
+          new_stage: string
+          task_id: string
+        }[]
+      }
+      ensure_manual_followup: {
+        Args: { p_due_at?: string; p_lead_id: string; p_title?: string }
+        Returns: string
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
