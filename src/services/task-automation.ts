@@ -72,39 +72,32 @@ export async function createInitialFollowUpTask(leadId: string, leadName: string
 }
 
 /**
- * Mark task as completed and trigger outcome flow if needed
+ * Mark task as completed with auto-next-task creation
  */
 export async function completeTask(taskId: string, leadId?: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
   try {
-    // Get task details
-    const { data: task } = await supabase
-      .from('calendar_events')
-      .select('*')
-      .eq('id', taskId)
-      .single();
-
-    if (!task) throw new Error('Task not found');
-
-    // Update task status
-    const { error } = await supabase
-      .from('calendar_events')
-      .update({ status: 'completed' })
-      .eq('id', taskId);
+    // Use the new auto-followup completion function
+    const { data, error } = await supabase.rpc('complete_task_with_auto_followup', {
+      p_task_id: taskId
+    });
 
     if (error) throw error;
 
-    // Log completion activity
-    await supabase.from('activities').insert({
-      type: 'task_completed',
-      description: `Task completed: ${task.title}`,
-      lead_id: task.lead_id || leadId,
-      created_by: user.id
-    });
+    const result = data?.[0];
+    if (result) {
+      console.log('Task completion result:', result);
+      return {
+        completed: true,
+        nextTaskCreated: !!result.next_task_id,
+        leadStage: result.lead_stage,
+        nextTaskId: result.next_task_id
+      };
+    }
 
-    return task;
+    return { completed: true, nextTaskCreated: false };
   } catch (error) {
     console.error('Error completing task:', error);
     throw error;

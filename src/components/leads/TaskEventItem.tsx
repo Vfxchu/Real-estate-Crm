@@ -54,27 +54,59 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
     }
     
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .update({ status: newStatus })
-        .eq('id', event.id);
+      if (newStatus === 'completed') {
+        // For task completion, check if this is linked to a task and use auto-followup
+        const { data: linkedTask } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('calendar_event_id', event.id)
+          .maybeSingle();
 
-      if (error) throw error;
+        if (linkedTask) {
+          // Use the auto-followup completion function
+          const { data, error } = await supabase.rpc('complete_task_with_auto_followup', {
+            p_task_id: linkedTask.id
+          });
 
-      // Log activity
-      await supabase
-        .from('activities')
-        .insert([{
-          type: 'status_change',
-          description: `Task "${event.title}" marked as ${newStatus}`,
-          lead_id: event.lead_id,
-          created_by: (await supabase.auth.getUser()).data.user?.id || ''
-        }]);
+          if (error) throw error;
 
-      toast({
-        title: 'Status updated',
-        description: `Task marked as ${newStatus}`,
-      });
+          const result = data?.[0];
+          const toastMessage = result?.next_task_id 
+            ? `Task completed • Next follow-up auto-created for ${result.lead_stage} stage`
+            : 'Task completed';
+          
+          toast({
+            title: 'Task Completed',
+            description: toastMessage,
+          });
+        } else {
+          // Fallback to regular status update for events without linked tasks
+          const { error } = await supabase
+            .from('calendar_events')
+            .update({ status: newStatus })
+            .eq('id', event.id);
+
+          if (error) throw error;
+
+          toast({
+            title: 'Status updated',
+            description: `Event marked as ${newStatus}`,
+          });
+        }
+      } else {
+        // For uncompleting, just update the status
+        const { error } = await supabase
+          .from('calendar_events')
+          .update({ status: newStatus })
+          .eq('id', event.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Status updated',
+          description: `Event marked as ${newStatus}`,
+        });
+      }
 
       onUpdate();
     } catch (error: any) {

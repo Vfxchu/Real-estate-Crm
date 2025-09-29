@@ -102,23 +102,28 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   }, [lead?.id]);
 
   const handleCallOutcomeComplete = async () => {
-    // Mark the completed task as completed and refresh data
+    // Mark the completed task as completed using the auto-followup function
     if (selectedTaskId) {
       try {
-        await supabase
-          .from('calendar_events')
-          .update({ status: 'completed' })
-          .eq('id', selectedTaskId);
+        // Try to find if this is a linked task
+        const { data: linkedTask } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('calendar_event_id', selectedTaskId)
+          .maybeSingle();
 
-        // Log activity for task completion
-        await supabase
-          .from('activities')
-          .insert([{
-            type: 'task_completed',
-            description: `Follow-up task completed with outcome recorded`,
-            lead_id: lead?.id,
-            created_by: (await supabase.auth.getUser()).data.user?.id || ''
-          }]);
+        if (linkedTask) {
+          // Use the auto-followup completion function
+          await supabase.rpc('complete_task_with_auto_followup', {
+            p_task_id: linkedTask.id
+          });
+        } else {
+          // Fallback to regular calendar event completion
+          await supabase
+            .from('calendar_events')
+            .update({ status: 'completed' })
+            .eq('id', selectedTaskId);
+        }
       } catch (error) {
         console.error('Error marking task as completed:', error);
       }

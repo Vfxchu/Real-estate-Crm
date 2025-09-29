@@ -58,23 +58,47 @@ export function useTasks(leadId?: string) {
 
   const updateTaskStatus = async (taskId: string, status: string) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', taskId);
+      if (status.toLowerCase() === 'completed') {
+        // Use the auto-followup completion function
+        const { data, error } = await supabase.rpc('complete_task_with_auto_followup', {
+          p_task_id: taskId
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+
+        const result = data?.[0];
+        if (result) {
+          const toastMessage = result.next_task_id 
+            ? `Task completed • Next follow-up auto-created for ${result.lead_stage} stage`
+            : `Task completed`;
+          
+          toast({
+            title: "Task Completed",
+            description: toastMessage,
+            variant: "default"
+          });
+        }
+      } else {
+        // Regular status update for non-completion
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', taskId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Task Updated", 
+          description: `Task marked as ${status.toLowerCase()}`,
+          variant: "default"
+        });
+      }
 
       // Update local state
       setTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, status } : task
       ));
 
-      toast({
-        title: "Task Updated",
-        description: `Task marked as ${status.toLowerCase()}`,
-        variant: "default"
-      });
     } catch (error: any) {
       console.error('Error updating task:', error);
       toast({
@@ -158,8 +182,11 @@ export function useTasks(leadId?: string) {
             // Convert to Dubai time for display
             const dubaiTime = new Date(dueDate.getTime() + (4 * 60 * 60 * 1000));
             
+            const isFromCompletion = newTask.created_at && 
+              (Date.now() - new Date(newTask.created_at).getTime()) < 5000; // Within 5 seconds
+            
             toast({
-              title: "Follow-up task created",
+              title: isFromCompletion ? "Next follow-up auto-created" : "Follow-up task created",
               description: `Due ${dubaiTime.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
