@@ -119,10 +119,7 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       // Apply visibility rules
       let available = [...FOLLOW_UP_OUTCOMES];
 
-      // Hide Deal Won until Under Offer stage
-      if (currentStage !== 'under offer') {
-        available = available.filter(o => o !== 'Deal Won');
-      }
+      // Deal Won is always available for all stages
 
       // In Contacted stage, hide advanced outcomes
       if (currentStage === 'contacted') {
