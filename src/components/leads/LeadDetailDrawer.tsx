@@ -85,7 +85,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
     }
   }, [lead?.id, open]);
 
-  // Listen for call outcome dialog events
+  // Listen for outcome dialog events
   useEffect(() => {
     const handleCallOutcomeDialog = (event: CustomEvent) => {
       const { leadId, taskId, leadName } = event.detail;
@@ -95,9 +95,20 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       }
     };
 
+    const handleLeadOutcomeDialog = (event: CustomEvent) => {
+      const { leadId, taskId, leadName } = event.detail;
+      if (leadId === lead?.id) {
+        setSelectedTaskId(taskId);
+        setIsOutcomeDialogOpen(true);
+      }
+    };
+
     window.addEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
+    window.addEventListener('open-lead-outcome-dialog', handleLeadOutcomeDialog as EventListener);
+    
     return () => {
       window.removeEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
+      window.removeEventListener('open-lead-outcome-dialog', handleLeadOutcomeDialog as EventListener);
     };
   }, [lead?.id]);
 
@@ -675,6 +686,8 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         isOpen={isOutcomeDialogOpen}
         onOpenChange={setIsOutcomeDialogOpen}
         lead={lead}
+        isFromTaskCompletion={true}
+        selectedTaskId={selectedTaskId}
         onComplete={() => {
           onUpdate?.();
           loadActivities();

@@ -20,6 +20,8 @@ interface LeadOutcomeDialogProps {
   onOpenChange: (open: boolean) => void;
   lead: Lead | null;
   onComplete?: () => void;
+  isFromTaskCompletion?: boolean; // New prop to indicate if opened from task completion
+  selectedTaskId?: string | null; // ID of the task being completed
 }
 
 interface InvalidReason {
@@ -45,7 +47,7 @@ const FOLLOW_UP_OUTCOMES = [
 
 type FollowUpOutcome = typeof FOLLOW_UP_OUTCOMES[number];
 
-export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete }: LeadOutcomeDialogProps) {
+export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFromTaskCompletion = false, selectedTaskId = null }: LeadOutcomeDialogProps) {
   const [outcome, setOutcome] = useState<FollowUpOutcome | "">("");
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState<Date | undefined>(undefined);
@@ -71,8 +73,18 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete }: Le
   const resetForm = () => {
     setOutcome("");
     setNotes("");
-    setFollowUpDate(undefined);
-    setFollowUpTime("09:00");
+    
+    // If opened from task completion, set follow-up to 15 minutes from now
+    if (isFromTaskCompletion) {
+      const now = new Date();
+      const in15Minutes = new Date(now.getTime() + 15 * 60 * 1000);
+      setFollowUpDate(in15Minutes);
+      setFollowUpTime(format(in15Minutes, 'HH:mm'));
+    } else {
+      setFollowUpDate(undefined);
+      setFollowUpTime("09:00");
+    }
+    
     setSelectedReason("");
     setClientStillWithUs(null);
   };
@@ -185,6 +197,34 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete }: Le
       if (error) throw error;
 
       const result = data[0];
+      
+      // If this was opened from task completion, mark the original task as completed
+      if (isFromTaskCompletion && selectedTaskId) {
+        try {
+          // Try to find the linked task and mark it completed
+          const { data: linkedTask } = await supabase
+            .from('tasks')
+            .select('id')
+            .eq('calendar_event_id', selectedTaskId)
+            .maybeSingle();
+
+          if (linkedTask) {
+            await supabase.rpc('complete_task_with_auto_followup', {
+              p_task_id: linkedTask.id
+            });
+          } else {
+            // Fallback: mark calendar event as completed
+            await supabase
+              .from('calendar_events')
+              .update({ status: 'completed' })
+              .eq('id', selectedTaskId);
+          }
+        } catch (taskError) {
+          console.error('Error completing original task:', taskError);
+          // Don't throw - the outcome was recorded successfully
+        }
+      }
+
       toast({
         title: "Outcome Recorded",
         description: `Lead moved to ${result.new_stage} stage • Follow-up task created`,
