@@ -1477,13 +1477,10 @@ export type Database = {
         }[]
       }
       complete_task_with_auto_followup: {
-        Args: { p_auto_next_hours?: number; p_task_id: string }
-        Returns: {
-          completed_task_id: string
-          lead_stage: string
-          next_event_id: string
-          next_task_id: string
-        }[]
+        Args:
+          | { p_auto_next_hours?: number; p_task_id: string }
+          | { p_lead_id: string; p_outcome: string }
+        Returns: undefined
       }
       ensure_manual_followup: {
         Args: { p_due_at?: string; p_lead_id: string; p_title?: string }

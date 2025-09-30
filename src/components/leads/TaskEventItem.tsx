@@ -70,8 +70,8 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
 
           if (error) throw error;
 
-          const result = data?.[0];
-          const toastMessage = result?.next_task_id 
+          const result = (data as any)?.[0];
+          const toastMessage = result?.next_task_id
             ? `Task completed • Next follow-up auto-created for ${result.lead_stage} stage`
             : 'Task completed';
           

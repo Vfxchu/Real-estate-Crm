@@ -66,7 +66,7 @@ export function useTasks(leadId?: string) {
 
         if (error) throw error;
 
-        const result = data?.[0];
+        const result = (data as any)?.[0];
         if (result) {
           const toastMessage = result.next_task_id 
             ? `Task completed • Next follow-up auto-created for ${result.lead_stage} stage`
@@ -115,7 +115,18 @@ export function useTasks(leadId?: string) {
         p_lead_id: leadId
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle terminal status errors with clear messages
+        if (error.message.includes('workflow ended')) {
+          toast({
+            title: "Cannot Create Task",
+            description: error.message,
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Follow-up Created",

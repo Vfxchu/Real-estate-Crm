@@ -76,6 +76,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
 
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || lead?.agent_id === user?.id;
+  
+  // Check if lead is in terminal status (workflow ended)
+  const isTerminalStatus = lead?.status === 'won' || lead?.status === 'lost' || 
+                          (lead?.custom_fields as any)?.invalid === 'true' || 
+                          (lead?.custom_fields as any)?.invalid === true;
 
   useEffect(() => {
     if (lead?.id && open) {
@@ -309,16 +314,31 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         </SheetHeader>
 
         {/* Pinned Action Bar */}
-        <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-          <QuickCallActions 
-            lead={lead} 
-            onComplete={() => {
-              loadActivities();
-              loadCalendarEvents();
-              onUpdate?.();
-            }} 
-          />
-        </div>
+        {!isTerminalStatus && (
+          <div className="p-4 border-b bg-muted/20 flex-shrink-0">
+            <QuickCallActions 
+              lead={lead} 
+              onComplete={() => {
+                loadActivities();
+                loadCalendarEvents();
+                onUpdate?.();
+              }} 
+            />
+          </div>
+        )}
+        
+        {/* Terminal Status Warning */}
+        {isTerminalStatus && (
+          <div className="p-4 border-b bg-yellow-50 dark:bg-yellow-900/20 flex-shrink-0">
+            <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
+              <AlertCircle className="w-4 h-4" />
+              <span>
+                This lead is {lead.status === 'won' ? 'Won' : lead.status === 'lost' ? 'Lost' : 'Invalid'}. 
+                Task creation and outcomes are disabled. Change status from the Status tab if needed.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
@@ -457,13 +477,16 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                           size="sm"
                           variant="outline"
                           onClick={() => lead && createManualFollowUp(lead.id)}
-                          disabled={loadingTasks}
+                          disabled={loadingTasks || isTerminalStatus}
+                          title={isTerminalStatus ? "Cannot create tasks for Won/Lost/Invalid leads" : ""}
                         >
                           Add Follow-Up (+1h)
                         </Button>
                         <Button
                           size="sm"
                           onClick={() => setIsOutcomeDialogOpen(true)}
+                          disabled={isTerminalStatus}
+                          title={isTerminalStatus ? "Cannot record outcomes for Won/Lost/Invalid leads" : ""}
                         >
                           Record Outcome
                         </Button>

@@ -12,10 +12,30 @@ export interface TaskCreationData {
 
 /**
  * Create a new follow-up task with calendar event sync
+ * CRITICAL: Checks lead status to prevent task creation for terminal statuses
  */
 export async function createFollowUpTask(data: TaskCreationData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
+
+  // CRITICAL: Check lead status before creating task
+  const { data: lead, error: leadError } = await supabase
+    .from('leads')
+    .select('status, custom_fields')
+    .eq('id', data.leadId)
+    .single();
+
+  if (leadError) throw leadError;
+  if (!lead) throw new Error('Lead not found');
+
+  // Prevent task creation for terminal statuses
+  if (lead.status === 'won' || lead.status === 'lost') {
+    throw new Error(`Cannot create follow-up task: Lead status is ${lead.status} (workflow ended)`);
+  }
+
+  if ((lead.custom_fields as any)?.invalid === 'true' || (lead.custom_fields as any)?.invalid === true) {
+    throw new Error('Cannot create follow-up task: Lead is marked as Invalid (workflow ended)');
+  }
 
   const endTime = new Date(data.dueAt.getTime() + 60 * 60 * 1000); // 1 hour duration
 
@@ -86,7 +106,7 @@ export async function completeTask(taskId: string, leadId?: string) {
 
     if (error) throw error;
 
-    const result = data?.[0];
+    const result = (data as any)?.[0];
     if (result) {
       console.log('Task completion result:', result);
       return {

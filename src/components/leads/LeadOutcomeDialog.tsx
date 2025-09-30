@@ -137,6 +137,18 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   };
 
   const handleSubmit = async () => {
+    // Check for terminal status before proceeding
+    if (lead && (lead.status === 'won' || lead.status === 'lost' || 
+        (lead.custom_fields as any)?.invalid === 'true' ||
+        (lead.custom_fields as any)?.invalid === true)) {
+      toast({
+        title: 'Cannot Record Outcome',
+        description: `This lead is already ${lead.status === 'won' ? 'Won' : lead.status === 'lost' ? 'Lost' : 'Invalid'}. Change status from the Status tab if needed.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!lead || !outcome || !followUpDate) {
       toast({
         title: "Missing Information",
@@ -186,9 +198,27 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
         p_notes: notes || null
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error recording outcome:', error);
+        // Handle terminal status errors with clear messages
+        if (error.message.includes('workflow ended')) {
+          toast({
+            title: 'Cannot Record Outcome',
+            description: error.message,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: error.message || 'Failed to record outcome',
+            variant: 'destructive',
+          });
+        }
+        setLoading(false);
+        return;
+      }
 
-      const result = data[0];
+      const result = (data as any)?.[0];
       
       // If this was opened from task completion, mark the original task as completed
       if (isFromTaskCompletion && selectedTaskId) {
