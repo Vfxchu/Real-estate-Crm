@@ -1476,6 +1476,16 @@ export type Database = {
           task_id: string
         }[]
       }
+      check_task_consistency: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          issue_type: string
+          lead_id: string
+          lead_name: string
+          lead_status: string
+          task_count: number
+        }[]
+      }
       complete_task_with_auto_followup: {
         Args:
           | { p_auto_next_hours?: number; p_task_id: string }
