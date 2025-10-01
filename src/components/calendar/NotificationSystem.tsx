@@ -87,57 +87,78 @@ export const NotificationSystem: React.FC<NotificationSystemProps> = ({
 
   // Real-time updates from Supabase
   useEffect(() => {
-    const channel = supabase
-      .channel('calendar-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'calendar_events',
-          filter: `agent_id=eq.${supabase.auth.getUser().then(u => u.data.user?.id)}`,
-        },
-        (payload) => {
-          const newEvent = payload.new as CalendarEvent;
-          toast({
-            title: 'New Event Scheduled',
-            description: `${newEvent.title} - ${format(new Date(newEvent.start_date), 'MMM d, h:mm a')}`,
-          });
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupRealtimeSubscription = async () => {
+      try {
+        // Get user ID properly with async/await
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (error || !user?.id) {
+          console.error('Failed to get user for realtime subscription:', error);
+          return;
         }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'calendar_events',
-          filter: `agent_id=eq.${supabase.auth.getUser().then(u => u.data.user?.id)}`,
-        },
-        (payload) => {
-          const updatedEvent = payload.new as CalendarEvent;
-          const oldEvent = payload.old as CalendarEvent;
-          
-          // Notify about status changes
-          if (oldEvent.status !== updatedEvent.status) {
-            if (updatedEvent.status === 'cancelled') {
+
+        // Now subscribe with the proper UUID
+        channel = supabase
+          .channel('calendar-notifications')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'calendar_events',
+              filter: `agent_id=eq.${user.id}`,
+            },
+            (payload) => {
+              const newEvent = payload.new as CalendarEvent;
               toast({
-                title: 'Event Cancelled',
-                description: updatedEvent.title,
-                variant: 'destructive',
-              });
-            } else if (updatedEvent.status === 'rescheduled') {
-              toast({
-                title: 'Event Rescheduled',
-                description: `${updatedEvent.title} - ${format(new Date(updatedEvent.start_date), 'MMM d, h:mm a')}`,
+                title: 'New Event Scheduled',
+                description: `${newEvent.title} - ${format(new Date(newEvent.start_date), 'MMM d, h:mm a')}`,
               });
             }
-          }
-        }
-      )
-      .subscribe();
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'calendar_events',
+              filter: `agent_id=eq.${user.id}`,
+            },
+            (payload) => {
+              const updatedEvent = payload.new as CalendarEvent;
+              const oldEvent = payload.old as CalendarEvent;
+              
+              // Notify about status changes
+              if (oldEvent.status !== updatedEvent.status) {
+                if (updatedEvent.status === 'cancelled') {
+                  toast({
+                    title: 'Event Cancelled',
+                    description: updatedEvent.title,
+                    variant: 'destructive',
+                  });
+                } else if (updatedEvent.status === 'rescheduled') {
+                  toast({
+                    title: 'Event Rescheduled',
+                    description: `${updatedEvent.title} - ${format(new Date(updatedEvent.start_date), 'MMM d, h:mm a')}`,
+                  });
+                }
+              }
+            }
+          )
+          .subscribe();
+      } catch (error) {
+        console.error('Error setting up realtime subscription:', error);
+      }
+    };
+
+    setupRealtimeSubscription();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [toast]);
 
