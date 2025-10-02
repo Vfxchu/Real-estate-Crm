@@ -116,6 +116,9 @@ export default function Contacts() {
   const fetchRows = async () => {
     setLoading(true);
     try {
+      // Agent-scoped filtering: agents only see contacts related to their leads/properties
+      const isAgent = profile?.role === 'agent';
+      
       // Apply advanced filters if enabled
       const filters: any = {
         source: source || undefined,
@@ -154,6 +157,14 @@ export default function Contacts() {
       
       // Filter for closed leads that should appear as contacts
       let contactData = data || [];
+      
+      // Agent filtering: only show contacts related to agent's leads
+      if (isAgent && user?.id) {
+        contactData = contactData.filter((contact: any) => {
+          // Check if contact is linked to any of the agent's leads
+          return contact.agent_id === user.id || contact.created_by === user.id;
+        });
+      }
       
       // Add closed leads as contacts if they don't already exist
       if (status === 'all' || status === 'active_client' || status === 'past_client') {

@@ -185,6 +185,12 @@ export const Properties = () => {
         .from('properties')
         .select('price, offer_type, status, segment');
 
+      // Agent filtering: agents only see their own properties
+      const isAgent = profile?.role === 'agent';
+      if (isAgent && user?.id) {
+        query = query.eq('agent_id', user.id);
+      }
+
       // Apply filters to stats query
       if (filters.propertyType) {
         query = query.eq('segment', filters.propertyType);
@@ -250,6 +256,12 @@ export const Properties = () => {
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
     let filtered = properties.filter(property => {
+      // Agent filtering: agents only see their own properties
+      const isAgent = profile?.role === 'agent';
+      if (isAgent && property.agent_id !== user?.id) {
+        return false;
+      }
+      
       // Search filtering
       if (debouncedSearch) {
         const searchLower = debouncedSearch.toLowerCase();

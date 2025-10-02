@@ -89,8 +89,14 @@ export const Calendar = () => {
     }
   }, []);
 
-  // Filter events based on criteria
+  // Filter events based on criteria and agent scope
   const filteredEvents = events.filter(event => {
+    // Agent filtering: agents only see their own events
+    const isAgent = profile?.role === 'agent';
+    if (isAgent && event.agent_id !== profile?.user_id) {
+      return false;
+    }
+    
     // Search filter
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
