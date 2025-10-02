@@ -86,10 +86,10 @@ export async function getAgentActivities(agentId: string) {
     .from("activities")
     .select(`
       *,
-      leads!inner(name, email, agent_id),
-      properties!inner(title, address, agent_id)
+      leads(name, email, agent_id),
+      properties(title, address, agent_id)
     `)
-    .or(`leads.agent_id.eq.${agentId},properties.agent_id.eq.${agentId}`)
+    .or(`lead_id.in.(select id from leads where agent_id=${agentId}),property_id.in.(select id from properties where agent_id=${agentId})`)
     .order("created_at", { ascending: false });
 
   return { data, error } as const;
