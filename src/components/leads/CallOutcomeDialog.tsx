@@ -21,6 +21,7 @@ interface CallOutcomeDialogProps {
   leadId: string;
   leadName: string;
   leadStatus?: string;
+  leadCustomFields?: any;
   onComplete: () => void;
 }
 
@@ -57,6 +58,7 @@ export function CallOutcomeDialog({
   leadId, 
   leadName,
   leadStatus = 'new',
+  leadCustomFields,
   onComplete 
 }: CallOutcomeDialogProps) {
   const [businessOutcome, setBusinessOutcome] = useState<BusinessOutcome>();
@@ -393,6 +395,8 @@ export function CallOutcomeDialog({
         taskType={taskCreationType}
         businessOutcome={businessOutcome}
         onComplete={onComplete}
+        leadStatus={leadStatus}
+        leadCustomFields={leadCustomFields}
       />
     </>
   );

@@ -92,6 +92,7 @@ export function QuickCallActions({ lead, onComplete }: QuickCallActionsProps) {
         leadId={lead.id}
         leadName={lead.name}
         leadStatus={lead.status}
+        leadCustomFields={lead.custom_fields}
         onComplete={onComplete}
       />
     </div>

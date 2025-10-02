@@ -701,6 +701,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         leadId={lead?.id || ''}
         leadName={lead?.name || ''}
         leadStatus={lead?.status}
+        leadCustomFields={lead?.custom_fields}
         onComplete={handleCallOutcomeComplete}
       />
 

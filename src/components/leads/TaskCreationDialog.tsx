@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Clock, Plus } from 'lucide-react';
+import { CalendarIcon, Clock, Plus, AlertCircle } from 'lucide-react';
 import { format, addDays, addHours } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,8 @@ interface TaskCreationDialogProps {
   taskType: 'follow_up' | 'meeting' | 'under_offer' | 'closure';
   businessOutcome?: string;
   onComplete: () => void;
+  leadStatus?: string;
+  leadCustomFields?: any;
 }
 
 export function TaskCreationDialog({
@@ -28,12 +30,19 @@ export function TaskCreationDialog({
   leadName,
   taskType,
   businessOutcome,
-  onComplete
+  onComplete,
+  leadStatus,
+  leadCustomFields
 }: TaskCreationDialogProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Check if lead is in terminal status (workflow ended)
+  const isTerminalStatus = leadStatus === 'won' || leadStatus === 'lost' || 
+                          leadCustomFields?.invalid === 'true' || 
+                          leadCustomFields?.invalid === true;
 
   const taskConfig = {
     follow_up: {
@@ -153,7 +162,37 @@ export function TaskCreationDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        {/* Terminal Status Warning */}
+        {isTerminalStatus ? (
+          <div className="space-y-4">
+            <Card className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <p className="font-medium text-yellow-900 dark:text-yellow-100">
+                      Cannot Create Tasks for Closed Leads
+                    </p>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      This lead is marked as {leadStatus === 'won' ? 'Won' : leadStatus === 'lost' ? 'Lost' : 'Invalid'} 
+                      and the workflow has ended. Tasks cannot be created for closed leads.
+                    </p>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      If you need to create tasks, please change the lead status from the <strong>Status</strong> tab first.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
           {/* Quick Time Selection */}
           <div className="space-y-3">
             <Label className="text-base font-medium">Quick Schedule</Label>
@@ -261,6 +300,7 @@ export function TaskCreationDialog({
             </Button>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
