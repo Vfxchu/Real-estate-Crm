@@ -25,6 +25,9 @@ import { LeadDocumentsTab } from "./LeadDocumentsTab";
 import { TaskEventItem } from "./TaskEventItem";
 import { CallOutcomeDialog } from "./CallOutcomeDialog";
 import { LeadOutcomeDialog } from "./LeadOutcomeDialog";
+import { MeetingScheduleDialog } from "./MeetingScheduleDialog";
+import { MeetingOutcomeDialog } from "./MeetingOutcomeDialog";
+import { NextTaskCard } from "./NextTaskCard";
 import { DueBadge } from "./DueBadge";
 import { useTasks } from "@/hooks/useTasks";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,7 +73,10 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   const [loading, setLoading] = useState(false);
   const [showCallOutcomeDialog, setShowCallOutcomeDialog] = useState(false);
   const [isOutcomeDialogOpen, setIsOutcomeDialogOpen] = useState(false);
+  const [isMeetingDialogOpen, setIsMeetingDialogOpen] = useState(false);
+  const [isMeetingOutcomeDialogOpen, setIsMeetingOutcomeDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [nextTask, setNextTask] = useState<CalendarEvent | null>(null);
   
   const { tasks, loading: loadingTasks, createManualFollowUp } = useTasks(lead?.id);
 
@@ -87,6 +93,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       setNotes(lead.notes || "");
       loadActivities();
       loadCalendarEvents();
+      loadNextTask();
     }
   }, [lead?.id, open]);
 
@@ -108,12 +115,42 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       }
     };
 
+    const handleMeetingScheduleDialog = (event: CustomEvent) => {
+      const { leadId } = event.detail;
+      if (leadId === lead?.id) {
+        setIsMeetingDialogOpen(true);
+      }
+    };
+
+    const handleMeetingOutcomeDialog = (event: CustomEvent) => {
+      const { leadId, taskId } = event.detail;
+      if (leadId === lead?.id) {
+        setSelectedTaskId(taskId);
+        setIsMeetingOutcomeDialogOpen(true);
+      }
+    };
+
+    const handleConfirmationOutcomeDialog = (event: CustomEvent) => {
+      const { leadId, taskId } = event.detail;
+      if (leadId === lead?.id) {
+        setSelectedTaskId(taskId);
+        // For now, use the regular outcome dialog (could be a separate component later)
+        setIsOutcomeDialogOpen(true);
+      }
+    };
+
     window.addEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
     window.addEventListener('open-lead-outcome-dialog', handleLeadOutcomeDialog as EventListener);
+    window.addEventListener('open-meeting-schedule-dialog', handleMeetingScheduleDialog as EventListener);
+    window.addEventListener('open-meeting-outcome-dialog', handleMeetingOutcomeDialog as EventListener);
+    window.addEventListener('open-confirmation-outcome-dialog', handleConfirmationOutcomeDialog as EventListener);
     
     return () => {
       window.removeEventListener('open-call-outcome-dialog', handleCallOutcomeDialog as EventListener);
       window.removeEventListener('open-lead-outcome-dialog', handleLeadOutcomeDialog as EventListener);
+      window.removeEventListener('open-meeting-schedule-dialog', handleMeetingScheduleDialog as EventListener);
+      window.removeEventListener('open-meeting-outcome-dialog', handleMeetingOutcomeDialog as EventListener);
+      window.removeEventListener('open-confirmation-outcome-dialog', handleConfirmationOutcomeDialog as EventListener);
     };
   }, [lead?.id]);
 
@@ -177,15 +214,38 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
     try {
       const { data, error } = await supabase
         .from('calendar_events')
-        .select('id, title, start_date, event_type, description, status')
+        .select('id, title, start_date, event_type, description, status, lead_id')
         .eq('lead_id', lead.id)
         .order('start_date', { ascending: false })
         .limit(20);
 
       if (error) throw error;
       setEvents(data || []);
+      
+      // Also update next task
+      loadNextTask();
     } catch (error: any) {
       console.error('Error loading calendar events:', error);
+    }
+  };
+
+  const loadNextTask = async () => {
+    if (!lead?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('calendar_events')
+        .select('id, title, start_date, event_type, status, lead_id')
+        .eq('lead_id', lead.id)
+        .eq('status', 'scheduled')
+        .gte('start_date', new Date().toISOString())
+        .order('start_date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      setNextTask(data);
+    } catch (error: any) {
+      console.error('Error loading next task:', error);
     }
   };
 
@@ -313,8 +373,41 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         </SheetHeader>
 
-        {/* Pinned Action Bar */}
-        {!isTerminalStatus && (
+        {/* Pinned Action Bar - replaced with Next Task Card */}
+        {!isTerminalStatus && nextTask && (
+          <div className="p-4 border-b flex-shrink-0">
+            <NextTaskCard
+              task={nextTask}
+              onComplete={() => {
+                // Trigger outcome dialog for this task
+                window.dispatchEvent(new CustomEvent('open-lead-outcome-dialog', {
+                  detail: { 
+                    leadId: lead.id,
+                    taskId: nextTask.id,
+                    leadName: lead.name
+                  }
+                }));
+              }}
+              onReschedule={() => {
+                // Scroll to tasks tab
+                const tabsElement = document.querySelector('[data-tab-value="calendar"]');
+                tabsElement?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onEdit={() => {
+                // Scroll to tasks tab
+                const tabsElement = document.querySelector('[data-tab-value="calendar"]');
+                tabsElement?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onClick={() => {
+                // Focus Tasks & Events tab
+                const tabsTrigger = document.querySelector('[value="calendar"]') as HTMLElement;
+                tabsTrigger?.click();
+              }}
+            />
+          </div>
+        )}
+        
+        {!isTerminalStatus && !nextTask && (
           <div className="p-4 border-b bg-muted/20 flex-shrink-0">
             <QuickCallActions 
               lead={lead} 
@@ -692,32 +785,60 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
             </div>
           </div>
         </div>
-      </SheetContent>
-      
-      {/* Call Outcome Dialog */}
-      <CallOutcomeDialog
-        isOpen={showCallOutcomeDialog}
-        onOpenChange={setShowCallOutcomeDialog}
-        leadId={lead?.id || ''}
-        leadName={lead?.name || ''}
-        leadStatus={lead?.status}
-        leadCustomFields={lead?.custom_fields}
-        onComplete={handleCallOutcomeComplete}
-      />
 
-      {/* Lead Outcome Dialog */}
-      <LeadOutcomeDialog
-        isOpen={isOutcomeDialogOpen}
-        onOpenChange={setIsOutcomeDialogOpen}
-        lead={lead}
-        isFromTaskCompletion={true}
-        selectedTaskId={selectedTaskId}
-        onComplete={() => {
-          onUpdate?.();
-          loadActivities();
-          loadCalendarEvents();
-        }}
-      />
+        {/* Call Outcome Dialog */}
+        <CallOutcomeDialog
+          isOpen={showCallOutcomeDialog}
+          onOpenChange={setShowCallOutcomeDialog}
+          leadId={lead?.id || ''}
+          leadName={lead?.name || ''}
+          leadStatus={lead?.status}
+          leadCustomFields={lead?.custom_fields}
+          onComplete={handleCallOutcomeComplete}
+        />
+
+        {/* Lead Outcome Dialog */}
+        <LeadOutcomeDialog
+          isOpen={isOutcomeDialogOpen}
+          onOpenChange={setIsOutcomeDialogOpen}
+          lead={lead}
+          isFromTaskCompletion={true}
+          selectedTaskId={selectedTaskId}
+          onComplete={() => {
+            onUpdate?.();
+            loadActivities();
+            loadCalendarEvents();
+            loadNextTask();
+          }}
+        />
+
+        {/* Meeting Schedule Dialog */}
+        <MeetingScheduleDialog
+          isOpen={isMeetingDialogOpen}
+          onOpenChange={setIsMeetingDialogOpen}
+          lead={lead}
+          onComplete={() => {
+            loadActivities();
+            loadCalendarEvents();
+            loadNextTask();
+            onUpdate?.();
+          }}
+        />
+
+        {/* Meeting Outcome Dialog */}
+        <MeetingOutcomeDialog
+          isOpen={isMeetingOutcomeDialogOpen}
+          onOpenChange={setIsMeetingOutcomeDialogOpen}
+          lead={lead}
+          meetingTaskId={selectedTaskId}
+          onComplete={() => {
+            loadActivities();
+            loadCalendarEvents();
+            loadNextTask();
+            onUpdate?.();
+          }}
+        />
+      </SheetContent>
     </Sheet>
   );
 };

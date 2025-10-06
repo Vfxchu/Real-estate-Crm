@@ -340,7 +340,7 @@ export type Database = {
           outcome: Database["public"]["Enums"]["call_outcome"]
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           created_at?: string
           id?: string
           lead_id: string
