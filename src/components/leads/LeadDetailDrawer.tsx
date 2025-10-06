@@ -373,30 +373,35 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         </SheetHeader>
 
-        {/* Pinned Action Bar - replaced with Next Task Card */}
-        {!isTerminalStatus && nextTask && (
+        {/* Next Task Card - Shows most recent upcoming task */}
+        {nextTask && (
           <div className="p-4 border-b flex-shrink-0">
+            <div className="mb-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">Next Task</h3>
+            </div>
             <NextTaskCard
               task={nextTask}
               onComplete={() => {
-                // Trigger outcome dialog for this task
-                window.dispatchEvent(new CustomEvent('open-lead-outcome-dialog', {
-                  detail: { 
-                    leadId: lead.id,
-                    taskId: nextTask.id,
-                    leadName: lead.name
-                  }
-                }));
+                if (!isTerminalStatus) {
+                  // Trigger outcome dialog for this task
+                  window.dispatchEvent(new CustomEvent('open-lead-outcome-dialog', {
+                    detail: { 
+                      leadId: lead.id,
+                      taskId: nextTask.id,
+                      leadName: lead.name
+                    }
+                  }));
+                }
               }}
               onReschedule={() => {
-                // Scroll to tasks tab
-                const tabsElement = document.querySelector('[data-tab-value="calendar"]');
-                tabsElement?.scrollIntoView({ behavior: 'smooth' });
+                // Focus Tasks & Events tab
+                const tabsTrigger = document.querySelector('[value="calendar"]') as HTMLElement;
+                tabsTrigger?.click();
               }}
               onEdit={() => {
-                // Scroll to tasks tab
-                const tabsElement = document.querySelector('[data-tab-value="calendar"]');
-                tabsElement?.scrollIntoView({ behavior: 'smooth' });
+                // Focus Tasks & Events tab
+                const tabsTrigger = document.querySelector('[value="calendar"]') as HTMLElement;
+                tabsTrigger?.click();
               }}
               onClick={() => {
                 // Focus Tasks & Events tab
@@ -407,7 +412,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         )}
         
-        {!isTerminalStatus && !nextTask && (
+        {!nextTask && !isTerminalStatus && (
           <div className="p-4 border-b bg-muted/20 flex-shrink-0">
             <QuickCallActions 
               lead={lead} 
@@ -417,19 +422,6 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                 onUpdate?.();
               }} 
             />
-          </div>
-        )}
-        
-        {/* Terminal Status Warning */}
-        {isTerminalStatus && (
-          <div className="p-4 border-b bg-yellow-50 dark:bg-yellow-900/20 flex-shrink-0">
-            <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
-              <AlertCircle className="w-4 h-4" />
-              <span>
-                This lead is {lead.status === 'won' ? 'Won' : lead.status === 'lost' ? 'Lost' : 'Invalid'}. 
-                Task creation and outcomes are disabled. Change status from the Status tab if needed.
-              </span>
-            </div>
           </div>
         )}
 
