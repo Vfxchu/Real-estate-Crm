@@ -94,6 +94,29 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       loadActivities();
       loadCalendarEvents();
       loadNextTask();
+      
+      // Set up real-time subscription for calendar events
+      const channel = supabase
+        .channel(`lead-tasks-${lead.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'calendar_events',
+            filter: `lead_id=eq.${lead.id}`
+          },
+          (payload) => {
+            console.log('Calendar event changed:', payload);
+            loadCalendarEvents();
+            loadNextTask();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [lead?.id, open]);
 
@@ -232,20 +255,47 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   const loadNextTask = async () => {
     if (!lead?.id) return;
     try {
-      const { data, error } = await supabase
+      const now = new Date().toISOString();
+      
+      // First try to get scheduled tasks
+      const { data: scheduledTask, error: scheduledError } = await supabase
         .from('calendar_events')
         .select('id, title, start_date, event_type, status, lead_id')
         .eq('lead_id', lead.id)
         .eq('status', 'scheduled')
-        .gte('start_date', new Date().toISOString())
+        .gte('start_date', now)
         .order('start_date', { ascending: true })
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
-      setNextTask(data);
+      if (scheduledError && scheduledError.code !== 'PGRST116') {
+        throw scheduledError;
+      }
+
+      if (scheduledTask) {
+        setNextTask(scheduledTask);
+        return;
+      }
+
+      // If no future scheduled tasks, check for overdue ones
+      const { data: overdueTask, error: overdueError } = await supabase
+        .from('calendar_events')
+        .select('id, title, start_date, event_type, status, lead_id')
+        .eq('lead_id', lead.id)
+        .eq('status', 'scheduled')
+        .lt('start_date', now)
+        .order('start_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (overdueError && overdueError.code !== 'PGRST116') {
+        throw overdueError;
+      }
+
+      setNextTask(overdueTask || null);
     } catch (error: any) {
       console.error('Error loading next task:', error);
+      setNextTask(null);
     }
   };
 
@@ -374,11 +424,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         </SheetHeader>
 
         {/* Next Task Card - Shows most recent upcoming task for ALL leads */}
-        {nextTask && (
-          <div className="p-4 border-b flex-shrink-0">
-            <div className="mb-2">
-              <h3 className="text-sm font-semibold text-muted-foreground">Next Task</h3>
-            </div>
+        <div className="p-4 border-b flex-shrink-0">
+          <div className="mb-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Next Task</h3>
+          </div>
+          {nextTask ? (
             <NextTaskCard
               task={nextTask}
               onComplete={() => {
@@ -409,16 +459,12 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                 tabsTrigger?.click();
               }}
             />
-          </div>
-        )}
-        
-        {!nextTask && (
-          <div className="p-4 border-b bg-muted/50 flex-shrink-0">
-            <div className="text-center text-sm text-muted-foreground py-2">
+          ) : (
+            <div className="text-center text-sm text-muted-foreground py-3 border rounded-lg border-dashed">
               No upcoming tasks scheduled
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
