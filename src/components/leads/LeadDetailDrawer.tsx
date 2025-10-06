@@ -373,7 +373,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         </SheetHeader>
 
-        {/* Next Task Card - Shows most recent upcoming task */}
+        {/* Next Task Card - Shows most recent upcoming task for ALL leads */}
         {nextTask && (
           <div className="p-4 border-b flex-shrink-0">
             <div className="mb-2">
@@ -412,16 +412,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         )}
         
-        {!nextTask && !isTerminalStatus && (
-          <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-            <QuickCallActions 
-              lead={lead} 
-              onComplete={() => {
-                loadActivities();
-                loadCalendarEvents();
-                onUpdate?.();
-              }} 
-            />
+        {!nextTask && (
+          <div className="p-4 border-b bg-muted/50 flex-shrink-0">
+            <div className="text-center text-sm text-muted-foreground py-2">
+              No upcoming tasks scheduled
+            </div>
           </div>
         )}
 
