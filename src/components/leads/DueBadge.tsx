@@ -5,9 +5,11 @@ import { Clock } from "lucide-react";
 interface DueBadgeProps {
   dueAt: string;
   className?: string;
+  taskStatus?: string;
+  leadStatus?: string;
 }
 
-export function DueBadge({ dueAt, className }: DueBadgeProps) {
+export function DueBadge({ dueAt, className, taskStatus, leadStatus }: DueBadgeProps) {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
 
   useEffect(() => {
@@ -22,8 +24,13 @@ export function DueBadge({ dueAt, className }: DueBadgeProps) {
       
       const diff = dueInDubai.getTime() - nowInDubai.getTime();
       
+      // Don't show overdue if task is completed or lead is won
       if (diff <= 0) {
-        setTimeRemaining("Overdue");
+        if (taskStatus === 'Completed' || taskStatus === 'completed' || leadStatus === 'won') {
+          setTimeRemaining("Completed");
+        } else {
+          setTimeRemaining("Overdue");
+        }
         return;
       }
 
@@ -47,13 +54,14 @@ export function DueBadge({ dueAt, className }: DueBadgeProps) {
     const interval = setInterval(updateTimeRemaining, 60000);
 
     return () => clearInterval(interval);
-  }, [dueAt]);
+  }, [dueAt, taskStatus, leadStatus]);
 
   const isOverdue = timeRemaining === "Overdue";
+  const isCompleted = timeRemaining === "Completed";
 
   return (
     <Badge 
-      variant={isOverdue ? "destructive" : "secondary"} 
+      variant={isOverdue ? "destructive" : isCompleted ? "default" : "secondary"} 
       className={`flex items-center gap-1 ${className}`}
     >
       <Clock className="h-3 w-3" />

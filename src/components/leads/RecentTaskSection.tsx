@@ -57,7 +57,7 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-semibold text-sm truncate">{recentTask.title}</h4>
-              <DueBadge dueAt={recentTask.due_at} />
+              <DueBadge dueAt={recentTask.due_at} taskStatus={recentTask.status} />
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
               <Clock className="w-3 h-3" />

@@ -507,7 +507,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <h4 className="font-medium text-sm">{task.title}</h4>
-                                      <DueBadge dueAt={task.due_at} />
+                                      <DueBadge dueAt={task.due_at} taskStatus={task.status} leadStatus={lead.status} />
                                     </div>
                                     <p className="text-xs text-muted-foreground">
                                       {new Date(task.due_at).toLocaleDateString('en-US', {
@@ -556,7 +556,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                                         })} (Dubai time)
                                       </p>
                                     </div>
-                                    <DueBadge dueAt={task.due_at} />
+                                    <DueBadge dueAt={task.due_at} taskStatus={task.status} leadStatus={lead.status} />
                                   </div>
                                 </Card>
                               ))}

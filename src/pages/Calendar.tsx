@@ -143,7 +143,14 @@ export const Calendar = () => {
     overdue: events.filter(e => {
       const now = new Date();
       const eventDate = new Date(e.start_date);
-      return eventDate < now && e.status === 'scheduled';
+      // Don't count as overdue if event is completed or related lead is won
+      if (e.status !== 'scheduled') return false;
+      if (eventDate >= now) return false;
+      if (e.lead_id) {
+        const relatedLead = leads.find(l => l.id === e.lead_id);
+        if (relatedLead?.status === 'won') return false;
+      }
+      return true;
     }).length,
   };
 
