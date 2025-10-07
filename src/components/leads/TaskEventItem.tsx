@@ -40,53 +40,73 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const handleStatusToggle = async () => {
     const newStatus = event.status === 'completed' ? 'scheduled' : 'completed';
     
-    // SINGLE-CLICK COMPLETION: Immediately open outcome dialog for ALL tasks (not just follow-ups)
-    if (newStatus === 'completed' && event.lead_id) {
-      // Check event type to determine which dialog to show
-      if (event.event_type === 'meeting') {
-        // Meeting outcome dialog (Interested, Under Offer, Not Interested)
-        window.dispatchEvent(new CustomEvent('open-meeting-outcome-dialog', {
-          detail: { 
-            leadId: event.lead_id,
-            taskId: event.id,
-            leadName: event.title.replace('Meeting with ', '') || 'Lead'
-          }
-        }));
-      } else if (event.title.toLowerCase().includes('confirm') && event.description?.includes('meeting')) {
-        // Confirmation task outcome dialog (Meeting Confirmed, Reschedule, No Answer, Call Back)
-        window.dispatchEvent(new CustomEvent('open-confirmation-outcome-dialog', {
-          detail: { 
-            leadId: event.lead_id,
-            taskId: event.id,
-            leadName: event.title || 'Lead'
-          }
-        }));
-      } else {
-        // Regular task outcome dialog (all outcomes)
-        window.dispatchEvent(new CustomEvent('open-lead-outcome-dialog', {
-          detail: { 
-            leadId: event.lead_id,
-            taskId: event.id,
-            leadName: event.title.replace('Follow up with ', '').replace('Contact the lead', '') || 'Lead'
-          }
-        }));
-      }
+    // If completing a follow-up task, open the lead outcome dialog
+    if (newStatus === 'completed' && (event.event_type === 'follow_up' || event.event_type === 'task') && event.lead_id) {
+      // Trigger the lead outcome dialog for follow-up outcome selection
+      window.dispatchEvent(new CustomEvent('open-lead-outcome-dialog', {
+        detail: { 
+          leadId: event.lead_id,
+          taskId: event.id,
+          leadName: event.title.replace('Follow up with ', '') || 'Lead'
+        }
+      }));
       return;
     }
     
-    // Allow uncompleting tasks without dialog
     try {
-      const { error } = await supabase
-        .from('calendar_events')
-        .update({ status: newStatus })
-        .eq('id', event.id);
+      if (newStatus === 'completed') {
+        // For task completion, check if this is linked to a task and use auto-followup
+        const { data: linkedTask } = await supabase
+          .from('tasks')
+          .select('id')
+          .eq('calendar_event_id', event.id)
+          .maybeSingle();
 
-      if (error) throw error;
+        if (linkedTask) {
+          // Use the auto-followup completion function
+          const { data, error } = await supabase.rpc('complete_task_with_auto_followup', {
+            p_task_id: linkedTask.id
+          });
 
-      toast({
-        title: 'Status updated',
-        description: `Event marked as ${newStatus}`,
-      });
+          if (error) throw error;
+
+          const result = (data as any)?.[0];
+          const toastMessage = result?.next_task_id
+            ? `Task completed • Next follow-up auto-created for ${result.lead_stage} stage`
+            : 'Task completed';
+          
+          toast({
+            title: 'Task Completed',
+            description: toastMessage,
+          });
+        } else {
+          // Fallback to regular status update for events without linked tasks
+          const { error } = await supabase
+            .from('calendar_events')
+            .update({ status: newStatus })
+            .eq('id', event.id);
+
+          if (error) throw error;
+
+          toast({
+            title: 'Status updated',
+            description: `Event marked as ${newStatus}`,
+          });
+        }
+      } else {
+        // For uncompleting, just update the status
+        const { error } = await supabase
+          .from('calendar_events')
+          .update({ status: newStatus })
+          .eq('id', event.id);
+
+        if (error) throw error;
+
+        toast({
+          title: 'Status updated',
+          description: `Event marked as ${newStatus}`,
+        });
+      }
 
       onUpdate();
     } catch (error: any) {

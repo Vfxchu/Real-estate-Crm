@@ -116,20 +116,14 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       const usedOutcomes = pastOutcomes?.map(o => o.outcome) || [];
       const currentStage = lead.status.toLowerCase();
 
-      // Apply visibility rules with stage gating
+      // Apply visibility rules
       let available = [...FOLLOW_UP_OUTCOMES];
 
-      // Stage gating: In 'new' or 'contacted' stages, hide advanced outcomes
-      if (currentStage === 'new' || currentStage === 'contacted') {
-        available = available.filter(o => !['Under Offer', 'Deal Won', 'Deal Lost'].includes(o));
-      }
+      // Deal Won is always available for all stages
 
-      // In 'negotiating' (Under Offer) stage, show all including Deal Won
-      // No filtering needed for negotiating stage
-
-      // Remove one-time outcomes that were already used (idempotency)
+      // Remove one-time outcomes that were already used
       available = available.filter(o => {
-        if (['Interested', 'Meeting Scheduled', 'Under Offer'].includes(o)) {
+        if (['Interested', 'Under Offer'].includes(o)) {
           return !usedOutcomes.includes(o);
         }
         return true;
@@ -194,16 +188,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       
       // Convert to UTC (assuming Dubai timezone +4)
       const utcDueAt = new Date(dueAt.getTime() - (4 * 60 * 60 * 1000));
-
-      // Handle "Meeting Scheduled" outcome specially - open meeting dialog
-      if (outcome === 'Meeting Scheduled') {
-        // Trigger meeting schedule dialog instead of using RPC
-        window.dispatchEvent(new CustomEvent('open-meeting-schedule-dialog', {
-          detail: { leadId: lead.id }
-        }));
-        onOpenChange(false);
-        return;
-      }
 
       const { data, error } = await supabase.rpc('apply_followup_outcome', {
         p_lead_id: lead.id,
