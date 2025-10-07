@@ -17,8 +17,10 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
   loading,
   onCompleteTask
 }) => {
-  // Get the most recent open task
-  const recentTask = tasks.find(t => t.status === 'Open');
+  // Get the most recent open task (next upcoming by due date)
+  const recentTask = tasks
+    .filter(t => t.status === 'Open')
+    .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())[0];
 
   if (loading) {
     return (
