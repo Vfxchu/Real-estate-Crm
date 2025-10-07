@@ -314,36 +314,31 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         </SheetHeader>
 
         {/* Recent Task Section */}
-        {!isTerminalStatus && (
-          <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-            <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Recent Task
-            </div>
-            <RecentTaskSection 
-              tasks={tasks}
-              loading={loadingTasks}
-              onCompleteTask={async (taskId) => {
-                await updateTaskStatus(taskId, 'Completed');
-                loadActivities();
-                loadCalendarEvents();
-                onUpdate?.();
-              }}
-            />
+        <div className="p-4 border-b bg-muted/20 flex-shrink-0">
+          <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Recent Task
           </div>
-        )}
-        
-        {/* Terminal Status Warning */}
-        {isTerminalStatus && (
-          <div className="p-4 border-b bg-yellow-50 dark:bg-yellow-900/20 flex-shrink-0">
-            <div className="flex items-center gap-2 text-sm text-yellow-800 dark:text-yellow-200">
-              <AlertCircle className="w-4 h-4" />
+          <RecentTaskSection 
+            tasks={tasks}
+            loading={loadingTasks}
+            onCompleteTask={async (taskId) => {
+              await updateTaskStatus(taskId, 'Completed');
+              loadActivities();
+              loadCalendarEvents();
+              onUpdate?.();
+            }}
+          />
+          
+          {/* Terminal Status Info */}
+          {isTerminalStatus && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <AlertCircle className="w-3 h-3" />
               <span>
-                This lead is {lead.status === 'won' ? 'Won' : lead.status === 'lost' ? 'Lost' : 'Invalid'}. 
-                Task creation and outcomes are disabled. Change status from the Status tab if needed.
+                Lead is {lead.status === 'won' ? 'Won' : lead.status === 'lost' ? 'Lost' : 'Invalid'}. Change status from Status tab if needed.
               </span>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
