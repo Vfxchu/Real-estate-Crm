@@ -20,7 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLeads } from "@/hooks/useLeads";
 import { LeadMeta } from "./LeadMeta";
 import { LeadSlaStatus } from "./LeadSlaStatus";
-import { QuickCallActions } from "./QuickCallActions";
+import { RecentTaskSection } from "./RecentTaskSection";
 import { LeadDocumentsTab } from "./LeadDocumentsTab";
 import { TaskEventItem } from "./TaskEventItem";
 import { CallOutcomeDialog } from "./CallOutcomeDialog";
@@ -72,7 +72,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   const [isOutcomeDialogOpen, setIsOutcomeDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
-  const { tasks, loading: loadingTasks, createManualFollowUp } = useTasks(lead?.id);
+  const { tasks, loading: loadingTasks, createManualFollowUp, updateTaskStatus } = useTasks(lead?.id);
 
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || lead?.agent_id === user?.id;
@@ -313,16 +313,21 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           </div>
         </SheetHeader>
 
-        {/* Pinned Action Bar */}
+        {/* Recent Task Section */}
         {!isTerminalStatus && (
           <div className="p-4 border-b bg-muted/20 flex-shrink-0">
-            <QuickCallActions 
-              lead={lead} 
-              onComplete={() => {
+            <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Recent Task
+            </div>
+            <RecentTaskSection 
+              tasks={tasks}
+              loading={loadingTasks}
+              onCompleteTask={async (taskId) => {
+                await updateTaskStatus(taskId, 'Completed');
                 loadActivities();
                 loadCalendarEvents();
                 onUpdate?.();
-              }} 
+              }}
             />
           </div>
         )}
