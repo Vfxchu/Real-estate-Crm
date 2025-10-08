@@ -13,7 +13,7 @@ import ClearableSelect from "@/components/ui/ClearableSelect";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
 import { PropertyDeleteDialog } from "@/components/properties/PropertyDeleteDialog";
 import { PropertyEditSidebar } from "@/components/properties/PropertyEditSidebar";
-import { PropertyDetailView } from "@/components/properties/PropertyDetailView";
+import { PropertyDetailDrawer } from "@/components/properties/PropertyDetailDrawer";
 import { ExportPropertyDialog } from "@/components/properties/PropertyExportDialog";
 import { useProperties, Property } from "@/hooks/useProperties";
 import { useAuth } from "@/contexts/AuthContext";
@@ -886,14 +886,13 @@ export const Properties = () => {
         }}
       />
 
-      {/* Property Detail View */}
-      <PropertyDetailView
+      {/* Property Detail Drawer */}
+      <PropertyDetailDrawer
         property={selectedProperty}
         open={showDetailView}
-        onOpenChange={setShowDetailView}
+        onClose={() => setShowDetailView(false)}
         onEdit={handleEditProperty}
-        onScheduleViewing={handleScheduleViewing}
-        onShare={handleShareProperty}
+        onUpdate={fetchStats}
       />
 
       {/* Property Delete Dialog */}

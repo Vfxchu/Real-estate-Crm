@@ -18,6 +18,7 @@ import { useContacts } from "@/hooks/useContacts";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
+import { ensureOwnerTag } from "@/services/property-automation";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -31,7 +32,7 @@ const propertySchema = z.object({
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
   bedrooms: z.string().optional(),
-  bathrooms: z.number().min(0).step(0.5).optional(),
+  bathrooms: z.number().int("Bathrooms must be a whole number").min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   plot_area_sqft: z.number().min(0).optional(),
   status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
@@ -88,6 +89,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
   const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
+  const [showInlineOwnerForm, setShowInlineOwnerForm] = useState(false);
+  const [inlineOwnerData, setInlineOwnerData] = useState({ name: '', phone: '', email: '' });
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
@@ -395,6 +398,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       // Move all files and update contact records
       if (propertyData) {
+        // Auto-assign seller/landlord tag to owner
+        if (data.owner_contact_id) {
+          await ensureOwnerTag(data.owner_contact_id, data.offer_type);
+        }
+
         // Move images first and update the property with storage paths
         let movedImagePaths: string[] = [];
         if (uploadedImages.length > 0) {
@@ -763,10 +771,13 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                         <Input 
                           type="number" 
                           min="0"
-                          step="0.5"
+                          step="1"
                           placeholder="Number of bathrooms" 
                           {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            field.onChange(isNaN(value) ? undefined : value);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
