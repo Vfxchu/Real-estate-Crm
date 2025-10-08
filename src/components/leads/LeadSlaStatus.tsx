@@ -69,6 +69,11 @@ export function LeadSlaStatus({ lead, agentName }: LeadSlaStatusProps) {
 
   const { isOverdue, remainingMinutes, elapsedMinutes } = slaStatus;
 
+  // Don't show SLA overdue for won leads
+  if (isOverdue && lead.status === 'won') {
+    return null;
+  }
+
   if (isOverdue) {
     return (
       <div className="flex items-center gap-2">

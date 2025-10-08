@@ -321,6 +321,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           <RecentTaskSection 
             tasks={tasks}
             loading={loadingTasks}
+            leadStatus={lead.status}
             onCompleteTask={async (taskId) => {
               await updateTaskStatus(taskId, 'Completed');
               loadActivities();

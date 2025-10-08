@@ -10,12 +10,14 @@ interface RecentTaskSectionProps {
   tasks: Task[];
   loading: boolean;
   onCompleteTask: (taskId: string) => void;
+  leadStatus?: string;
 }
 
 export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
   tasks,
   loading,
-  onCompleteTask
+  onCompleteTask,
+  leadStatus
 }) => {
   // Get the most recent open task (next upcoming by due date)
   const recentTask = tasks
@@ -57,7 +59,7 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-semibold text-sm truncate">{recentTask.title}</h4>
-              <DueBadge dueAt={recentTask.due_at} taskStatus={recentTask.status} />
+              <DueBadge dueAt={recentTask.due_at} taskStatus={recentTask.status} leadStatus={leadStatus} />
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
               <Clock className="w-3 h-3" />

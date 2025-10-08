@@ -24,13 +24,14 @@ export function DueBadge({ dueAt, className, taskStatus, leadStatus }: DueBadgeP
       
       const diff = dueInDubai.getTime() - nowInDubai.getTime();
       
-      // Don't show overdue if task is completed or lead is won
+      // Hide badge completely if task is completed or lead is won
+      if (taskStatus === 'Completed' || taskStatus === 'completed' || leadStatus === 'won') {
+        setTimeRemaining("");
+        return;
+      }
+      
       if (diff <= 0) {
-        if (taskStatus === 'Completed' || taskStatus === 'completed' || leadStatus === 'won') {
-          setTimeRemaining("Completed");
-        } else {
-          setTimeRemaining("Overdue");
-        }
+        setTimeRemaining("Overdue");
         return;
       }
 
@@ -56,12 +57,16 @@ export function DueBadge({ dueAt, className, taskStatus, leadStatus }: DueBadgeP
     return () => clearInterval(interval);
   }, [dueAt, taskStatus, leadStatus]);
 
+  // Don't render badge if no time remaining (completed/won)
+  if (!timeRemaining) {
+    return null;
+  }
+
   const isOverdue = timeRemaining === "Overdue";
-  const isCompleted = timeRemaining === "Completed";
 
   return (
     <Badge 
-      variant={isOverdue ? "destructive" : isCompleted ? "default" : "secondary"} 
+      variant={isOverdue ? "destructive" : "secondary"} 
       className={`flex items-center gap-1 ${className}`}
     >
       <Clock className="h-3 w-3" />
