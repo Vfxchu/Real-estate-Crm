@@ -35,6 +35,7 @@ export const PropertyEditSidebar: React.FC<PropertyEditSidebarProps> = ({
               variant="ghost"
               size="icon"
               onClick={() => onOpenChange(false)}
+              aria-label="Close"
             >
               <X className="w-4 h-4" />
             </Button>

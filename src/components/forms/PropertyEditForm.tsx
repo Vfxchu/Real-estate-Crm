@@ -16,6 +16,7 @@ import { Property } from "@/hooks/useProperties";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { PROPERTY_SEGMENTS, getSubtypeOptions, OFFER_TYPES, PROPERTY_STATUS, VIEW_OPTIONS } from "@/constants/property";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
+import { PropertyFilesSection } from "@/components/properties/PropertyFilesSection";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -28,7 +29,7 @@ const propertySchema = z.object({
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
   bedrooms: z.string().optional(),
-  bathrooms: z.number().min(0).optional(),
+  bathrooms: z.number().int("Bathrooms must be a whole number").min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
@@ -200,7 +201,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         zip_code: null,
         unit_number: data.unit_number || null,
         bedrooms: data.bedrooms ? bedroomEnumToNumber(data.bedrooms as BedroomEnum) : null,
-        bathrooms: data.bathrooms ?? null,
+        bathrooms: data.bathrooms ? Math.floor(data.bathrooms) : null,
         area_sqft: data.area_sqft ?? null,
         status: data.status,
         offer_type: data.offer_type,
@@ -221,7 +222,21 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
 
       if (error) {
         console.error('Update property error:', error);
+        
+        // Log error to activities
+        await supabase.from('activities').insert({
+          type: 'error',
+          description: `Error updating property: ${error.message} (Code: ${error.code || 'unknown'})`,
+          created_by: user.id
+        });
+        
         throw error;
+      }
+
+      // Auto-assign seller/landlord tag to owner if changed
+      if (payload.owner_contact_id && payload.offer_type) {
+        const { ensureOwnerTag } = await import('@/services/property-automation');
+        await ensureOwnerTag(payload.owner_contact_id, payload.offer_type);
       }
 
       toast({
@@ -516,10 +531,10 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
                     <Input 
                       type="number" 
                       min="0"
-                      step="0.5"
+                      step="1"
                       placeholder="Number of bathrooms" 
                       {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      onChange={(e) => field.onChange(Math.floor(Number(e.target.value)))}
                     />
                   </FormControl>
                   <FormMessage />
@@ -728,6 +743,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               </div>
             )}
           </div>
+
+          {/* Documents & Layout Section */}
+          <PropertyFilesSection propertyId={property.id} canEdit={true} />
         </div>
 
         {/* Submit Button */}

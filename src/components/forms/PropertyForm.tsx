@@ -17,6 +17,7 @@ import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } fro
 import { useContacts } from "@/hooks/useContacts";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
+import { Plus } from "lucide-react";
 import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
 import { ensureOwnerTag } from "@/services/property-automation";
 
@@ -94,6 +95,11 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showAddOwner, setShowAddOwner] = useState(false);
+  const [newOwnerName, setNewOwnerName] = useState('');
+  const [newOwnerPhone, setNewOwnerPhone] = useState('');
+  const [newOwnerEmail, setNewOwnerEmail] = useState('');
+  const [creatingOwner, setCreatingOwner] = useState(false);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -902,8 +908,134 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   control={form.control}
                   name="owner_contact_id"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Owner Contact *</FormLabel>
+                    <FormItem className="md:col-span-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <FormLabel>Owner Contact *</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddOwner(!showAddOwner);
+                            if (!showAddOwner) {
+                              setNewOwnerName('');
+                              setNewOwnerPhone('');
+                              setNewOwnerEmail('');
+                            }
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          {showAddOwner ? 'Cancel' : 'Add New Owner'}
+                        </Button>
+                      </div>
+                      
+                      {showAddOwner && (
+                        <div className="mb-4 p-4 border rounded-lg bg-muted/50 space-y-3">
+                          <p className="text-sm text-muted-foreground">Create a new owner contact (basic info only)</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-sm font-medium">Full Name *</label>
+                              <Input
+                                value={newOwnerName}
+                                onChange={(e) => setNewOwnerName(e.target.value)}
+                                placeholder="Enter full name"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Phone</label>
+                              <Input
+                                value={newOwnerPhone}
+                                onChange={(e) => setNewOwnerPhone(e.target.value)}
+                                placeholder="Enter phone number"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Email</label>
+                              <Input
+                                type="email"
+                                value={newOwnerEmail}
+                                onChange={(e) => setNewOwnerEmail(e.target.value)}
+                                placeholder="Enter email"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!newOwnerName.trim() || creatingOwner}
+                            onClick={async () => {
+                              if (!newOwnerName.trim()) {
+                                toast({
+                                  title: 'Name required',
+                                  description: 'Please enter the owner name',
+                                  variant: 'destructive'
+                                });
+                                return;
+                              }
+                              
+                              try {
+                                setCreatingOwner(true);
+                                const { data: userData } = await supabase.auth.getUser();
+                                if (!userData.user) throw new Error('Not authenticated');
+                                
+                                // Create minimal lead/contact record
+                                const { data: newLead, error: leadError } = await supabase
+                                  .from('leads')
+                                  .insert({
+                                    name: newOwnerName.trim(),
+                                    phone: newOwnerPhone.trim() || null,
+                                    email: newOwnerEmail.trim() || null,
+                                    status: 'new',
+                                    agent_id: userData.user.id
+                                  })
+                                  .select()
+                                  .single();
+                                
+                                if (leadError) throw leadError;
+                                
+                                // Set as owner
+                                field.onChange(newLead.id);
+                                
+                                // Refresh contacts list
+                                const { data } = await contacts.list({ q: '', page: 1, pageSize: 1000 });
+                                setContactsList(data || []);
+                                
+                                toast({
+                                  title: 'Owner created',
+                                  description: `${newOwnerName} has been added as a contact`
+                                });
+                                
+                                // Reset and hide form
+                                setNewOwnerName('');
+                                setNewOwnerPhone('');
+                                setNewOwnerEmail('');
+                                setShowAddOwner(false);
+                              } catch (error: any) {
+                                toast({
+                                  title: 'Error creating owner',
+                                  description: error.message,
+                                  variant: 'destructive'
+                                });
+                              } finally {
+                                setCreatingOwner(false);
+                              }
+                            }}
+                          >
+                            {creatingOwner ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              'Create & Select Owner'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      
                       <FormControl>
                         <SearchableContactCombobox
                           value={field.value}
