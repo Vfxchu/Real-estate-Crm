@@ -465,10 +465,13 @@ export const Properties = () => {
               <SelectItem value="EUR">EUR</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="btn-primary flex-1 sm:flex-none" onClick={() => setShowAddProperty(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Property
-          </Button>
+          {/* Only admins can add properties */}
+          {isAdmin && (
+            <Button className="btn-primary flex-1 sm:flex-none" onClick={() => setShowAddProperty(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Property
+            </Button>
+          )}
         </div>
       </div>
 
@@ -849,27 +852,29 @@ export const Properties = () => {
                      >
                        <Share2 className="w-4 h-4" />
                      </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost"
-                       onClick={() => handleEditProperty(property)}
-                       disabled={!isAdmin && property.agent_id !== user?.id}
-                       title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
-                     >
-                       <Edit className="w-4 h-4" />
-                     </Button>
-                     {isAdmin && (
-                       <Button 
-                         size="sm" 
-                         variant="ghost" 
-                         className="text-destructive hover:text-destructive"
-                         onClick={() => handleDeleteProperty(property)}
-                         disabled={deleting === property.id}
-                         title="Delete property"
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </Button>
-                     )}
+                      {/* Only admins can edit/delete properties */}
+                      {isAdmin && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => handleEditProperty(property)}
+                            title="Edit property"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteProperty(property)}
+                            disabled={deleting === property.id}
+                            title="Delete property"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                   </div>
                 </CardContent>
               </Card>

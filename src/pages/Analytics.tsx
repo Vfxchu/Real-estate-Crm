@@ -100,12 +100,11 @@ export const Analytics = () => {
         
         // Fetch active agents count (only for admin)
         let activeAgents = 0;
-        if (profile?.role === 'admin') {
+        if (profile?.role === 'admin' || profile?.role === 'superadmin') {
           const { count } = await supabase
-            .from('profiles')
-            .select('id', { count: 'exact' })
-            .eq('role', 'agent')
-            .eq('status', 'active');
+            .from('user_roles')
+            .select('user_id', { count: 'exact' })
+            .eq('role', 'agent');
           activeAgents = count || 0;
         }
         
