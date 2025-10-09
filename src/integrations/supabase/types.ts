@@ -29,39 +29,6 @@ export type Database = {
         }
         Relationships: []
       }
-      access_audit: {
-        Row: {
-          action: string
-          entity_id: string
-          entity_type: string
-          id: string
-          ip_address: unknown | null
-          timestamp: string
-          user_agent: string | null
-          user_id: string
-        }
-        Insert: {
-          action: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          ip_address?: unknown | null
-          timestamp?: string
-          user_agent?: string | null
-          user_id: string
-        }
-        Update: {
-          action?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          ip_address?: unknown | null
-          timestamp?: string
-          user_agent?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       activities: {
         Row: {
           contact_id: string | null
@@ -409,7 +376,6 @@ export type Database = {
         Row: {
           contact_id: string
           created_at: string
-          created_by: string | null
           id: string
           name: string
           path: string
@@ -421,7 +387,6 @@ export type Database = {
         Insert: {
           contact_id: string
           created_at?: string
-          created_by?: string | null
           id?: string
           name: string
           path: string
@@ -433,7 +398,6 @@ export type Database = {
         Update: {
           contact_id?: string
           created_at?: string
-          created_by?: string | null
           id?: string
           name?: string
           path?: string
@@ -1264,7 +1228,6 @@ export type Database = {
       property_files: {
         Row: {
           created_at: string
-          created_by: string | null
           id: string
           name: string
           path: string
@@ -1274,7 +1237,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
           id?: string
           name: string
           path: string
@@ -1284,7 +1246,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string | null
           id?: string
           name?: string
           path?: string
@@ -1593,10 +1554,6 @@ export type Database = {
         Args:
           | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
           | { _role: string; _user_id: string }
-        Returns: boolean
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       log_call_outcome: {
