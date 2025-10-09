@@ -340,7 +340,7 @@ export type Database = {
           outcome: Database["public"]["Enums"]["call_outcome"]
         }
         Insert: {
-          agent_id: string
+          agent_id?: string
           created_at?: string
           id?: string
           lead_id: string
@@ -650,6 +650,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      documents: {
+        Row: {
+          content: string | null
+          embedding: string | null
+          id: number
+          metadata: Json | null
+        }
+        Insert: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string | null
+          embedding?: string | null
+          id?: number
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      index_usage_log: {
+        Row: {
+          checked_at: string | null
+          idx_scan: number | null
+          indexrelname: string | null
+          relname: string | null
+          schemaname: string | null
+        }
+        Insert: {
+          checked_at?: string | null
+          idx_scan?: number | null
+          indexrelname?: string | null
+          relname?: string | null
+          schemaname?: string | null
+        }
+        Update: {
+          checked_at?: string | null
+          idx_scan?: number | null
+          indexrelname?: string | null
+          relname?: string | null
+          schemaname?: string | null
+        }
+        Relationships: []
       }
       invalid_reasons: {
         Row: {
@@ -1023,7 +1068,6 @@ export type Database = {
           id: string
           name: string
           phone: string | null
-          role: string
           status: string
           updated_at: string
           user_id: string
@@ -1035,7 +1079,6 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
-          role?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -1047,7 +1090,6 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
-          role?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -1492,6 +1534,10 @@ export type Database = {
           | { p_lead_id: string; p_outcome: string }
         Returns: undefined
       }
+      custom_access_token_hook: {
+        Args: { event: Json }
+        Returns: Json
+      }
       ensure_manual_followup: {
         Args: { p_due_at?: string; p_lead_id: string; p_title?: string }
         Returns: string
@@ -1505,7 +1551,9 @@ export type Database = {
         Returns: string
       }
       has_role: {
-        Args: { _role: string; _user_id: string }
+        Args:
+          | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
+          | { _role: string; _user_id: string }
         Returns: boolean
       }
       log_call_outcome: {
@@ -1518,6 +1566,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_index_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       log_security_event: {
         Args: {
           p_action: string
@@ -1527,6 +1579,15 @@ export type Database = {
           p_resource_type: string
         }
         Returns: undefined
+      }
+      match_documents: {
+        Args: { filter?: Json; match_count?: number; query_embedding: string }
+        Returns: {
+          content: string
+          id: number
+          metadata: Json
+          similarity: number
+        }[]
       }
       reassign_overdue_leads: {
         Args: { p_minutes?: number }

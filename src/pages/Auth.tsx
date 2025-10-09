@@ -126,21 +126,8 @@ export const Auth: React.FC = () => {
           description: error.message,
           variant: 'destructive',
         });
-      } else if (data.user) {
-        // Update the profile with the selected role
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            role: signupData.role,
-            name: signupData.name,
-            phone: signupData.phone
-          })
-          .eq('user_id', data.user.id);
-
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-        }
-
+      } else {
+        // SECURITY: Role assignment removed - must be done by admin via user_roles table
         toast({
           title: 'Account created!',
           description: 'Please check your email to verify your account.',

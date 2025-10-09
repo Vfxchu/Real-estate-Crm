@@ -38,6 +38,20 @@ export async function assignContactToAgent(contactId: string, agentId?: string) 
  * Get agent statistics for load balancing
  */
 export async function getAgentStatistics() {
+  // Fetch agent user IDs from user_roles table
+  const { data: agentRoles, error: rolesError } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role', 'agent');
+
+  if (rolesError) return { data: null, error: rolesError };
+
+  const agentUserIds = agentRoles?.map(r => r.user_id) || [];
+
+  if (agentUserIds.length === 0) {
+    return { data: [], error: null };
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select(`
@@ -47,7 +61,7 @@ export async function getAgentStatistics() {
       status,
       leads!leads_agent_id_fkey(id, status)
     `)
-    .eq('role', 'agent')
+    .in('user_id', agentUserIds)
     .eq('status', 'active');
 
   if (error) return { data: null, error };

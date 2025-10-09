@@ -492,14 +492,24 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
     const loadAgents = async () => {
       if (profile?.role === 'admin') {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id, name, email')
-          .eq('role', 'agent')
-          .eq('status', 'active');
+        // Fetch agent user IDs from user_roles table
+        const { data: agentRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'agent');
+
+        const agentUserIds = agentRoles?.map(r => r.user_id) || [];
+
+        if (agentUserIds.length > 0) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('user_id, name, email')
+            .in('user_id', agentUserIds)
+            .eq('status', 'active');
           
-        if (data) {
-          setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+          if (data) {
+            setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+          }
         }
       }
     };

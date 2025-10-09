@@ -238,14 +238,24 @@ export const Properties = () => {
     // Load agents for admin filter
     const loadAgents = async () => {
       if (isAdmin) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('user_id, name, email')
-          .eq('role', 'agent')
-          .eq('status', 'active');
-          
-        if (data) {
-          setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+        // Fetch agent user IDs from user_roles table
+        const { data: agentRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'agent');
+
+        const agentUserIds = agentRoles?.map(r => r.user_id) || [];
+
+        if (agentUserIds.length > 0) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('user_id, name, email')
+            .in('user_id', agentUserIds)
+            .eq('status', 'active');
+            
+          if (data) {
+            setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name, email: agent.email })));
+          }
         }
       }
     };

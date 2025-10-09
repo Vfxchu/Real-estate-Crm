@@ -8,13 +8,13 @@ export interface Agent {
   name: string;
   email: string;
   phone?: string;
-  role: string;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
   assignedLeads: number;
   closedDeals: number;
   conversionRate: number;
+  role?: string; // Optional: fetched from user_roles table
 }
 
 export const useAgents = () => {
@@ -40,10 +40,26 @@ export const useAgents = () => {
         return;
       }
 
+      // Fetch all agent user IDs from user_roles table
+      const { data: agentRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'agent');
+
+      if (rolesError) throw rolesError;
+
+      const agentUserIds = agentRoles?.map(r => r.user_id) || [];
+
+      if (agentUserIds.length === 0) {
+        setAgents([]);
+        return;
+      }
+
+      // Fetch profiles for agents
       const { data: agentsData, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('role', 'agent')
+        .in('user_id', agentUserIds)
         .order('name');
 
       if (error) throw error;
@@ -62,6 +78,7 @@ export const useAgents = () => {
 
           return {
             ...agent,
+            role: 'agent',
             assignedLeads,
             closedDeals,
             conversionRate,
