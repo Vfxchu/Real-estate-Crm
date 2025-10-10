@@ -100,13 +100,27 @@ export const Analytics = () => {
         
         // Fetch active agents count (only for admin)
         let activeAgents = 0;
-        if (profile?.role === 'admin') {
-          const { count } = await supabase
-            .from('profiles')
-            .select('id', { count: 'exact' })
-            .eq('role', 'agent')
-            .eq('status', 'active');
-          activeAgents = count || 0;
+        const { data: userRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user?.id);
+        const isAdmin = userRoles?.some(ur => ['admin', 'superadmin'].includes(ur.role));
+        
+        if (isAdmin) {
+          const { data: agentRoles } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .eq('role', 'agent');
+          const agentIds = agentRoles?.map(ur => ur.user_id) || [];
+          
+          if (agentIds.length > 0) {
+            const { count } = await supabase
+              .from('profiles')
+              .select('user_id', { count: 'exact' })
+              .in('user_id', agentIds)
+              .eq('status', 'active');
+            activeAgents = count || 0;
+          }
         }
         
         // Calculate conversion rate
