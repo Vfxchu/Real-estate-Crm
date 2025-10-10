@@ -28,6 +28,18 @@ serve(async (req) => {
       });
     }
 
+    // Validate webhook signature for security
+    const signature = req.headers.get('x-webhook-signature');
+    const webhookSecret = Deno.env.get('N8N_WEBHOOK_SECRET');
+    
+    if (webhookSecret && signature !== webhookSecret) {
+      console.error('Unauthorized: Invalid webhook signature');
+      return new Response(JSON.stringify({ error: 'Unauthorized: Invalid signature' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const body = await req.json();
     console.log('Webhook payload:', body);
 

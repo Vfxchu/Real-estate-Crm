@@ -1599,6 +1599,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      is_valid_uuid_path: {
+        Args: { path: string }
+        Returns: boolean
+      }
       log_call_outcome: {
         Args: {
           p_agent_id: string

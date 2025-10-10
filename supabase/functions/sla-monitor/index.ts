@@ -13,6 +13,18 @@ serve(async (req) => {
   }
 
   try {
+    // Validate secret for security (since verify_jwt is false for cron jobs)
+    const authSecret = Deno.env.get('SLA_MONITOR_SECRET');
+    const providedSecret = req.headers.get('x-function-secret');
+
+    if (authSecret && providedSecret !== authSecret) {
+      console.error('[SLA Monitor] Unauthorized: Invalid secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     console.log('[SLA Monitor] Starting SLA sweep...');
     
     const supabase = createClient(

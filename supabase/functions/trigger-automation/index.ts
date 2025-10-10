@@ -19,6 +19,15 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication (JWT verification enabled in config.toml)
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     console.log('Trigger automation request:', req.method);
     
     if (req.method !== 'POST') {
