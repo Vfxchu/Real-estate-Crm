@@ -31,9 +31,8 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [search, setSearch] = useState("");
   const [showAddContact, setShowAddContact] = useState(false);
-  const [contacts, setContacts] = useState<Lead[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const { list: listContacts } = useContacts();
 
   // Check authentication status
   useEffect(() => {
@@ -51,7 +50,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load contacts
+  // Load contacts from contacts table
   const loadContacts = async (searchTerm = "") => {
     // Don't load if not authenticated
     if (!isAuthenticated) {
@@ -62,10 +61,17 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     setLoading(true);
     try {
       console.log('Loading contacts with search term:', searchTerm);
-      const { data, error } = await listContacts({
-        q: searchTerm,
-        pageSize: 50,
-      });
+      
+      let query = supabase
+        .from('contacts')
+        .select('id, full_name, email, phone')
+        .order('full_name', { ascending: true });
+      
+      if (searchTerm) {
+        query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`);
+      }
+      
+      const { data, error } = await query.limit(50);
       
       if (error) {
         console.error('Error loading contacts:', error);
@@ -148,7 +154,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
               className="flex-1 justify-between"
               disabled={disabled}
             >
-              {selectedContact ? selectedContact.name : placeholder}
+              {selectedContact ? selectedContact.full_name : placeholder}
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
@@ -174,7 +180,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
                       {contacts.map((contact) => (
                         <CommandItem
                           key={contact.id}
-                          value={contact.name}
+                          value={contact.full_name}
                           onSelect={() => {
                             onChange(contact.id === value ? undefined : contact.id);
                             setOpen(false);
@@ -188,7 +194,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
                             )}
                           />
                           <div className="flex flex-col flex-1 min-w-0">
-                            <span className="font-medium truncate">{contact.name}</span>
+                            <span className="font-medium truncate">{contact.full_name}</span>
                             <span className="text-sm text-muted-foreground truncate">
                               {contact.email} {contact.phone && `• ${contact.phone}`}
                             </span>

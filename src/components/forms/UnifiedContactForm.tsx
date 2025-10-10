@@ -337,34 +337,93 @@ export default function UnifiedContactForm({
       };
 
       let result;
-      if (contact?.id) {
-        result = await updateLead(contact.id, mappedLeadData);
-        toast({ 
-          title: 'Updated successfully', 
-          description: `${mode === 'lead' ? 'Lead' : 'Contact'} has been updated.`
-        });
-      } else {
-        result = await createLead(mappedLeadData);
-        toast({ 
-          title: 'Created successfully', 
-          description: `New ${mode === 'lead' ? 'lead' : 'contact'} has been created.`
-        });
+      
+      // If mode is 'contact', save to contacts table instead of leads
+      if (mode === 'contact') {
+        const contactData = {
+          full_name: data.name,
+          phone: data.phone || null,
+          email: data.email || null,
+          marketing_source: data.source || null,
+          interest_tags: data.interest_tags || [],
+          status_mode: 'auto' as 'auto',
+          status_effective: (data.contact_status === 'active_client' ? 'active' : 
+                            data.contact_status === 'past_client' ? 'past' : 'active') as 'active' | 'past',
+          created_by: user?.id
+        };
+        
+        if (contact?.id) {
+          const { data: updatedData, error } = await supabase
+            .from('contacts')
+            .update(contactData)
+            .eq('id', contact.id)
+            .select()
+            .single();
+          
+          result = { data: updatedData, error };
+          
+          toast({ 
+            title: 'Updated successfully', 
+            description: 'Contact has been updated.'
+          });
+        } else {
+          const { data: newData, error } = await supabase
+            .from('contacts')
+            .insert([contactData])
+            .select()
+            .single();
+          
+          result = { data: newData, error };
+          
+          toast({ 
+            title: 'Created successfully', 
+            description: 'New contact has been created.'
+          });
 
-        // Create automatic tasks for leads
-        if (mode === 'lead' || data.contact_status === 'lead') {
-          await createAutomaticTasks(result.data?.id);
+          // Link to property if specified
+          if (initialPropertyId && result.data?.id && propertyRole) {
+            try {
+              await linkPropertyToContact({
+                contactId: result.data.id,
+                propertyId: initialPropertyId,
+                role: propertyRole as any
+              });
+            } catch (linkError) {
+              console.error('Failed to link property:', linkError);
+            }
+          }
         }
+      } else {
+        // Original lead mode logic
+        if (contact?.id) {
+          result = await updateLead(contact.id, mappedLeadData);
+          toast({ 
+            title: 'Updated successfully', 
+            description: `${mode === 'lead' ? 'Lead' : 'Contact'} has been updated.`
+          });
+        } else {
+          result = await createLead(mappedLeadData);
+          toast({ 
+            title: 'Created successfully', 
+            description: `New ${mode === 'lead' ? 'lead' : 'contact'} has been created.`
+          });
 
-        // Link to property if specified
-        if (initialPropertyId && result.data?.id && propertyRole) {
-          try {
-            await linkPropertyToContact({
-              contactId: result.data.id,
-              propertyId: initialPropertyId,
-              role: propertyRole as any
-            });
-          } catch (linkError) {
-            console.error('Failed to link property:', linkError);
+          // Create automatic tasks for leads
+          if (mode === 'lead' || data.contact_status === 'lead') {
+            await createAutomaticTasks(result.data?.id);
+          }
+
+          // Link to property if specified
+          if (initialPropertyId && result.data?.id && propertyRole) {
+            try {
+              await linkPropertyToContact({
+                contactId: result.data.id,
+                propertyId: initialPropertyId,
+                role: propertyRole as any
+              });
+            } catch (linkError) {
+              console.error('Failed to link property:', linkError);
+            }
           }
         }
       }

@@ -407,6 +407,30 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         // Auto-assign seller/landlord tag to owner
         if (data.owner_contact_id) {
           await ensureOwnerTag(data.owner_contact_id, data.offer_type);
+          
+          // Link property to contact in contact_properties table
+          try {
+            // Check if relationship already exists
+            const { data: existing } = await supabase
+              .from('contact_properties')
+              .select('id')
+              .eq('contact_id', data.owner_contact_id)
+              .eq('property_id', propertyData.id)
+              .single();
+            
+            // Only create if doesn't exist
+            if (!existing) {
+              await supabase
+                .from('contact_properties')
+                .insert([{
+                  contact_id: data.owner_contact_id,
+                  property_id: propertyData.id,
+                  role: 'owner'
+                }]);
+            }
+          } catch (linkError) {
+            console.error('Failed to link property to contact:', linkError);
+          }
         }
 
         // Move images first and update the property with storage paths
@@ -941,7 +965,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                       
                       {showAddOwner && (
                         <div className="mb-4 p-4 border rounded-lg bg-muted/50 space-y-3">
-                          <p className="text-sm text-muted-foreground">Create a new owner contact (basic info only)</p>
+                          <p className="text-sm text-muted-foreground">Create a new owner contact</p>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                               <label className="text-sm font-medium">Full Name *</label>
@@ -991,32 +1015,32 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                                 const { data: userData } = await supabase.auth.getUser();
                                 if (!userData.user) throw new Error('Not authenticated');
                                 
-                                // Create minimal lead/contact record
-                                const { data: newLead, error: leadError } = await supabase
-                                  .from('leads')
+                                // Create contact record (not lead)
+                                const { data: newContact, error: contactError } = await supabase
+                                  .from('contacts')
                                   .insert({
-                                    name: newOwnerName.trim(),
+                                    full_name: newOwnerName.trim(),
                                     phone: newOwnerPhone.trim() || null,
                                     email: newOwnerEmail.trim() || null,
-                                    status: 'new',
-                                    agent_id: userData.user.id
+                                    status_mode: 'auto',
+                                    status_effective: 'active',
+                                    created_by: userData.user.id
                                   })
                                   .select()
                                   .single();
                                 
-                                if (leadError) throw leadError;
+                                if (contactError) throw contactError;
                                 
                                 // Set as owner
-                                field.onChange(newLead.id);
-                                
-                                // Refresh contacts list
-                                const { data } = await contacts.list({ q: '', page: 1, pageSize: 1000 });
-                                setContactsList(data || []);
+                                field.onChange(newContact.id);
                                 
                                 toast({
                                   title: 'Owner created',
                                   description: `${newOwnerName} has been added as a contact`
                                 });
+                                
+                                // Dispatch event to refresh contacts list
+                                window.dispatchEvent(new CustomEvent('contacts:updated'));
                                 
                                 // Reset and hide form
                                 setNewOwnerName('');
@@ -1046,13 +1070,16 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                         </div>
                       )}
                       
-                      <FormControl>
-                        <SearchableContactCombobox
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select owner contact"
-                        />
-                      </FormControl>
+                      {!showAddOwner && (
+                        <FormControl>
+                          <SearchableContactCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Select owner contact"
+                          />
+                        </FormControl>
+                      )}
+
                       <FormMessage />
                     </FormItem>
                   )}
