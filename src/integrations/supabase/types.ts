@@ -1256,7 +1256,7 @@ export type Database = {
             foreignKeyName: "properties_owner_contact_id_fkey"
             columns: ["owner_contact_id"]
             isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
