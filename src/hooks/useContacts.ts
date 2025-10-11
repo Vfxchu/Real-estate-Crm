@@ -47,10 +47,9 @@ export function useContacts() {
   } = {}) => {
     const { q, status_category = 'all', interest_type = 'all', page = 1, pageSize = 25, filters = {} } = opts;
 
-    // For contacts view, we want to show master contacts (contacts without contact_id or non-lead status)
-    // This gives us the unique people/contacts, not individual lead inquiries
+    // 1) Fetch "master contacts" derived from leads (existing behavior)
     const { listLeads } = await import("@/services/leads");
-    const { rows, total, error } = await listLeads({
+    const { rows, error } = await listLeads({
       q,
       status_category: status_category === 'all' ? undefined : status_category,
       interest_type: interest_type === 'all' ? undefined : interest_type,
@@ -71,12 +70,54 @@ export function useContacts() {
       },
     });
 
-    // Filter to show only master contacts (unique people)
-    const masterContacts = rows.filter((contact: any) => 
-      !contact.contact_id || contact.contact_status !== 'lead'
-    );
+    const masterContactsFromLeads = rows.filter((contact: any) => !contact.contact_id || contact.contact_status !== 'lead');
 
-    return { data: masterContacts, total: masterContacts.length, error } as const;
+    // 2) Fetch "real" contacts from contacts table (new owners created via property form)
+    // Apply simple search on full_name/email/phone
+    let contactsQuery = supabase
+      .from('contacts')
+      .select('id, full_name, email, phone, status_effective, created_by, updated_at, created_at')
+      .order('updated_at', { ascending: false })
+      .limit(200);
+
+    if (q && q.trim()) {
+      const term = q.trim();
+      contactsQuery = contactsQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`);
+    }
+
+    const { data: rawContacts, error: contactsError } = await contactsQuery;
+    if (contactsError) {
+      return { data: masterContactsFromLeads, total: masterContactsFromLeads.length, error: contactsError } as const;
+    }
+
+    const mappedContacts = (rawContacts || []).map((c: any) => ({
+      id: c.id,
+      name: c.full_name,
+      email: c.email,
+      phone: c.phone,
+      contact_status: c.status_effective === 'past' ? 'past_client' : 'active_client',
+      created_by: c.created_by,
+      updated_at: c.updated_at,
+      created_at: c.created_at,
+      // mark as pure contact (not a lead)
+      _source: 'contacts'
+    }));
+
+    // 3) Merge both sources and de-duplicate by best available key
+    const keyOf = (r: any) => (r.email?.toLowerCase()?.trim()) || (normalizePhone(r.phone) || '') || r.id;
+    const mergedMap = new Map<string, any>();
+
+    for (const r of masterContactsFromLeads) {
+      mergedMap.set(keyOf(r), r);
+    }
+    for (const r of mappedContacts) {
+      const key = keyOf(r);
+      // Prefer existing lead row if already present; otherwise add contact
+      if (!mergedMap.has(key)) mergedMap.set(key, r);
+    }
+
+    const merged = Array.from(mergedMap.values());
+    return { data: merged, total: merged.length, error } as const;
   }, []);
 
   // Get all leads for a specific contact
