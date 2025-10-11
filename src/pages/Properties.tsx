@@ -423,13 +423,6 @@ export const Properties = () => {
     setFilters(defaultFilters);
     setFilterKey(prev => prev + 1);
     
-    toast({
-      title: 'Filters cleared',
-      description: 'All filters have been reset successfully'
-    });
-    
-    setFilters(defaultFilters);
-    
     // Force re-render and refresh stats
     setTimeout(() => {
       fetchStats();
@@ -437,7 +430,7 @@ export const Properties = () => {
     
     toast({
       title: 'Filters cleared',
-      description: 'All filters have been reset'
+      description: 'All filters have been reset successfully'
     });
   };
 
