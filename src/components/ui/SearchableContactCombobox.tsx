@@ -89,8 +89,9 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     }
   };
 
+  // Load contacts initially and when dropdown opens
   useEffect(() => {
-    if (open && isAuthenticated) {
+    if (isAuthenticated) {
       loadContacts(search);
     }
   }, [open, isAuthenticated]);
@@ -111,14 +112,11 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
     if (!isAuthenticated) return;
 
     const handleContactsChanged = () => {
-      if (open && isAuthenticated) {
-        loadContacts(search);
-      }
+      loadContacts(search);
     };
     const handleContactsUpdated = () => {
-      if (open && isAuthenticated) {
-        loadContacts(search);
-      }
+      // Always reload when contacts are updated, even if dropdown is closed
+      loadContacts(search);
     };
 
     window.addEventListener('leads:changed', handleContactsChanged);
@@ -127,7 +125,7 @@ export const SearchableContactCombobox: React.FC<SearchableContactComboboxProps>
       window.removeEventListener('leads:changed', handleContactsChanged);
       window.removeEventListener('contacts:updated', handleContactsUpdated);
     };
-  }, [search, open, isAuthenticated]);
+  }, [search, isAuthenticated]);
 
   const selectedContact = contacts.find(c => c.id === value);
 
