@@ -224,11 +224,16 @@ export const Properties = () => {
       });
     } catch (error: any) {
       console.error('Error fetching stats:', error);
-      // Only show error toast for critical errors, not empty results
-      if (error.code && error.code !== 'PGRST116') {
+      // Only show error toast for actual errors, not empty results or expected conditions
+      const isActualError = error.code && 
+        error.code !== 'PGRST116' && // Empty result
+        error.code !== 'PGRST204' && // No content
+        !error.message?.includes('no rows'); // No rows found
+      
+      if (isActualError) {
         toast({
           title: 'Error fetching statistics',
-          description: error.message,
+          description: error.message || 'Failed to load property statistics',
           variant: 'destructive',
         });
       }
@@ -565,6 +570,7 @@ export const Properties = () => {
                 />
 
                 <ClearableSelect
+                  key={`sort-${filterKey}`}
                   value={filters.sort}
                   onChange={(value) => updateFilter('sort', value || 'date_new_old')}
                   options={SORT_OPTIONS}
@@ -680,6 +686,7 @@ export const Properties = () => {
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Owner Contact</Label>
                       <SearchableContactCombobox
+                        key={`ownerContact-${filterKey}`}
                         value={filters.ownerContact}
                         onChange={(value) => updateFilter('ownerContact', value || '')}
                         placeholder="Select owner contact"
@@ -700,7 +707,11 @@ export const Properties = () => {
                   {isAdmin && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Assigned Agent</Label>
-                      <Select value={filters.assignedAgent || '__all__'} onValueChange={(value) => updateFilter('assignedAgent', value === '__all__' ? '' : value)}>
+                      <Select 
+                        key={`assignedAgent-${filterKey}`}
+                        value={filters.assignedAgent || '__all__'} 
+                        onValueChange={(value) => updateFilter('assignedAgent', value === '__all__' ? '' : value)}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select agent" />
                         </SelectTrigger>
@@ -719,6 +730,7 @@ export const Properties = () => {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">View</Label>
                     <ClearableSelect
+                      key={`view-${filterKey}`}
                       value={filters.view}
                       onChange={(value) => updateFilter('view', value || '')}
                       options={VIEW_OPTIONS}
