@@ -1015,29 +1015,51 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                                 const { data: userData } = await supabase.auth.getUser();
                                 if (!userData.user) throw new Error('Not authenticated');
                                 
-                                // Create contact record (not lead)
-                                const { data: newContact, error: contactError } = await supabase
-                                  .from('contacts')
-                                  .insert({
-                                    full_name: newOwnerName.trim(),
-                                    phone: newOwnerPhone.trim() || null,
-                                    email: newOwnerEmail.trim() || null,
-                                    status_mode: 'auto',
-                                    status_effective: 'active',
-                                    created_by: userData.user.id
-                                  })
-                                  .select()
-                                  .single();
+                                let contactToUse = null;
                                 
-                                if (contactError) throw contactError;
+                                // Check if a contact with this email already exists (if email provided)
+                                if (newOwnerEmail.trim()) {
+                                  const { data: existingContact } = await supabase
+                                    .from('contacts')
+                                    .select('id, full_name')
+                                    .eq('email', newOwnerEmail.trim())
+                                    .maybeSingle();
+                                  
+                                  if (existingContact) {
+                                    contactToUse = existingContact;
+                                    toast({
+                                      title: 'Existing contact found',
+                                      description: `Using existing contact: ${existingContact.full_name}`
+                                    });
+                                  }
+                                }
+                                
+                                // Create new contact if no existing one found
+                                if (!contactToUse) {
+                                  const { data: newContact, error: contactError } = await supabase
+                                    .from('contacts')
+                                    .insert({
+                                      full_name: newOwnerName.trim(),
+                                      phone: newOwnerPhone.trim() || null,
+                                      email: newOwnerEmail.trim() || null,
+                                      status_mode: 'auto',
+                                      status_effective: 'active',
+                                      created_by: userData.user.id
+                                    })
+                                    .select()
+                                    .single();
+                                  
+                                  if (contactError) throw contactError;
+                                  contactToUse = newContact;
+                                  
+                                  toast({
+                                    title: 'Owner created',
+                                    description: `${newOwnerName} has been added as a contact`
+                                  });
+                                }
                                 
                                 // Set as owner
-                                field.onChange(newContact.id);
-                                
-                                toast({
-                                  title: 'Owner created',
-                                  description: `${newOwnerName} has been added as a contact`
-                                });
+                                field.onChange(contactToUse.id);
                                 
                                 // Dispatch event to refresh contacts list
                                 window.dispatchEvent(new CustomEvent('contacts:updated'));
