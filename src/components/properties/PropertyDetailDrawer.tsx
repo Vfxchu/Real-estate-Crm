@@ -8,14 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Phone, Mail, MessageSquare, MapPin, Building, Edit, X,
-  Bed, Bath, Square, Calendar, FileText, Activity, DollarSign,
-  Home, Eye, Share2
+  Bed, Bath, Square, FileText, Activity,
+  Home, Image as ImageIcon
 } from 'lucide-react';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyFilesSection } from "./PropertyFilesSection";
+import { PropertyImageGallery } from "./PropertyImageGallery";
 
 export interface PropertyWithOwner extends Property {
   owner?: {
@@ -42,6 +43,15 @@ interface PropertyActivity {
   profiles?: { name: string; email: string };
 }
 
+interface PropertyFile {
+  id: string;
+  name: string;
+  path: string;
+  type: string;
+  size: number;
+  created_at: string;
+}
+
 export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
   property,
   open,
@@ -52,6 +62,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [activities, setActivities] = useState<PropertyActivity[]>([]);
+  const [files, setFiles] = useState<PropertyFile[]>([]);
   const [loading, setLoading] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
@@ -60,6 +71,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
   useEffect(() => {
     if (property?.id && open) {
       loadActivities();
+      loadFiles();
     }
   }, [property?.id, open]);
 
@@ -85,6 +97,23 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
       setActivities(data || []);
     } catch (error: any) {
       console.error('Error loading activities:', error);
+    }
+  };
+
+  const loadFiles = async () => {
+    if (!property?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('property_files')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setFiles(data || []);
+    } catch (error: any) {
+      console.error('Error loading files:', error);
     }
   };
 
@@ -130,6 +159,8 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
       pending: 'bg-yellow-500',
       sold: 'bg-blue-500',
       rented: 'bg-purple-500',
+      vacant: 'bg-gray-500',
+      in_development: 'bg-orange-500',
       off_market: 'bg-gray-500'
     };
     return colors[status] || 'bg-gray-500';
@@ -245,11 +276,12 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
             <Tabs defaultValue="overview" className="mt-6">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="images">Images</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
 
-              {/* Overview Tab */}
+              {/* Overview Tab - Comprehensive view */}
               <TabsContent value="overview" className="space-y-4 mt-4">
                 {/* Property Details */}
                 <Card>
@@ -263,20 +295,20 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm text-muted-foreground">Type</div>
-                        <div className="font-medium">{property.property_type}</div>
+                        <div className="font-medium capitalize">{property.property_type}</div>
                       </div>
                       {property.segment && (
                         <div>
                           <div className="text-sm text-muted-foreground">Segment</div>
-                          <div className="font-medium">{property.segment}</div>
+                          <div className="font-medium capitalize">{property.segment}</div>
                         </div>
                       )}
-                      {property.bedrooms && (
+                      {property.bedrooms !== null && (
                         <div>
                           <div className="text-sm text-muted-foreground">Bedrooms</div>
                           <div className="flex items-center gap-1 font-medium">
                             <Bed className="w-4 h-4" />
-                            {property.bedrooms}
+                            {property.bedrooms === 0 ? 'Studio' : property.bedrooms}
                           </div>
                         </div>
                       )}
@@ -365,6 +397,163 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Image Preview */}
+                {property.images && property.images.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <ImageIcon className="w-5 h-5" />
+                          Images Preview
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          const imagesTab = document.querySelector('[value="images"]') as HTMLButtonElement;
+                          imagesTab?.click();
+                        }}>
+                          View All ({property.images.length})
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-muted-foreground text-sm mb-2">
+                        First {Math.min(6, property.images.length)} of {property.images.length} images
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Recent Documents */}
+                {files.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          Recent Documents
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          const docsTab = document.querySelector('[value="documents"]') as HTMLButtonElement;
+                          docsTab?.click();
+                        }}>
+                          View All ({files.length})
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {files.slice(0, 3).map((file) => (
+                          <div key={file.id} className="flex items-center gap-2 text-sm">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span className="flex-1 truncate">{file.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(file.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Recent Activities */}
+                {activities.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Activity className="w-5 h-5" />
+                          Recent Activity
+                        </CardTitle>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          const activitiesTab = document.querySelector('[value="activities"]') as HTMLButtonElement;
+                          activitiesTab?.click();
+                        }}>
+                          View All ({activities.length})
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {activities.slice(0, 5).map((activity) => (
+                          <div key={activity.id} className="flex items-start gap-2 text-sm border-l-2 border-muted pl-3">
+                            <div className="flex-1">
+                              <div className="font-medium capitalize">
+                                {activity.type.replace('_', ' ')}
+                              </div>
+                              <p className="text-muted-foreground text-xs mt-1">
+                                {activity.description}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(activity.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Images Tab with Sub-tabs */}
+              <TabsContent value="images" className="mt-4">
+                <Tabs defaultValue="property-images">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="property-images" className="flex-1">
+                      📸 Property Images
+                    </TabsTrigger>
+                    <TabsTrigger value="floor-plans" className="flex-1">
+                      🏗️ Floor Plans
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="property-images" className="mt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Property Images</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {property.images && property.images.length > 0 ? (
+                          <PropertyImageGallery images={property.images} propertyId={property.id} />
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No property images available
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="floor-plans" className="mt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Floor Plans & Layouts</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {files.filter(f => f.type === 'layout').length > 0 ? (
+                          <div className="space-y-2">
+                            {files.filter(f => f.type === 'layout').map((file) => (
+                              <div key={file.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                <FileText className="w-5 h-5 text-muted-foreground" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{file.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(file.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No floor plans uploaded yet
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
 
               {/* Documents Tab */}
@@ -372,7 +561,10 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 <PropertyFilesSection
                   propertyId={property.id}
                   canEdit={canEdit}
-                  onUpdate={onUpdate}
+                  onUpdate={() => {
+                    onUpdate?.();
+                    loadFiles();
+                  }}
                 />
               </TabsContent>
 

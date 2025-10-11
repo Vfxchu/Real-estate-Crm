@@ -223,11 +223,14 @@ export const Properties = () => {
       });
     } catch (error: any) {
       console.error('Error fetching stats:', error);
-      toast({
-        title: 'Error fetching statistics',
-        description: error.message,
-        variant: 'destructive',
-      });
+      // Only show error toast for critical errors, not empty results
+      if (error.code && error.code !== 'PGRST116') {
+        toast({
+          title: 'Error fetching statistics',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
       setStats(prev => ({ ...prev, loading: false }));
     }
   }, [filters, debouncedSearch, toast]);
@@ -293,8 +296,8 @@ export const Properties = () => {
         if (filters.minPrice && property.price < parseFloat(filters.minPrice)) return false;
         if (filters.maxPrice && property.price > parseFloat(filters.maxPrice)) return false;
         if (filters.bedrooms) {
-          const propertyBedroomEnum = property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} BHK`;
-          if (propertyBedroomEnum !== filters.bedrooms) return false;
+          const propertyBedroomLabel = property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} BHK`;
+          if (propertyBedroomLabel !== filters.bedrooms) return false;
         }
         if (filters.minBathrooms && (property.bathrooms || 0) < parseFloat(filters.minBathrooms)) return false;
         if (filters.maxBathrooms && (property.bathrooms || 0) > parseFloat(filters.maxBathrooms)) return false;
@@ -394,7 +397,7 @@ export const Properties = () => {
   };
 
   const clearFilters = () => {
-    setFilters({
+    const defaultFilters = {
       search: '',
       propertyType: '',
       subtype: '',
@@ -414,6 +417,18 @@ export const Properties = () => {
       ownerContact: '',
       view: '',
       sort: 'date_new_old',
+    };
+    
+    setFilters(defaultFilters);
+    
+    // Force re-render and refresh stats
+    setTimeout(() => {
+      fetchStats();
+    }, 0);
+    
+    toast({
+      title: 'Filters cleared',
+      description: 'All filters have been reset'
     });
   };
 

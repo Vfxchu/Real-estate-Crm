@@ -54,6 +54,13 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  
+  // Owner creation state
+  const [showAddOwner, setShowAddOwner] = useState(false);
+  const [newOwnerName, setNewOwnerName] = useState('');
+  const [newOwnerPhone, setNewOwnerPhone] = useState('');
+  const [newOwnerEmail, setNewOwnerEmail] = useState('');
+  const [creatingOwner, setCreatingOwner] = useState(false);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -215,10 +222,12 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
       };
 
       // Update property
-      const { error } = await supabase
+      const { data: updatedProperty, error } = await supabase
         .from('properties')
         .update(payload)
-        .eq('id', property.id);
+        .eq('id', property.id)
+        .select('*')
+        .single();
 
       if (error) {
         console.error('Update property error:', error);
@@ -227,6 +236,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         await supabase.from('activities').insert({
           type: 'error',
           description: `Error updating property: ${error.message} (Code: ${error.code || 'unknown'})`,
+          property_id: property.id,
           created_by: user.id
         });
         
@@ -646,14 +656,142 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               name="owner_contact_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Owner Contact *</FormLabel>
-                  <FormControl>
-                    <SearchableContactCombobox
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Select owner contact"
-                    />
-                  </FormControl>
+                  <div className="flex items-center justify-between mb-2">
+                    <FormLabel>Owner Contact *</FormLabel>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAddOwner(!showAddOwner)}
+                      className="text-xs"
+                    >
+                      {showAddOwner ? 'Select Existing' : '+ Quick Add Owner'}
+                    </Button>
+                  </div>
+                  
+                  {showAddOwner && (
+                    <div className="space-y-3 mb-3 p-4 border rounded-lg bg-muted/10">
+                      <Input
+                        placeholder="Owner Name *"
+                        value={newOwnerName}
+                        onChange={(e) => setNewOwnerName(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Phone (optional)"
+                        value={newOwnerPhone}
+                        onChange={(e) => setNewOwnerPhone(e.target.value)}
+                      />
+                      <Input
+                        type="email"
+                        placeholder="Email (optional)"
+                        value={newOwnerEmail}
+                        onChange={(e) => setNewOwnerEmail(e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={!newOwnerName.trim() || creatingOwner}
+                        onClick={async () => {
+                          if (!newOwnerName.trim()) {
+                            toast({
+                              title: 'Name required',
+                              description: 'Please enter the owner name',
+                              variant: 'destructive'
+                            });
+                            return;
+                          }
+                          
+                          try {
+                            setCreatingOwner(true);
+                            const { data: userData } = await supabase.auth.getUser();
+                            if (!userData.user) throw new Error('Not authenticated');
+                            
+                            let contactToUse = null;
+                            
+                            // Check if a contact with this email already exists
+                            if (newOwnerEmail.trim()) {
+                              const { data: existingContact } = await supabase
+                                .from('contacts')
+                                .select('id, full_name')
+                                .eq('email', newOwnerEmail.trim())
+                                .maybeSingle();
+                              
+                              if (existingContact) {
+                                contactToUse = existingContact;
+                                toast({
+                                  title: 'Existing contact found',
+                                  description: `Using existing contact: ${existingContact.full_name}`
+                                });
+                              }
+                            }
+                            
+                            // Create new contact if no existing one found
+                            if (!contactToUse) {
+                              const { data: newContact, error: contactError } = await supabase
+                                .from('contacts')
+                                .insert({
+                                  full_name: newOwnerName.trim(),
+                                  phone: newOwnerPhone.trim() || null,
+                                  email: newOwnerEmail.trim() || null,
+                                  status_mode: 'auto',
+                                  status_effective: 'active',
+                                  created_by: userData.user.id
+                                })
+                                .select()
+                                .single();
+                              
+                              if (contactError) throw contactError;
+                              contactToUse = newContact;
+                              
+                              toast({
+                                title: 'Owner created',
+                                description: `${newOwnerName} has been added as a contact`
+                              });
+                            }
+                            
+                            // Set as owner
+                            field.onChange(contactToUse.id);
+                            
+                            // Dispatch event to refresh contacts list
+                            window.dispatchEvent(new CustomEvent('contacts:updated'));
+                            
+                            // Reset and hide form
+                            setNewOwnerName('');
+                            setNewOwnerPhone('');
+                            setNewOwnerEmail('');
+                            setShowAddOwner(false);
+                          } catch (error: any) {
+                            toast({
+                              title: 'Error creating owner',
+                              description: error.message,
+                              variant: 'destructive'
+                            });
+                          } finally {
+                            setCreatingOwner(false);
+                          }
+                        }}
+                      >
+                        {creatingOwner ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Create & Select Owner'
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {!showAddOwner && (
+                    <FormControl>
+                      <SearchableContactCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select owner contact"
+                      />
+                    </FormControl>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

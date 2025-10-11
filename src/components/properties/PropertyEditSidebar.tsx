@@ -27,19 +27,9 @@ export const PropertyEditSidebar: React.FC<PropertyEditSidebarProps> = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-4xl overflow-y-auto">
         <SheetHeader className="space-y-4">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-xl font-semibold">
-              Edit Property
-            </SheetTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <SheetTitle className="text-xl font-semibold">
+            Edit Property
+          </SheetTitle>
         </SheetHeader>
 
         <div className="mt-6">
