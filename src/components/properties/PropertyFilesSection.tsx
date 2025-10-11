@@ -84,10 +84,11 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
 
       if (dbError) throw dbError;
 
-      // Log activity (activities table doesn't have property_id, so we skip logging or use description only)
+      // Log activity
       await supabase.from('activities').insert({
         type: 'file_upload',
-        description: `Uploaded ${fileType}: ${file.name} for property ${propertyId}`,
+        description: `Uploaded ${fileType}: ${file.name}`,
+        property_id: propertyId,
         created_by: (await supabase.auth.getUser()).data.user?.id
       });
 
@@ -127,10 +128,11 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
 
       if (dbError) throw dbError;
 
-      // Log activity (activities table doesn't have property_id, so we skip logging or use description only)
+      // Log activity
       await supabase.from('activities').insert({
         type: 'file_delete',
-        description: `Deleted ${file.type}: ${file.name} from property ${propertyId}`,
+        description: `Deleted ${file.type}: ${file.name}`,
+        property_id: propertyId,
         created_by: (await supabase.auth.getUser()).data.user?.id
       });
 

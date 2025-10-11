@@ -749,17 +749,19 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
                               });
                             }
                             
-                            // Set as owner
+                            // Set as owner immediately in both field and form
                             field.onChange(contactToUse.id);
-                            
-                            // Dispatch event to refresh contacts list
-                            window.dispatchEvent(new CustomEvent('contacts:updated'));
+                            form.setValue('owner_contact_id', contactToUse.id);
                             
                             // Reset and hide form
                             setNewOwnerName('');
                             setNewOwnerPhone('');
                             setNewOwnerEmail('');
                             setShowAddOwner(false);
+                            
+                            // Dispatch event after short delay to ensure DB commit
+                            await new Promise(resolve => setTimeout(resolve, 150));
+                            window.dispatchEvent(new CustomEvent('contacts:updated'));
                           } catch (error: any) {
                             toast({
                               title: 'Error creating owner',

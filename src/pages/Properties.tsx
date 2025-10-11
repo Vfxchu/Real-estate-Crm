@@ -130,6 +130,7 @@ export const Properties = () => {
   const [showAddContact, setShowAddContact] = useState(false);
   const [selectedPropertyForContact, setSelectedPropertyForContact] = useState<Property | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [filterKey, setFilterKey] = useState(0);
   const [currency, setCurrency] = useState('AED');
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [stats, setStats] = useState<PropertyStats>({
@@ -420,6 +421,14 @@ export const Properties = () => {
     };
     
     setFilters(defaultFilters);
+    setFilterKey(prev => prev + 1);
+    
+    toast({
+      title: 'Filters cleared',
+      description: 'All filters have been reset successfully'
+    });
+    
+    setFilters(defaultFilters);
     
     // Force re-render and refresh stats
     setTimeout(() => {
@@ -532,6 +541,7 @@ export const Properties = () => {
               </div>
               <div className="flex gap-2 flex-wrap">
                 <ClearableSelect
+                  key={`propertyType-${filterKey}`}
                   value={filters.propertyType}
                   onChange={(value) => {
                     updateFilter('propertyType', value || '');
@@ -543,6 +553,7 @@ export const Properties = () => {
                 />
                 
                 <ClearableSelect
+                  key={`subtype-${filterKey}`}
                   value={filters.subtype}
                   onChange={(value) => updateFilter('subtype', value || '')}
                   options={getSubtypeOptions(filters.propertyType)}
@@ -552,6 +563,7 @@ export const Properties = () => {
                 />
                 
                 <ClearableSelect
+                  key={`offerType-${filterKey}`}
                   value={filters.offerType}
                   onChange={(value) => updateFilter('offerType', value || '')}
                   options={OFFER_TYPES}
@@ -592,6 +604,7 @@ export const Properties = () => {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Status</Label>
                     <ClearableSelect
+                      key={`status-${filterKey}`}
                       value={filters.status}
                       onChange={(value) => updateFilter('status', value || '')}
                       options={PROPERTY_STATUS}
@@ -622,6 +635,7 @@ export const Properties = () => {
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Bedrooms</Label>
                     <ClearableSelect
+                      key={`bedrooms-${filterKey}`}
                       value={filters.bedrooms}
                       onChange={(value) => updateFilter('bedrooms', value || '')}
                       options={BEDROOM_OPTIONS}
