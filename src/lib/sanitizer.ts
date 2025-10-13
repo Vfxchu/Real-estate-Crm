@@ -75,7 +75,14 @@ export const sanitizeTextInput = (input: string): string => {
 export const validateFileUpload = (
   file: File, 
   maxSize: number = 10485760, // 10MB
-  allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+  allowedTypes: string[] = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ]
 ): { isValid: boolean; error?: string } => {
   if (file.size > maxSize) {
     return { isValid: false, error: 'File size exceeds maximum limit of 10MB' };

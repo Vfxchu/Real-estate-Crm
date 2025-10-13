@@ -235,6 +235,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
           </CardTitle>
           {canEdit && (
             <Button
+              type="button"
               size="sm"
               variant="outline"
               disabled={uploading}
@@ -273,6 +274,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
+                    type="button"
                     size="sm"
                     variant="ghost"
                     onClick={() => handleDownloadFile(file)}
@@ -281,6 +283,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
                   </Button>
                   {canEdit && (
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
                       className="text-destructive"

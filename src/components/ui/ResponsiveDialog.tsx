@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -42,6 +42,9 @@ export const ResponsiveDialog: React.FC<ResponsiveDialogProps> = ({
       <DialogContent className={`${maxWidth} max-h-[90vh] overflow-hidden flex flex-col ${className}`}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {title} dialog
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto">
           {children}

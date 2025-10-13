@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -631,6 +631,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       <DialogContent className="max-w-[95vw] sm:max-w-4xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader className="space-y-2">
           <DialogTitle className="text-lg sm:text-xl">{editProperty ? 'Edit Property' : 'Add New Property'}</DialogTitle>
+          <DialogDescription className="sr-only">{editProperty ? 'Edit property dialog' : 'Add property dialog'}</DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
