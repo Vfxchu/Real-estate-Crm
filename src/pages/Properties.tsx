@@ -189,9 +189,8 @@ export const Properties = () => {
         .from('properties')
         .select('price, offer_type, status, segment');
 
-      // Agent filtering: agents only see their own properties
-      const isAgent = profile?.role === 'agent';
-      if (isAgent && user?.id) {
+      // Agent filtering: only filter by agent_id when on "My Inventory" tab
+      if (isAgent && user?.id && activeTab === 'my-inventory') {
         query = query.eq('agent_id', user.id);
       }
 
@@ -242,7 +241,7 @@ export const Properties = () => {
       }
       setStats(prev => ({ ...prev, loading: false }));
     }
-  }, [filters, debouncedSearch, toast]);
+  }, [filters, debouncedSearch, toast, activeTab, isAgent, user?.id]);
 
   useEffect(() => {
     fetchStats();
@@ -346,7 +345,7 @@ export const Properties = () => {
     }
 
     return filtered;
-  }, [properties, filters, debouncedSearch, isAdvancedMode]);
+  }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab, isAgent, user?.id]);
 
   const handleDeleteProperty = async (property: Property) => {
     if (!isAdmin && property.agent_id !== user?.id) {
