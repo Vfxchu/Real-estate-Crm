@@ -60,13 +60,13 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     }
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fileType: 'document' | 'layout') => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
     try {
-      const bucket = fileType === 'layout' ? 'property-layouts' : 'property-docs';
+      const bucket = 'property-docs';
       const filePath = `${propertyId}/${Date.now()}_${file.name}`;
       
       const { error: uploadError } = await uploadFile(bucket, filePath, file);
@@ -78,7 +78,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
           property_id: propertyId,
           name: file.name,
           path: filePath,
-          type: fileType,
+          type: 'document',
           size: file.size
         });
 
@@ -87,14 +87,14 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
       // Log activity
       await supabase.from('activities').insert({
         type: 'file_upload',
-        description: `Uploaded ${fileType}: ${file.name}`,
+        description: `Uploaded document: ${file.name}`,
         property_id: propertyId,
         created_by: (await supabase.auth.getUser()).data.user?.id
       });
 
       toast({
         title: 'Success',
-        description: `${fileType === 'layout' ? 'Layout' : 'Document'} uploaded successfully`
+        description: 'Document uploaded successfully'
       });
 
       loadFiles();
@@ -116,7 +116,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     if (!confirm(`Delete ${file.name}?`)) return;
 
     try {
-      const bucket = file.type === 'layout' ? 'property-layouts' : 'property-docs';
+      const bucket = 'property-docs';
       
       const { error: storageError } = await deleteFile(bucket, file.path);
       if (storageError) throw storageError;
@@ -131,7 +131,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
       // Log activity
       await supabase.from('activities').insert({
         type: 'file_delete',
-        description: `Deleted ${file.type}: ${file.name}`,
+        description: `Deleted document: ${file.name}`,
         property_id: propertyId,
         created_by: (await supabase.auth.getUser()).data.user?.id
       });
@@ -155,7 +155,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
 
   const handleDownloadFile = async (file: PropertyFile) => {
     try {
-      const bucket = file.type === 'layout' ? 'property-layouts' : 'property-docs';
+      const bucket = 'property-docs';
       const { data, error } = await createSignedUrl(bucket, file.path, 3600);
       
       if (error || !data) throw new Error('Could not generate download URL');
@@ -185,7 +185,6 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     return <File className="w-4 h-4" />;
   };
 
-  const layouts = files.filter(f => f.type === 'layout');
   const documents = files.filter(f => f.type === 'document');
 
   if (loading) {
@@ -199,150 +198,75 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Layouts */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Floor Plans & Layouts
-            </CardTitle>
-            {canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={uploading}
-                onClick={() => document.getElementById('layout-upload')?.click()}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Layout
-              </Button>
-            )}
-          </div>
-          <input
-            id="layout-upload"
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf"
-            onChange={(e) => handleFileUpload(e, 'layout')}
-          />
-        </CardHeader>
-        <CardContent>
-          {layouts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No layouts uploaded yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {layouts.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {getFileIcon(file.name)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)} • {new Date(file.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Documents
+          </CardTitle>
+          {canEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={uploading}
+              onClick={() => document.getElementById('document-upload')?.click()}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Document
+            </Button>
+          )}
+        </div>
+        <input
+          id="document-upload"
+          type="file"
+          className="hidden"
+          accept=".pdf,.doc,.docx,image/*"
+          onChange={handleFileUpload}
+        />
+      </CardHeader>
+      <CardContent>
+        {documents.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No documents uploaded yet
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {documents.map((file) => (
+              <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {getFileIcon(file.name)}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)} • {new Date(file.created_at).toLocaleDateString()}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDownloadFile(file)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  {canEdit && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleDownloadFile(file)}
+                      className="text-destructive"
+                      onClick={() => handleDeleteFile(file)}
                     >
-                      <Download className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => handleDeleteFile(file)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Documents */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Documents
-            </CardTitle>
-            {canEdit && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={uploading}
-                onClick={() => document.getElementById('document-upload')?.click()}
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Document
-              </Button>
-            )}
+              </div>
+            ))}
           </div>
-          <input
-            id="document-upload"
-            type="file"
-            className="hidden"
-            accept=".pdf,.doc,.docx,image/*"
-            onChange={(e) => handleFileUpload(e, 'document')}
-          />
-        </CardHeader>
-        <CardContent>
-          {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No documents uploaded yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {getFileIcon(file.name)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)} • {new Date(file.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownloadFile(file)}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => handleDeleteFile(file)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

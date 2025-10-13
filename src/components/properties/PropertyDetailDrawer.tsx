@@ -17,6 +17,8 @@ import { Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyFilesSection } from "./PropertyFilesSection";
 import { PropertyImageGallery } from "./PropertyImageGallery";
+import { canViewSensitiveFields } from "@/utils/propertyPermissions";
+import { User } from "lucide-react";
 
 export interface PropertyWithOwner extends Property {
   owner?: {
@@ -67,6 +69,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
 
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || property?.agent_id === user?.id;
+  const canViewSensitive = property ? canViewSensitiveFields(property, user?.id, profile?.role) : false;
 
   useEffect(() => {
     if (property?.id && open) {
@@ -198,6 +201,12 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                     {property.featured && (
                       <Badge variant="secondary">Featured</Badge>
                     )}
+                    {property.profiles && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <User className="w-3 h-3" />
+                        {property.profiles.name}
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-2xl font-bold text-primary">
                     {formatPrice(property.price)}
@@ -268,7 +277,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="images">Images</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
+                {canViewSensitive && <TabsTrigger value="documents">Documents</TabsTrigger>}
                 <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
 
@@ -349,7 +358,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                   <CardContent className="space-y-2">
                     <div className="text-sm">
                       <div className="font-medium">{property.address}</div>
-                      {property.unit_number && (
+                      {canViewSensitive && property.unit_number && (
                         <div className="text-muted-foreground">Unit {property.unit_number}</div>
                       )}
                       <div className="text-muted-foreground">
@@ -389,30 +398,6 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                   </Card>
                 )}
 
-                {/* Image Preview */}
-                {property.images && property.images.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-2">
-                          <ImageIcon className="w-5 h-5" />
-                          Images Preview
-                        </CardTitle>
-                        <Button variant="ghost" size="sm" onClick={() => {
-                          const imagesTab = document.querySelector('[value="images"]') as HTMLButtonElement;
-                          imagesTab?.click();
-                        }}>
-                          View All ({property.images.length})
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-muted-foreground text-sm mb-2">
-                        First {Math.min(6, property.images.length)} of {property.images.length} images
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Recent Documents */}
                 {files.length > 0 && (
@@ -548,16 +533,18 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
               </TabsContent>
 
               {/* Documents Tab */}
-              <TabsContent value="documents" className="mt-4">
-                <PropertyFilesSection
-                  propertyId={property.id}
-                  canEdit={canEdit}
-                  onUpdate={() => {
-                    onUpdate?.();
-                    loadFiles();
-                  }}
-                />
-              </TabsContent>
+              {canViewSensitive && (
+                <TabsContent value="documents" className="mt-4">
+                  <PropertyFilesSection
+                    propertyId={property.id}
+                    canEdit={canEdit}
+                    onUpdate={() => {
+                      onUpdate?.();
+                      loadFiles();
+                    }}
+                  />
+                </TabsContent>
+              )}
 
               {/* Activities Tab */}
               <TabsContent value="activities" className="space-y-4 mt-4">

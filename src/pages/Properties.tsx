@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -116,6 +117,7 @@ export const Properties = () => {
   const { properties, loading, deleteProperty } = useProperties();
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const isAgent = profile?.role === 'agent';
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
@@ -133,6 +135,7 @@ export const Properties = () => {
   const [filterKey, setFilterKey] = useState(0);
   const [currency, setCurrency] = useState('AED');
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [activeTab, setActiveTab] = useState<'my-inventory' | 'dkv-inventory'>('my-inventory');
   const [stats, setStats] = useState<PropertyStats>({
     total: 0,
     availableForSale: 0,
@@ -275,11 +278,16 @@ export const Properties = () => {
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
     let filtered = properties.filter(property => {
-      // Agent filtering: agents only see their own properties
-      const isAgent = profile?.role === 'agent';
-      if (isAgent && property.agent_id !== user?.id) {
-        return false;
+      // Tab filtering for agents
+      if (isAgent) {
+        if (activeTab === 'my-inventory') {
+          // My Inventory: only properties created by this agent
+          if (property.agent_id !== user?.id) return false;
+        }
+        // DKV Inventory: all properties (no filtering by agent)
       }
+      
+      // Admin sees all properties (no filtering)
       
       // Search filtering
       if (debouncedSearch) {
@@ -744,15 +752,22 @@ export const Properties = () => {
         </CardContent>
       </Card>
 
-      {/* Properties List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredProperties.length} of {properties.length} properties
-          </p>
-        </div>
+      {/* Properties List with Tabs for Agents */}
+      {isAgent ? (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="my-inventory">My Inventory</TabsTrigger>
+            <TabsTrigger value="dkv-inventory">DKV Inventory</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value={activeTab} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {filteredProperties.length} properties
+              </p>
+            </div>
 
-        {/* Properties Grid */}
+            {/* Properties Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (

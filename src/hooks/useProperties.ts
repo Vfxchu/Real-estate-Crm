@@ -286,6 +286,80 @@ export const useProperties = () => {
     }
   };
 
+  // Set up initial fetch and real-time subscriptions
+  useEffect(() => {
+    if (user) {
+      fetchProperties();
+      
+      // Set up real-time subscription for property updates
+      const channel = supabase
+        .channel('properties-changes')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'properties'
+        }, async (payload) => {
+          console.log('[PROPERTIES] Real-time update received:', payload);
+          const updatedProperty = payload.new as any;
+          
+          // Fetch profile data if agent changed
+          let profileData = null;
+          if (updatedProperty.agent_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name, email')
+              .eq('user_id', updatedProperty.agent_id)
+              .single();
+            
+            profileData = profile || { name: 'Unknown', email: 'unknown@example.com' };
+          }
+          
+          // Transform image URLs to secure signed URLs
+          const secureImages = updatedProperty.images ? await Promise.all(
+            updatedProperty.images.map(async (imagePath: string) => {
+              if (imagePath.startsWith('http')) {
+                return imagePath;
+              }
+              return await getSecureImageUrl('property-images', imagePath) || imagePath;
+            })
+          ) : [];
+          
+          const enrichedProperty = {
+            ...updatedProperty,
+            images: secureImages,
+            profiles: profileData
+          };
+          
+          // Update local state
+          setProperties(prev => 
+            prev.map(p => p.id === enrichedProperty.id ? enrichedProperty : p)
+          );
+          
+          // Dispatch event for cross-component sync
+          window.dispatchEvent(new CustomEvent('properties:refresh'));
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'properties'
+        }, () => {
+          fetchProperties();
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'properties'
+        }, () => {
+          fetchProperties();
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
   return {
     properties,
     loading,
