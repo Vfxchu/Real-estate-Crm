@@ -72,12 +72,12 @@ export const useAgents = () => {
       // Apply masking to profiles based on permissions and fetch lead counts
       const agentsWithStats = await Promise.all(
         (agentsData || []).map(async (agent) => {
-          // Apply profile masking for sensitive fields (email, phone)
+          // Apply profile masking for sensitive fields (phone only in collaborative mode)
           const maskedAgent = applyProfileMasking(agent, user?.id, currentUserRole);
 
-          // Log admin access to other agents' profiles
-          if (currentUserRole === 'admin' && agent.user_id !== user?.id) {
-            // Audit logging will be done when sensitive fields are actually accessed
+          // Log admin access to other agents' phone numbers only
+          if (currentUserRole === 'admin' && agent.user_id !== user?.id && agent.phone) {
+            // Audit logging for phone number access
             await supabase.rpc('log_profile_access', {
               p_accessed_user_id: agent.user_id,
               p_accessed_name: agent.name,

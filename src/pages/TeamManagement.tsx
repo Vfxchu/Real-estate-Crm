@@ -47,6 +47,7 @@ interface AgentStats {
   agent_id: string;
   name: string;
   email: string;
+  phone?: string | null;
   total_leads: number;
   active_leads: number;
   deals_count?: number;
@@ -188,17 +189,17 @@ export const TeamManagement = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Security Notice Banner */}
-      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
-                Enhanced Privacy Protection Active
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Collaborative Team Environment
               </h3>
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Employee contact information (email and phone) is now protected. Only profile owners and administrators can view unmasked details. 
-                Other users will see masked information for privacy protection.
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Team members can view colleague names and emails for effective collaboration. 
+                Phone numbers remain private and are only visible to profile owners and administrators.
               </p>
             </div>
           </div>
@@ -329,28 +330,29 @@ export const TeamManagement = () => {
                           </Avatar>
                           <div>
                             <p className="font-medium">{agent.name}</p>
-                            <div className="flex items-center gap-2">
+                            <p className="text-sm text-muted-foreground">{agent.email}</p>
+                            {agent.phone && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                      {agent.email}
-                                      {isFieldMasked(agent.email) && (
-                                        <EyeOff className="w-3 h-3 text-amber-500" />
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                      {agent.phone}
+                                      {isFieldMasked(agent.phone) && (
+                                        <EyeOff className="w-3 h-3 text-blue-500" />
                                       )}
                                     </p>
                                   </TooltipTrigger>
-                                  {isFieldMasked(agent.email) && (
+                                  {isFieldMasked(agent.phone) && (
                                     <TooltipContent>
                                       <p className="flex items-center gap-1">
                                         <Shield className="w-3 h-3" />
-                                        {getMaskedFieldMessage('email')}
+                                        {getMaskedFieldMessage('phone')}
                                       </p>
                                     </TooltipContent>
                                   )}
                                 </Tooltip>
                               </TooltipProvider>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -434,17 +436,17 @@ export const TeamManagement = () => {
                                 <Badge variant="outline" className="capitalize">
                                   {agent.role}
                                 </Badge>
-                                {isFieldMasked(agent.email) && (
+                                {agent.phone && isFieldMasked(agent.phone) && (
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger>
-                                        <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                        <Badge variant="outline" className="text-blue-600 border-blue-300">
                                           <Shield className="w-3 h-3 mr-1" />
-                                          Protected
+                                          Phone Protected
                                         </Badge>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Contact details are protected for privacy</p>
+                                        <p>Phone number is protected for privacy</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>

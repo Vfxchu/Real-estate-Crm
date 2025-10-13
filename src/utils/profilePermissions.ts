@@ -1,8 +1,9 @@
 /**
  * Profile Security Utilities
  * 
- * Implements strict security for sensitive profile fields (email, phone).
- * Only profile owners and admins can view unmasked sensitive data.
+ * Implements collaborative security for team environments.
+ * - Email: Visible to all authenticated users for team collaboration
+ * - Phone: Protected - only visible to profile owner and admins
  */
 
 export interface ProfileData {
@@ -17,27 +18,34 @@ export interface ProfileData {
 }
 
 /**
- * Determines if the current user can view sensitive profile fields
- * (email, phone) without masking
+ * Determines if the current user can view phone numbers without masking
+ * Note: Email is visible to all authenticated users for collaboration
  */
-export const canViewSensitiveProfile = (
+export const canViewPhoneNumber = (
   profileUserId: string,
   currentUserId: string | undefined,
   userRole: string | undefined
 ): boolean => {
-  // Admins and superadmins can see all sensitive fields
+  // Admins and superadmins can see all phone numbers
   if (userRole === 'admin' || userRole === 'superadmin') return true;
   
-  // Users can see their own sensitive fields
+  // Users can see their own phone numbers
   if (profileUserId === currentUserId) return true;
   
-  // Everyone else cannot see sensitive fields
+  // Everyone else cannot see phone numbers (team collaboration doesn't require phone)
   return false;
 };
 
 /**
+ * @deprecated Use canViewPhoneNumber instead. Email is now visible to all authenticated users.
+ */
+export const canViewSensitiveProfile = canViewPhoneNumber;
+
+/**
  * Masks an email address for unauthorized viewers
- * Example: john.doe@example.com → jo***@example.com
+ * Note: In collaborative mode, emails are visible to all authenticated users
+ * This function is kept for backward compatibility
+ * @deprecated Email masking is not used in collaborative security mode
  */
 export const maskEmail = (email: string): string => {
   if (!email || !email.includes('@')) return '***@***.com';
@@ -73,28 +81,29 @@ export const maskPhone = (phone: string): string => {
 
 /**
  * Applies masking to a profile based on viewer permissions
- * Returns a new profile object with masked fields if unauthorized
+ * In collaborative mode: Only masks phone numbers for unauthorized viewers
+ * Email is visible to all authenticated users for team collaboration
  */
 export const applyProfileMasking = (
   profile: ProfileData,
   currentUserId: string | undefined,
   userRole: string | undefined
 ): ProfileData => {
-  const canViewSensitive = canViewSensitiveProfile(
+  const canViewPhone = canViewPhoneNumber(
     profile.user_id,
     currentUserId,
     userRole
   );
 
-  if (canViewSensitive) {
-    // Return original profile for authorized viewers
+  if (canViewPhone) {
+    // Return original profile for authorized viewers (own profile or admin)
     return profile;
   }
 
-  // Return masked profile for unauthorized viewers
+  // In collaborative mode: only mask phone, keep email visible for team collaboration
   return {
     ...profile,
-    email: maskEmail(profile.email),
+    // Email remains unmasked for team visibility
     phone: profile.phone ? maskPhone(profile.phone) : null,
   };
 };
@@ -111,8 +120,8 @@ export const isFieldMasked = (value: string): boolean => {
  */
 export const getMaskedFieldMessage = (fieldType: 'email' | 'phone'): string => {
   const messages = {
-    email: 'Email hidden for privacy',
-    phone: 'Phone hidden for privacy',
+    email: 'Email visible to team members', // Updated for collaborative mode
+    phone: 'Phone number hidden for privacy',
   };
   return messages[fieldType];
 };
