@@ -1575,7 +1575,12 @@ export type Database = {
         Args:
           | { p_auto_next_hours?: number; p_task_id: string }
           | { p_lead_id: string; p_outcome: string }
-        Returns: undefined
+        Returns: {
+          completed_task_id: string
+          lead_stage: string
+          next_event_id: string
+          next_task_id: string
+        }[]
       }
       custom_access_token_hook: {
         Args: { event: Json }
