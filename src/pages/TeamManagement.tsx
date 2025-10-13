@@ -6,6 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -25,6 +31,9 @@ import {
   BarChart3,
   Settings,
   Plus,
+  Shield,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useAgents } from '@/hooks/useAgents';
 import { useLeads } from '@/hooks/useLeads';
@@ -32,6 +41,7 @@ import { useDeals } from '@/hooks/useDeals';
 import { useToast } from '@/hooks/use-toast';
 import { getAgentStatistics } from '@/services/assignment';
 import { AddAgentForm } from '@/components/forms/AddAgentForm';
+import { isFieldMasked, getMaskedFieldMessage } from '@/utils/profilePermissions';
 
 interface AgentStats {
   agent_id: string;
@@ -177,6 +187,24 @@ export const TeamManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Security Notice Banner */}
+      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 dark:text-amber-100 mb-1">
+                Enhanced Privacy Protection Active
+              </h3>
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Employee contact information (email and phone) is now protected. Only profile owners and administrators can view unmasked details. 
+                Other users will see masked information for privacy protection.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -301,7 +329,28 @@ export const TeamManagement = () => {
                           </Avatar>
                           <div>
                             <p className="font-medium">{agent.name}</p>
-                            <p className="text-sm text-muted-foreground">{agent.email}</p>
+                            <div className="flex items-center gap-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                      {agent.email}
+                                      {isFieldMasked(agent.email) && (
+                                        <EyeOff className="w-3 h-3 text-amber-500" />
+                                      )}
+                                    </p>
+                                  </TooltipTrigger>
+                                  {isFieldMasked(agent.email) && (
+                                    <TooltipContent>
+                                      <p className="flex items-center gap-1">
+                                        <Shield className="w-3 h-3" />
+                                        {getMaskedFieldMessage('email')}
+                                      </p>
+                                    </TooltipContent>
+                                  )}
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -381,9 +430,26 @@ export const TeamManagement = () => {
                             </Avatar>
                             <div>
                               <p className="font-medium">{agent.name}</p>
-                              <Badge variant="outline" className="capitalize">
-                                {agent.role}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="capitalize">
+                                  {agent.role}
+                                </Badge>
+                                {isFieldMasked(agent.email) && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                          <Shield className="w-3 h-3 mr-1" />
+                                          Protected
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Contact details are protected for privacy</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </TableCell>

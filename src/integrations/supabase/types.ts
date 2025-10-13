@@ -1557,6 +1557,10 @@ export type Database = {
           task_id: string
         }[]
       }
+      can_view_profile_sensitive: {
+        Args: { profile_user_id: string }
+        Returns: boolean
+      }
       check_task_consistency: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1615,6 +1619,14 @@ export type Database = {
       }
       log_index_usage: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      log_profile_access: {
+        Args: {
+          p_accessed_email: string
+          p_accessed_name: string
+          p_accessed_user_id: string
+        }
         Returns: undefined
       }
       log_security_event: {

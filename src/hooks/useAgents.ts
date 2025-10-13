@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { applyProfileMasking } from '@/utils/profilePermissions';
+import { getCurrentUserRole } from '@/services/user-roles';
 
 export interface Agent {
   user_id: string;
@@ -40,6 +42,9 @@ export const useAgents = () => {
         return;
       }
 
+      // Get current user's role for masking logic
+      const currentUserRole = await getCurrentUserRole();
+
       // Fetch all agent user IDs from user_roles table
       const { data: agentRoles, error: rolesError } = await supabase
         .from('user_roles')
@@ -64,9 +69,22 @@ export const useAgents = () => {
 
       if (error) throw error;
 
-      // Fetch lead counts for each agent
+      // Apply masking to profiles based on permissions and fetch lead counts
       const agentsWithStats = await Promise.all(
         (agentsData || []).map(async (agent) => {
+          // Apply profile masking for sensitive fields (email, phone)
+          const maskedAgent = applyProfileMasking(agent, user?.id, currentUserRole);
+
+          // Log admin access to other agents' profiles
+          if (currentUserRole === 'admin' && agent.user_id !== user?.id) {
+            // Audit logging will be done when sensitive fields are actually accessed
+            await supabase.rpc('log_profile_access', {
+              p_accessed_user_id: agent.user_id,
+              p_accessed_name: agent.name,
+              p_accessed_email: agent.email
+            });
+          }
+
           const { data: leads } = await supabase
             .from('leads')
             .select('status')
@@ -77,7 +95,7 @@ export const useAgents = () => {
           const conversionRate = assignedLeads > 0 ? Math.round((closedDeals / assignedLeads) * 100) : 0;
 
           return {
-            ...agent,
+            ...maskedAgent,
             role: 'agent',
             assignedLeads,
             closedDeals,
