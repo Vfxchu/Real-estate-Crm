@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -18,6 +21,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from 'recharts';
 import {
   TrendingUp,
@@ -28,43 +32,74 @@ import {
   Calendar,
   Award,
   Activity,
+  ArrowRight,
 } from 'lucide-react';
 
-// Analytics data - in production, fetch from Supabase analytics queries
-const leadsData = [
-  { month: 'Jan', leads: 65, converted: 12 },
-  { month: 'Feb', leads: 78, converted: 18 },
-  { month: 'Mar', leads: 90, converted: 22 },
-  { month: 'Apr', leads: 81, converted: 19 },
-  { month: 'May', leads: 95, converted: 28 },
-  { month: 'Jun', leads: 102, converted: 31 },
-];
+interface MonthlyData {
+  month: string;
+  leads: number;
+  contacted: number;
+  qualified: number;
+  converted: number;
+}
 
-const sourceData = [
-  { name: 'Website', value: 35, color: '#3b82f6' },
-  { name: 'Referrals', value: 28, color: '#10b981' },
-  { name: 'Social Media', value: 20, color: '#f59e0b' },
-  { name: 'Walk-ins', value: 17, color: '#ef4444' },
-];
+interface SourceData {
+  name: string;
+  value: number;
+  count: number;
+  color: string;
+}
 
-const agentPerformance = [
-  { name: 'Sarah Johnson', leads: 45, converted: 24, rate: 53.3 },
-  { name: 'Mike Chen', leads: 38, converted: 16, rate: 42.1 },
-  { name: 'Lisa Rodriguez', leads: 52, converted: 31, rate: 59.6 },
-  { name: 'Tom Wilson', leads: 29, converted: 12, rate: 41.4 },
-];
+interface AgentPerformance {
+  name: string;
+  email: string;
+  agent_id: string;
+  leads: number;
+  converted: number;
+  rate: number;
+}
+
+interface FunnelData {
+  total: number;
+  contacted: number;
+  qualified: number;
+  converted: number;
+}
 
 export const Analytics = () => {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [analytics, setAnalytics] = useState({
     totalLeads: 0,
     newLeads: 0,
     convertedLeads: 0,
     activeAgents: 0,
-    conversionRate: 0
+    conversionRate: 0,
+    totalProperties: 0,
+    totalContacts: 0,
+    totalRevenue: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [sourceData, setSourceData] = useState<SourceData[]>([]);
+  const [agentPerformance, setAgentPerformance] = useState<AgentPerformance[]>([]);
+  const [funnelData, setFunnelData] = useState<FunnelData>({
+    total: 0,
+    contacted: 0,
+    qualified: 0,
+    converted: 0
   });
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6months');
+
+  const getMonthsToFetch = () => {
+    switch (timeRange) {
+      case '1month': return 1;
+      case '3months': return 3;
+      case '6months': return 6;
+      case '1year': return 12;
+      default: return 6;
+    }
+  };
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -73,32 +108,41 @@ export const Analytics = () => {
       try {
         setLoading(true);
         
-        // SECURITY: Let RLS handle access control - no client-side filtering
-        // The database RLS policies will automatically filter based on agent_id
-        const leadsQuery = supabase.from('leads').select('id, status, agent_id', { count: 'exact' });
+        // Fetch basic counts
+        const { count: totalLeads } = await supabase
+          .from('leads')
+          .select('id', { count: 'exact' });
         
-        const { count: totalLeads } = await leadsQuery;
-        
-        // Fetch new leads count (last 30 days) - RLS automatically applies
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        const newLeadsQuery = supabase
+        const { count: newLeads } = await supabase
           .from('leads')
           .select('id', { count: 'exact' })
           .gte('created_at', thirtyDaysAgo.toISOString());
           
-        const { count: newLeads } = await newLeadsQuery;
-        
-        // Fetch converted leads count - RLS automatically applies
-        const convertedQuery = supabase
+        const { count: convertedLeads } = await supabase
           .from('leads')
           .select('id', { count: 'exact' })
-          .eq('status', 'won');
-          
-        const { count: convertedLeads } = await convertedQuery;
+          .in('status', ['won', 'converted', 'closed']);
+
+        const { count: totalProperties } = await supabase
+          .from('properties')
+          .select('id', { count: 'exact' });
+
+        const { count: totalContacts } = await supabase
+          .from('contacts')
+          .select('id', { count: 'exact' });
         
-        // Fetch active agents count (only for admin)
+        // Fetch revenue from deals
+        const { data: deals } = await supabase
+          .from('deals')
+          .select('value')
+          .eq('status', 'won');
+        
+        const totalRevenue = deals?.reduce((sum, deal) => sum + (Number(deal.value) || 0), 0) || 0;
+        
+        // Fetch active agents
         let activeAgents = 0;
         const { data: userRoles } = await supabase
           .from('user_roles')
@@ -123,7 +167,6 @@ export const Analytics = () => {
           }
         }
         
-        // Calculate conversion rate
         const conversionRate = totalLeads && totalLeads > 0 
           ? Math.round(((convertedLeads || 0) / totalLeads) * 100) 
           : 0;
@@ -133,8 +176,24 @@ export const Analytics = () => {
           newLeads: newLeads || 0,
           convertedLeads: convertedLeads || 0,
           activeAgents,
-          conversionRate
+          conversionRate,
+          totalProperties: totalProperties || 0,
+          totalContacts: totalContacts || 0,
+          totalRevenue
         });
+
+        // Fetch monthly trends
+        await fetchMonthlyData();
+        
+        // Fetch source distribution
+        await fetchSourceData(totalLeads || 0);
+        
+        // Fetch agent performance
+        await fetchAgentPerformance();
+        
+        // Fetch funnel data
+        await fetchFunnelData();
+        
       } catch (error) {
         console.error('Error fetching analytics:', error);
       } finally {
@@ -142,8 +201,156 @@ export const Analytics = () => {
       }
     };
 
+    const fetchMonthlyData = async () => {
+      const months = getMonthsToFetch();
+      const monthsData: MonthlyData[] = [];
+      
+      for (let i = months - 1; i >= 0; i--) {
+        const monthDate = subMonths(new Date(), i);
+        const monthStart = startOfMonth(monthDate);
+        const monthEnd = endOfMonth(monthDate);
+        const monthLabel = format(monthDate, 'MMM');
+
+        const { data: leads } = await supabase
+          .from('leads')
+          .select('status')
+          .gte('created_at', monthStart.toISOString())
+          .lte('created_at', monthEnd.toISOString());
+
+        const totalLeads = leads?.length || 0;
+        const contacted = leads?.filter(l => 
+          !['new'].includes(l.status)
+        ).length || 0;
+        const qualified = leads?.filter(l => 
+          ['qualified', 'negotiation', 'negotiating', 'won', 'converted', 'closed'].includes(l.status)
+        ).length || 0;
+        const converted = leads?.filter(l => 
+          ['won', 'converted', 'closed'].includes(l.status)
+        ).length || 0;
+
+        monthsData.push({
+          month: monthLabel,
+          leads: totalLeads,
+          contacted,
+          qualified,
+          converted
+        });
+      }
+
+      setMonthlyData(monthsData);
+    };
+
+    const fetchSourceData = async (totalLeads: number) => {
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('source');
+
+      const sourceCounts: Record<string, number> = {};
+      leads?.forEach(lead => {
+        const source = lead.source || 'Unknown';
+        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+      });
+
+      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+      const formattedData: SourceData[] = Object.entries(sourceCounts).map(([name, count], index) => ({
+        name,
+        count,
+        value: totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0,
+        color: colors[index % colors.length]
+      }));
+
+      setSourceData(formattedData);
+    };
+
+    const fetchAgentPerformance = async () => {
+      const { data: agents } = await supabase
+        .from('profiles')
+        .select('user_id, name, email')
+        .eq('status', 'active');
+
+      if (!agents) return;
+
+      const performanceData: AgentPerformance[] = [];
+
+      for (const agent of agents) {
+        const { data: leads } = await supabase
+          .from('leads')
+          .select('status')
+          .eq('agent_id', agent.user_id);
+
+        const totalLeads = leads?.length || 0;
+        const converted = leads?.filter(l => 
+          ['won', 'converted', 'closed'].includes(l.status)
+        ).length || 0;
+        const rate = totalLeads > 0 ? Math.round((converted / totalLeads) * 100) : 0;
+
+        if (totalLeads > 0) {
+          performanceData.push({
+            name: agent.name,
+            email: agent.email,
+            agent_id: agent.user_id,
+            leads: totalLeads,
+            converted,
+            rate
+          });
+        }
+      }
+
+      setAgentPerformance(performanceData.sort((a, b) => b.rate - a.rate));
+    };
+
+    const fetchFunnelData = async () => {
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('status');
+
+      const total = leads?.length || 0;
+      const contacted = leads?.filter(l => 
+        !['new'].includes(l.status)
+      ).length || 0;
+      const qualified = leads?.filter(l => 
+        ['qualified', 'negotiation', 'negotiating', 'won', 'converted', 'closed'].includes(l.status)
+      ).length || 0;
+      const converted = leads?.filter(l => 
+        ['won', 'converted', 'closed'].includes(l.status)
+      ).length || 0;
+
+      setFunnelData({ total, contacted, qualified, converted });
+    };
+
     fetchAnalytics();
-  }, [user, profile]);
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('analytics-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads'
+        },
+        () => {
+          fetchAnalytics();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'deals'
+        },
+        () => {
+          fetchAnalytics();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, profile, timeRange]);
 
   if (loading) {
     return (
@@ -178,60 +385,72 @@ export const Analytics = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="card-elevated">
+        <Card className="card-elevated cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/leads')}>
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <Target className="w-8 h-8 text-primary" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
-                <p className="text-2xl font-bold">{analytics.totalLeads.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">All time</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Target className="w-8 h-8 text-primary" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
+                  <p className="text-2xl font-bold">{analytics.totalLeads.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">All time</p>
+                </div>
               </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
         
-        <Card className="card-elevated">
+        <Card className="card-elevated cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/leads')}>
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <Award className="w-8 h-8 text-success" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">New Leads</p>
-                <p className="text-2xl font-bold">{analytics.newLeads}</p>
-                <p className="text-xs text-muted-foreground">Last 30 days</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Award className="w-8 h-8 text-success" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">New Leads</p>
+                  <p className="text-2xl font-bold">{analytics.newLeads}</p>
+                  <p className="text-xs text-muted-foreground">Last 30 days</p>
+                </div>
               </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-elevated">
+        <Card className="card-elevated cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/properties')}>
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-warning" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Converted</p>
-                <p className="text-2xl font-bold">{analytics.convertedLeads}</p>
-                <p className="text-xs text-muted-foreground">Won leads</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <DollarSign className="w-8 h-8 text-warning" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Properties</p>
+                  <p className="text-2xl font-bold">{analytics.totalProperties}</p>
+                  <p className="text-xs text-muted-foreground">Total listings</p>
+                </div>
               </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="card-elevated">
+        <Card className="card-elevated cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/contacts')}>
           <CardContent className="p-6">
-            <div className="flex items-center">
-              <Activity className="w-8 h-8 text-info" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {profile?.role === 'admin' ? 'Active Agents' : 'Conversion Rate'}
-                </p>
-                <p className="text-2xl font-bold">
-                  {profile?.role === 'admin' ? analytics.activeAgents : `${analytics.conversionRate}%`}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {profile?.role === 'admin' ? 'Available agents' : 'Success rate'}
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Users className="w-8 h-8 text-info" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {profile?.role === 'admin' ? 'Total Contacts' : 'Conversion Rate'}
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {profile?.role === 'admin' ? analytics.totalContacts : `${analytics.conversionRate}%`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {profile?.role === 'admin' ? 'In database' : 'Success rate'}
+                  </p>
+                </div>
               </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -253,16 +472,23 @@ export const Analytics = () => {
                 <CardTitle>Lead Generation Trends</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={leadsData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="leads" fill="hsl(var(--primary))" name="Total Leads" />
-                    <Bar dataKey="converted" fill="hsl(var(--success))" name="Converted" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {monthlyData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="leads" fill="hsl(var(--primary))" name="Total Leads" />
+                      <Bar dataKey="converted" fill="hsl(var(--success))" name="Converted" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    No data available for selected period
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -274,30 +500,30 @@ export const Analytics = () => {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Leads Generated</span>
-                    <span>512 (100%)</span>
+                    <span>{funnelData.total} (100%)</span>
                   </div>
                   <Progress value={100} className="h-3" />
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Contacted</span>
-                    <span>423 (82.6%)</span>
+                    <span>{funnelData.contacted} ({funnelData.total > 0 ? ((funnelData.contacted / funnelData.total) * 100).toFixed(1) : 0}%)</span>
                   </div>
-                  <Progress value={82.6} className="h-3" />
+                  <Progress value={funnelData.total > 0 ? (funnelData.contacted / funnelData.total) * 100 : 0} className="h-3" />
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Qualified</span>
-                    <span>267 (52.1%)</span>
+                    <span>{funnelData.qualified} ({funnelData.total > 0 ? ((funnelData.qualified / funnelData.total) * 100).toFixed(1) : 0}%)</span>
                   </div>
-                  <Progress value={52.1} className="h-3" />
+                  <Progress value={funnelData.total > 0 ? (funnelData.qualified / funnelData.total) * 100 : 0} className="h-3" />
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span>Converted</span>
-                    <span>156 (30.5%)</span>
+                    <span>{funnelData.converted} ({funnelData.total > 0 ? ((funnelData.converted / funnelData.total) * 100).toFixed(1) : 0}%)</span>
                   </div>
-                  <Progress value={30.5} className="h-3" />
+                  <Progress value={funnelData.total > 0 ? (funnelData.converted / funnelData.total) * 100 : 0} className="h-3" />
                 </div>
               </CardContent>
             </Card>
@@ -312,25 +538,31 @@ export const Analytics = () => {
                 <CardTitle>Lead Sources Distribution</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={sourceData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {sourceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {sourceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={sourceData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, value }) => `${name} ${value}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {sourceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    No source data available
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -339,23 +571,29 @@ export const Analytics = () => {
                 <CardTitle>Source Performance</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {sourceData.map((source) => (
-                  <div key={source.name} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-4 h-4 rounded-full" 
-                        style={{ backgroundColor: source.color }}
-                      />
-                      <span className="font-medium">{source.name}</span>
+                {sourceData.length > 0 ? (
+                  sourceData.map((source) => (
+                    <div key={source.name} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-4 h-4 rounded-full" 
+                          style={{ backgroundColor: source.color }}
+                        />
+                        <span className="font-medium">{source.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold">{source.value}%</p>
+                        <p className="text-sm text-muted-foreground">
+                          {source.count} leads
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">{source.value}%</p>
-                      <p className="text-sm text-muted-foreground">
-                        {Math.round(analytics.totalLeads * source.value / 100)} leads
-                      </p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    No source data available
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
           </div>
@@ -365,36 +603,52 @@ export const Analytics = () => {
         <TabsContent value="agents" className="space-y-6">
           <Card className="card-elevated">
             <CardHeader>
-              <CardTitle>Agent Performance Comparison</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Agent Performance Comparison</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => navigate('/team')}>
+                  View All Agents
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {agentPerformance.map((agent) => (
-                  <div key={agent.name} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">{agent.name}</h4>
-                      <span className="text-lg font-bold text-primary">{agent.rate}%</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Total Leads</p>
-                        <p className="font-medium">{agent.leads}</p>
+              {agentPerformance.length > 0 ? (
+                <div className="space-y-4">
+                  {agentPerformance.map((agent) => (
+                    <div key={agent.agent_id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold">{agent.name}</h4>
+                          <p className="text-sm text-muted-foreground">{agent.email}</p>
+                        </div>
+                        <span className="text-lg font-bold text-primary">{agent.rate}%</span>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Converted</p>
-                        <p className="font-medium">{agent.converted}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Rate</p>
-                        <div className="flex items-center gap-2">
-                          <Progress value={agent.rate} className="h-2 flex-1" />
-                          <span className="font-medium">{agent.rate}%</span>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Total Leads</p>
+                          <p className="font-medium text-lg">{agent.leads}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Converted</p>
+                          <p className="font-medium text-lg">{agent.converted}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Success Rate</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Progress value={agent.rate} className="h-2 flex-1" />
+                            <span className="font-medium">{agent.rate}%</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No agent performance data available</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -403,24 +657,41 @@ export const Analytics = () => {
         <TabsContent value="revenue" className="space-y-6">
           <Card className="card-elevated">
             <CardHeader>
-              <CardTitle>Revenue Growth</CardTitle>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Revenue Growth</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Total Revenue: ${analytics.totalRevenue.toLocaleString()}
+                  </p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={leadsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`$${(Number(value) * 15000).toLocaleString()}`, 'Revenue']} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="converted" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3}
-                    dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {monthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [value, 'Converted Leads']}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="converted" 
+                      stroke="hsl(var(--primary))" 
+                      strokeWidth={3}
+                      dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
+                      name="Converted Leads"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                  No revenue data available for selected period
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
