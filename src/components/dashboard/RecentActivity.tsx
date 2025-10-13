@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from 'date-fns';
 import { 
   MessageSquare, 
@@ -138,6 +139,9 @@ const getStatusColor = (status?: Activity['status']) => {
 
 export const RecentActivity: React.FC = () => {
   const { activities, loading } = useRecentActivities();
+  const [showAll, setShowAll] = useState(false);
+  
+  const displayedActivities = showAll ? activities : activities.slice(0, 3);
 
   if (loading) {
     return (
@@ -164,41 +168,56 @@ export const RecentActivity: React.FC = () => {
               No recent activities found
             </div>
           ) : (
-            activities.map((activity) => (
-            <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                {getActivityIcon(activity.type)}
-              </div>
-              
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">{activity.title}</p>
-                  <div className="flex items-center space-x-2">
-                    {activity.status && (
-                      <Badge 
-                        variant="secondary" 
-                        className={`text-xs px-2 py-0.5 ${getStatusColor(activity.status)}`}
-                      >
-                        {activity.status}
-                      </Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
-                    </span>
+            <>
+              {displayedActivities.map((activity) => (
+                <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{activity.title}</p>
+                      <div className="flex items-center space-x-2">
+                        {activity.status && (
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs px-2 py-0.5 ${getStatusColor(activity.status)}`}
+                          >
+                            {activity.status}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground">{activity.description}</p>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="w-5 h-5">
+                        <AvatarFallback className="text-xs">{activity.user.initials}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-muted-foreground">{activity.user.name}</span>
+                    </div>
                   </div>
                 </div>
-                
-                <p className="text-sm text-muted-foreground">{activity.description}</p>
-                
-                <div className="flex items-center space-x-2">
-                  <Avatar className="w-5 h-5">
-                    <AvatarFallback className="text-xs">{activity.user.initials}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs text-muted-foreground">{activity.user.name}</span>
+              ))}
+              
+              {activities.length > 3 && (
+                <div className="flex justify-center pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAll(!showAll)}
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    {showAll ? 'Show Less' : `Read More (${activities.length - 3} more)`}
+                  </Button>
                 </div>
-              </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
       </CardContent>
