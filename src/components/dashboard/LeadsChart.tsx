@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ResponsiveContainer, 
@@ -10,18 +10,113 @@ import {
   Tooltip,
   Legend 
 } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
-const data = [
-  { month: 'Jan', leads: 45, converted: 12, contacted: 38 },
-  { month: 'Feb', leads: 52, converted: 15, contacted: 45 },
-  { month: 'Mar', leads: 48, converted: 18, contacted: 42 },
-  { month: 'Apr', leads: 61, converted: 22, contacted: 55 },
-  { month: 'May', leads: 55, converted: 20, contacted: 48 },
-  { month: 'Jun', leads: 67, converted: 25, contacted: 58 },
-  { month: 'Jul', leads: 72, converted: 28, contacted: 65 },
-];
+interface ChartData {
+  month: string;
+  leads: number;
+  converted: number;
+  contacted: number;
+}
+
+const useLeadsChartData = () => {
+  const [data, setData] = useState<ChartData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchLeadsData = async () => {
+      if (!user) return;
+
+      try {
+        // Get data for the last 6 months
+        const monthsData: ChartData[] = [];
+        
+        for (let i = 5; i >= 0; i--) {
+          const monthDate = subMonths(new Date(), i);
+          const monthStart = startOfMonth(monthDate);
+          const monthEnd = endOfMonth(monthDate);
+          const monthLabel = format(monthDate, 'MMM');
+
+          // Fetch all leads for this month
+          const { data: leads, error } = await supabase
+            .from('leads')
+            .select('status')
+            .gte('created_at', monthStart.toISOString())
+            .lte('created_at', monthEnd.toISOString());
+
+          if (error) throw error;
+
+          const totalLeads = leads?.length || 0;
+          const contacted = leads?.filter(l => 
+            ['contacted', 'qualified', 'negotiation', 'converted', 'closed'].includes(l.status)
+          ).length || 0;
+          const converted = leads?.filter(l => 
+            ['converted', 'closed'].includes(l.status)
+          ).length || 0;
+
+          monthsData.push({
+            month: monthLabel,
+            leads: totalLeads,
+            contacted,
+            converted
+          });
+        }
+
+        setData(monthsData);
+      } catch (error) {
+        console.error('Error fetching leads chart data:', error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeadsData();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('leads-chart-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads'
+        },
+        () => {
+          fetchLeadsData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  return { data, loading };
+};
 
 export const LeadsChart: React.FC = () => {
+  const { data, loading } = useLeadsChartData();
+  if (loading) {
+    return (
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Leads Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center text-muted-foreground">
+            Loading chart data...
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="card-elevated">
       <CardHeader>
