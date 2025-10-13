@@ -754,9 +754,13 @@ export const Properties = () => {
       {/* Properties List with Tabs for Agents */}
       {isAgent ? (
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="my-inventory">My Inventory</TabsTrigger>
-            <TabsTrigger value="dkv-inventory">DKV Inventory</TabsTrigger>
+          <TabsList className="w-full h-auto grid grid-cols-2 gap-2 p-2 bg-muted/50">
+            <TabsTrigger value="my-inventory" className="text-base md:text-lg py-3 md:py-4 font-medium">
+              My Inventory
+            </TabsTrigger>
+            <TabsTrigger value="dkv-inventory" className="text-base md:text-lg py-3 md:py-4 font-medium">
+              DKV Inventory
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value={activeTab} className="space-y-4">
