@@ -210,6 +210,24 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const handleFileUpload = async (files: FileList | null, type: 'images' | 'layouts' | 'documents') => {
     if (!files || files.length === 0) return;
     
+    // Validate file types for documents
+    if (type === 'documents') {
+      const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'];
+      const invalidFiles = Array.from(files).filter(file => {
+        const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+        return !validExtensions.includes(ext);
+      });
+      
+      if (invalidFiles.length > 0) {
+        toast({
+          title: 'Invalid file type',
+          description: 'Only PDF, DOC, DOCX, and image files are allowed for documents.',
+          variant: 'destructive'
+        });
+        return;
+      }
+    }
+    
     setUploadingFiles(true);
     const newFiles: string[] = [];
     
@@ -434,42 +452,108 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         }
 
         // Move images first and update the property with storage paths
-        let movedImagePaths: string[] = [];
-        if (uploadedImages.length > 0) {
-          movedImagePaths = await moveFiles(uploadedImages, propertyData.id, 'property-images', 'image');
-          if (movedImagePaths.length > 0) {
-            await supabase
-              .from('properties')
-              .update({ images: movedImagePaths })
-              .eq('id', propertyData.id);
+        try {
+          let movedImagePaths: string[] = [];
+          if (uploadedImages.length > 0) {
+            movedImagePaths = await moveFiles(uploadedImages, propertyData.id, 'property-images', 'image');
+            if (movedImagePaths.length > 0) {
+              await supabase
+                .from('properties')
+                .update({ images: movedImagePaths })
+                .eq('id', propertyData.id);
+            }
           }
+        } catch (imageError) {
+          console.error('Error processing images:', imageError);
+          toast({
+            title: 'Warning',
+            description: 'Some images may not have been uploaded correctly',
+            variant: 'destructive'
+          });
         }
 
         // Move layouts
-        if (uploadedLayouts.length > 0) {
-          await moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout');
+        try {
+          if (uploadedLayouts.length > 0) {
+            await moveFiles(uploadedLayouts, propertyData.id, 'property-layouts', 'layout');
+          }
+        } catch (layoutError) {
+          console.error('Error processing layouts:', layoutError);
         }
 
-        // Move documents and update contact files
-        if (uploadedDocuments.length > 0) {
-          await moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document');
-          // Update contact files for documents
-          if (data.owner_contact_id) {
-            for (const docUrl of uploadedDocuments) {
-              const urlParts = docUrl.split('/');
-              const fileName = urlParts[urlParts.length - 1];
-              await supabase
-                .from('contact_files')
-                .insert({
-                  contact_id: data.owner_contact_id,
-                  source: 'property',
-                  property_id: propertyData.id,
-                  path: `${propertyData.id}/${fileName}`,
-                  name: fileName,
-                  type: 'document'
-                });
+        // Move documents and create proper database records
+        try {
+          if (uploadedDocuments.length > 0) {
+            const movedDocs = await moveFiles(uploadedDocuments, propertyData.id, 'property-docs', 'document');
+            
+            // Create records in property_files table
+            for (const docPath of movedDocs) {
+              try {
+                const pathParts = docPath.split('/');
+                const fileName = pathParts[pathParts.length - 1];
+                const timestampIndex = fileName.indexOf('_');
+                const originalName = timestampIndex > 0 ? fileName.substring(timestampIndex + 1) : fileName;
+                
+                // Get file size from storage
+                let fileSize = 0;
+                try {
+                  const { data: fileData } = await supabase.storage
+                    .from('property-docs')
+                    .download(docPath);
+                  if (fileData) {
+                    fileSize = fileData.size;
+                  }
+                } catch (sizeError) {
+                  console.error('Could not get file size:', sizeError);
+                }
+                
+                // Insert into property_files table
+                const { error: propertyFileError } = await supabase
+                  .from('property_files')
+                  .insert({
+                    property_id: propertyData.id,
+                    name: originalName,
+                    path: docPath,
+                    type: 'document',
+                    size: fileSize,
+                    created_by: user.id
+                  });
+                
+                if (propertyFileError) {
+                  console.error('Error creating property_files record:', propertyFileError);
+                }
+                
+                // Also insert into contact_files for contact association
+                if (data.owner_contact_id) {
+                  const { error: contactFileError } = await supabase
+                    .from('contact_files')
+                    .insert({
+                      contact_id: data.owner_contact_id,
+                      source: 'property',
+                      property_id: propertyData.id,
+                      path: docPath,
+                      name: originalName,
+                      type: 'document',
+                      created_by: user.id
+                    });
+                  
+                  if (contactFileError) {
+                    console.error('Error creating contact_files record:', contactFileError);
+                  }
+                }
+              } catch (docError) {
+                console.error('Error creating document record:', docError);
+                // Continue with other documents even if one fails
+              }
             }
           }
+        } catch (docError) {
+          console.error('Error processing documents:', docError);
+          toast({
+            title: 'Warning',
+            description: 'Some documents may not have been uploaded correctly',
+            variant: 'destructive'
+          });
         }
       }
 
@@ -1276,7 +1360,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.doc,.docx,image/*"
                     onChange={(e) => handleFileUpload(e.target.files, 'documents')}
                     className="hidden"
                     id="document-upload"
