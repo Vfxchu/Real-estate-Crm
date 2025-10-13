@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, X, Image as ImageIcon } from 'lucide-react';
-import { getSecureImageUrl } from '@/services/storage';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import placeholderImage from '@/assets/property-placeholder.jpg';
 
 interface PropertyGalleryProps {
   images: string[] | null | undefined;
@@ -18,112 +16,10 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
   propertyTitle 
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [signedUrls, setSignedUrls] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
 
-  // Load signed URLs for images
-  useEffect(() => {
-    const loadSignedUrls = async () => {
-      if (!images || images.length === 0) return;
-      
-      setLoading(true);
-      try {
-        const urls: string[] = [];
-        
-        for (const imageUrl of images) {
-          try {
-            // Check if it's already a full URL (starts with http)
-            if (imageUrl.startsWith('http')) {
-              // If it's a Supabase Storage URL for property-images, convert to signed URL (bucket is private)
-              const publicMatch = imageUrl.match(/\/object\/public\/property-images\/(.+)$/);
-              const signMatch = imageUrl.match(/\/object\/sign\/property-images\/(.+)$/);
-              const directMatch = imageUrl.match(/\/object\/property-images\/(.+)$/);
-
-              if (signMatch) {
-                // Already a signed URL
-                urls.push(imageUrl);
-              } else if (publicMatch || directMatch) {
-                const pathFromUrl = (publicMatch?.[1] || directMatch?.[1]) as string;
-                try {
-                  const { data, error } = await supabase.storage
-                    .from('property-images')
-                    .createSignedUrl(pathFromUrl, 3600);
-                  if (error || !data) {
-                    // Fallback: try propertyId/filename (files may have been moved from temp)
-                    const fileName = pathFromUrl.split('/').pop() as string;
-                    const altPath = `${propertyId}/${fileName}`;
-                    const { data: altData, error: altErr } = await supabase.storage
-                      .from('property-images')
-                      .createSignedUrl(altPath, 3600);
-                    if (altErr || !altData) {
-                      console.warn('Failed to sign from URL path:', pathFromUrl, error);
-                      urls.push(imageUrl);
-                    } else {
-                      urls.push(altData.signedUrl);
-                    }
-                  } else {
-                    urls.push(data.signedUrl);
-                  }
-                } catch (err) {
-                  console.warn('Error signing from URL:', imageUrl, err);
-                  urls.push(imageUrl);
-                }
-              } else {
-                // External URL - use as is
-                urls.push(imageUrl);
-              }
-            } else {
-              // For storage paths, try to create signed URL
-              let path = imageUrl;
-
-              // Normalize the path - remove any 'property-images/' prefix if it exists
-              if (path.startsWith('property-images/')) {
-                path = path.substring('property-images/'.length);
-              }
-
-              // If path is under a shared folder like 'temp/', don't force propertyId prefix
-              if (!path.startsWith('temp/') && !path.startsWith(`${propertyId}/`)) {
-                path = `${propertyId}/${path}`;
-              }
-                
-              const { data, error } = await supabase.storage
-                .from('property-images')
-                .createSignedUrl(path, 3600); // 1 hour expiry
-                
-              if (error || !data) {
-                console.warn('Failed to create signed URL for:', path, error);
-                // Try the original URL as fallback
-                urls.push(imageUrl);
-              } else {
-                urls.push(data.signedUrl);
-              }
-            }
-          } catch (error) {
-            console.warn('Error processing image URL:', imageUrl, error);
-            urls.push(imageUrl); // Fallback to original URL
-          }
-        }
-        
-        setSignedUrls(urls);
-      } catch (error: any) {
-        console.error('Error loading image URLs:', error);
-        toast({
-          title: 'Image loading error',
-          description: 'Some images may not display correctly',
-          variant: 'destructive',
-        });
-        // Fallback to original URLs
-        setSignedUrls(images || []);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSignedUrls();
-  }, [images, propertyId, toast]);
-
-  const displayImages = signedUrls.length > 0 ? signedUrls : (images || []);
+  // Images are already signed URLs from useProperties hook
+  const displayImages = images || [];
 
   if (!displayImages || displayImages.length === 0) {
     return (
@@ -141,22 +37,18 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
     setCurrentIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
+  const handleImageError = (index: number) => {
+    setFailedImages(prev => new Set(prev).add(index));
+  };
+
   const FeaturedImage = () => (
     <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-      {loading ? (
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <img 
-          src={displayImages[0]} 
-          alt={propertyTitle}
-          className="w-full h-full object-cover"
-          onError={() => {
-            console.warn('Image failed to load:', displayImages[0]);
-          }}
-        />
-      )}
+      <img 
+        src={failedImages.has(0) ? placeholderImage : displayImages[0]} 
+        alt={propertyTitle}
+        className="w-full h-full object-cover"
+        onError={() => handleImageError(0)}
+      />
       {displayImages.length > 1 && (
         <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
           +{displayImages.length - 1} more
@@ -188,12 +80,10 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
           </Button>
           
           <img
-            src={displayImages[currentIndex]}
+            src={failedImages.has(currentIndex) ? placeholderImage : displayImages[currentIndex]}
             alt={`${propertyTitle} - Image ${currentIndex + 1}`}
             className="max-w-full max-h-full object-contain"
-            onError={(e) => {
-              console.warn('Gallery image failed to load:', displayImages[currentIndex]);
-            }}
+            onError={() => handleImageError(currentIndex)}
           />
           
           <Button
@@ -221,9 +111,10 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
               }`}
             >
               <img 
-                src={url} 
+                src={failedImages.has(index) ? placeholderImage : url} 
                 alt={`Thumbnail ${index + 1}`}
                 className="w-full h-full object-cover"
+                onError={() => handleImageError(index)}
               />
             </button>
           ))}
