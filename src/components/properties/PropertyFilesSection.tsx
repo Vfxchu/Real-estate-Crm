@@ -44,6 +44,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
         .from('property_files')
         .select('*')
         .eq('property_id', propertyId)
+        .eq('type', 'document')  // Only show documents, not layouts
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -66,6 +67,12 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
 
     setUploading(true);
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('Please sign in to upload files');
+      }
+
       const bucket = 'property-docs';
       const filePath = `${propertyId}/${Date.now()}_${file.name}`;
       
@@ -79,7 +86,8 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
           name: file.name,
           path: filePath,
           type: 'document',
-          size: file.size
+          size: file.size,
+          created_by: user.id
         });
 
       if (dbError) throw dbError;
@@ -89,7 +97,7 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
         type: 'file_upload',
         description: `Uploaded document: ${file.name}`,
         property_id: propertyId,
-        created_by: (await supabase.auth.getUser()).data.user?.id
+        created_by: user.id
       });
 
       toast({

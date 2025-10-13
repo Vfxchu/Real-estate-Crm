@@ -303,6 +303,20 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                           <div className="font-medium capitalize">{property.segment}</div>
                         </div>
                       )}
+                      {property.subtype && (
+                        <div>
+                          <div className="text-sm text-muted-foreground">Subtype</div>
+                          <div className="font-medium capitalize">{property.subtype}</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm text-muted-foreground">Offer Type</div>
+                        <div className="font-medium capitalize">{property.offer_type === 'sale' ? 'For Sale' : 'For Rent'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Status</div>
+                        <div className="font-medium capitalize">{property.status.replace('_', ' ')}</div>
+                      </div>
                       {property.bedrooms !== null && (
                         <div>
                           <div className="text-sm text-muted-foreground">Bedrooms</div>
@@ -330,18 +344,24 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                           </div>
                         </div>
                       )}
+                      {property.view && (
+                        <div>
+                          <div className="text-sm text-muted-foreground">View</div>
+                          <div className="font-medium capitalize">{property.view}</div>
+                        </div>
+                      )}
                       {property.permit_number && (
                         <div>
-                          <div className="text-sm text-muted-foreground">Permit #</div>
+                          <div className="text-sm text-muted-foreground">Permit Number</div>
                           <div className="font-medium">{property.permit_number}</div>
                         </div>
                       )}
                     </div>
 
                     {property.description && (
-                      <div>
-                        <div className="text-sm text-muted-foreground mb-1">Description</div>
-                        <p className="text-sm">{property.description}</p>
+                      <div className="mt-4">
+                        <div className="text-sm text-muted-foreground mb-2">Description</div>
+                        <p className="text-sm leading-relaxed">{property.description}</p>
                       </div>
                     )}
                   </CardContent>
@@ -472,64 +492,25 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 )}
               </TabsContent>
 
-              {/* Images Tab with Sub-tabs */}
+              {/* Images Tab - Property Images Only */}
               <TabsContent value="images" className="mt-4">
-                <Tabs defaultValue="property-images">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="property-images" className="flex-1">
-                      📸 Property Images
-                    </TabsTrigger>
-                    <TabsTrigger value="floor-plans" className="flex-1">
-                      🏗️ Floor Plans
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="property-images" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Property Images</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {property.images && property.images.length > 0 ? (
-                          <PropertyImageGallery images={property.images} propertyId={property.id} />
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            No property images available
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="floor-plans" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Floor Plans & Layouts</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {files.filter(f => f.type === 'layout').length > 0 ? (
-                          <div className="space-y-2">
-                            {files.filter(f => f.type === 'layout').map((file) => (
-                              <div key={file.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                                <FileText className="w-5 h-5 text-muted-foreground" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">{file.name}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(file.created_at).toLocaleDateString()}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            No floor plans uploaded yet
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5" />
+                      Property Images
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {property.images && property.images.length > 0 ? (
+                      <PropertyImageGallery images={property.images} propertyId={property.id} />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No property images available
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               {/* Documents Tab */}

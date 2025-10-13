@@ -31,7 +31,7 @@ const propertySchema = z.object({
   bedrooms: z.string().optional(),
   bathrooms: z.number().int("Bathrooms must be a whole number").min(0).optional(),
   area_sqft: z.number().min(0).optional(),
-  status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
+  status: z.enum(['available', 'vacant', 'rented', 'in_development', 'sold', 'pending', 'off_market'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
@@ -77,7 +77,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
       bedrooms: property ? numberToBedroomEnum(property.bedrooms) : '',
       bathrooms: property.bathrooms || 0,
       area_sqft: property.area_sqft || 0,
-      status: property.status === 'available' ? 'vacant' : property.status as any || 'vacant',
+      status: (property.status as any) || 'vacant',
       permit_number: property.permit_number || '',
       owner_contact_id: property.owner_contact_id || '',
       agent_id: property.agent_id || user?.id || '',
@@ -595,9 +595,13 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="available">Available</SelectItem>
                       <SelectItem value="vacant">Vacant</SelectItem>
                       <SelectItem value="rented">Rented</SelectItem>
                       <SelectItem value="in_development">In Development</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="off_market">Off Market</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -799,17 +803,17 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
               )}
             />
 
-            {profile?.role === 'admin' && (
+            {profile?.role === 'admin' && agents.length > 0 && (
               <FormField
                 control={form.control}
                 name="agent_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Assigned Agent</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || user?.id}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select agent" />
+                          <SelectValue placeholder={agents.length === 0 ? "Loading agents..." : "Select agent"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
