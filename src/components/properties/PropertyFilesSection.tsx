@@ -65,6 +65,20 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp'];
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    if (!validExtensions.includes(ext)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Only PDF, DOC, DOCX, and image files are allowed for documents.',
+        variant: 'destructive'
+      });
+      event.target.value = '';
+      return;
+    }
+
     setUploading(true);
     try {
       // Get current user
@@ -105,8 +119,14 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
         description: 'Document uploaded successfully'
       });
 
-      loadFiles();
-      onUpdate?.();
+      // Reload files to show the new upload
+      await loadFiles();
+      
+      // Only call onUpdate if provided (optional callback)
+      // Do NOT trigger parent form submission
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error: any) {
       console.error('Error uploading file:', error);
       toast({
