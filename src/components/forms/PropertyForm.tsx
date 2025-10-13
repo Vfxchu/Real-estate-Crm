@@ -1203,9 +1203,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                 )}
               </div>
 
-              {/* Property Layouts */}
+              {/* Floor Plan & Layout */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Property Layouts</h3>
+                <h3 className="text-lg font-semibold">Floor Plan & Layout</h3>
                 
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center bg-muted/10">
                   <LayoutDashboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -1214,13 +1214,13 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                       Upload floor plans and layout diagrams
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      PDF, PNG, JPG up to 10MB each
+                      JPG, PNG, WEBP, PDF up to 10MB each
                     </p>
                   </div>
                   <input
                     type="file"
                     multiple
-                    accept=".pdf,.png,.jpg,.jpeg"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
                     onChange={(e) => handleFileUpload(e.target.files, 'layouts')}
                     className="hidden"
                     id="layout-upload"
@@ -1233,15 +1233,18 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                     disabled={uploadingFiles}
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    Choose Layouts
+                    Choose Floor Plans
                   </Button>
                 </div>
 
                 {uploadedLayouts.length > 0 && (
                   <div className="space-y-2">
                     {uploadedLayouts.map((layoutUrl, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 border rounded">
-                        <span className="text-sm">Layout {index + 1}</span>
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm">Floor Plan {index + 1}</span>
+                        </div>
                         <Button
                           type="button"
                           variant="ghost"

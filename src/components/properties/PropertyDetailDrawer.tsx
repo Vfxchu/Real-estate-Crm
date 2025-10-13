@@ -17,6 +17,7 @@ import { Property } from "@/hooks/useProperties";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyFilesSection } from "./PropertyFilesSection";
 import { PropertyImageGallery } from "./PropertyImageGallery";
+import { PropertyLayoutGallery } from "./PropertyLayoutGallery";
 import { canViewSensitiveFields } from "@/utils/propertyPermissions";
 import { User } from "lucide-react";
 
@@ -492,8 +493,9 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 )}
               </TabsContent>
 
-              {/* Images Tab - Property Images Only */}
-              <TabsContent value="images" className="mt-4">
+              {/* Images Tab - Property Images & Floor Plans */}
+              <TabsContent value="images" className="mt-4 space-y-4">
+                {/* Property Images Section */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -506,9 +508,26 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                       <PropertyImageGallery images={property.images} propertyId={property.id} />
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
-                        No property images available
+                        No property images uploaded.
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Floor Plan & Layout Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      Floor Plan & Layout
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <PropertyLayoutGallery 
+                      propertyId={property.id} 
+                      canEdit={canEdit}
+                      onUpdate={onUpdate}
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>

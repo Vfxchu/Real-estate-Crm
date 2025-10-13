@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Loader2, Upload, X, Image as ImageIcon, LayoutDashboard, FileText } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
 import { Property } from "@/hooks/useProperties";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
@@ -51,6 +51,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
   const contacts = useContacts();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [contactsList, setContactsList] = useState<any[]>([]);
   const [agents, setAgents] = useState<Array<{ id: string; name: string; email: string }>>([]);
@@ -85,11 +86,30 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
     },
   });
 
-  // Set existing images
+  // Set existing images and load layouts
   useEffect(() => {
     if (property.images && property.images.length > 0) {
       setUploadedImages(property.images);
     }
+    
+    // Load existing layouts from property_files table
+    const loadLayouts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('property_files')
+          .select('path')
+          .eq('property_id', property.id)
+          .eq('type', 'layout');
+        
+        if (!error && data) {
+          setUploadedLayouts(data.map(f => f.path));
+        }
+      } catch (error) {
+        console.error('Error loading layouts:', error);
+      }
+    };
+    
+    loadLayouts();
   }, [property]);
 
   const watchSegment = form.watch('segment');
@@ -116,11 +136,13 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
     }
   };
 
-  const handleFileUpload = async (files: FileList | null) => {
+  const handleFileUpload = async (files: FileList | null, type: 'images' | 'layouts' = 'images') => {
     if (!files || files.length === 0) return;
     
     setUploadingFiles(true);
     const newFiles: string[] = [];
+    
+    const bucket = type === 'images' ? 'property-images' : 'property-layouts';
     
     try {
       for (let i = 0; i < files.length; i++) {
@@ -130,25 +152,42 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         const filePath = `${property.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('property-images')
+          .from(bucket)
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        // Store storage path instead of public URL for secure access
+        // Store storage path
         newFiles.push(filePath);
+        
+        // Create record in property_files table for layouts
+        if (type === 'layouts') {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('property_files').insert({
+            property_id: property.id,
+            name: file.name,
+            path: filePath,
+            type: 'layout',
+            size: file.size,
+            created_by: user?.id
+          });
+        }
       }
       
-      setUploadedImages(prev => [...prev, ...newFiles]);
+      if (type === 'images') {
+        setUploadedImages(prev => [...prev, ...newFiles]);
+      } else {
+        setUploadedLayouts(prev => [...prev, ...newFiles]);
+      }
       
       toast({
-        title: 'Images uploaded',
+        title: `${type === 'images' ? 'Images' : 'Floor plans'} uploaded`,
         description: `${newFiles.length} file(s) uploaded successfully`,
       });
     } catch (error: any) {
-      console.error('Image upload error:', error);
+      console.error(`${type} upload error:`, error);
       toast({
-        title: 'Error uploading images',
+        title: `Error uploading ${type}`,
         description: error.message,
         variant: 'destructive',
       });
@@ -157,26 +196,42 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
     }
   };
 
-  const removeFile = async (fileUrl: string) => {
+  const removeFile = async (fileUrl: string, type: 'images' | 'layouts' = 'images') => {
     try {
       const urlParts = fileUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
       const filePath = `${property.id}/${fileName}`;
       
+      const bucket = type === 'images' ? 'property-images' : 'property-layouts';
+      
       await supabase.storage
-        .from('property-images')
+        .from(bucket)
         .remove([filePath]);
       
-      setUploadedImages(prev => prev.filter(url => url !== fileUrl));
+      // Delete from property_files table if layout
+      if (type === 'layouts') {
+        await supabase
+          .from('property_files')
+          .delete()
+          .eq('property_id', property.id)
+          .eq('path', filePath)
+          .eq('type', 'layout');
+      }
+      
+      if (type === 'images') {
+        setUploadedImages(prev => prev.filter(url => url !== fileUrl));
+      } else {
+        setUploadedLayouts(prev => prev.filter(url => url !== fileUrl));
+      }
       
       toast({
-        title: 'Image removed',
+        title: `${type === 'images' ? 'Image' : 'Floor plan'} removed`,
         description: 'File has been removed successfully',
       });
     } catch (error: any) {
-      console.error('Error removing image:', error);
+      console.error(`Error removing ${type}:`, error);
       toast({
-        title: 'Error removing image',
+        title: `Error removing ${type}`,
         description: error.message,
         variant: 'destructive',
       });
@@ -898,7 +953,72 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
             )}
           </div>
 
-          {/* Documents & Layout Section */}
+          {/* Floor Plan & Layout */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Floor Plan & Layout</h3>
+            
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center bg-muted/10">
+              <LayoutDashboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Upload floor plans and layout diagrams
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, WEBP, PDF up to 10MB each
+                </p>
+              </div>
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(e) => handleFileUpload(e.target.files, 'layouts')}
+                className="hidden"
+                id="layout-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4"
+                onClick={() => document.getElementById('layout-upload')?.click()}
+                disabled={uploadingFiles}
+              >
+                {uploadingFiles ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Choose Floor Plans
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {uploadedLayouts.length > 0 && (
+              <div className="space-y-2">
+                {uploadedLayouts.map((layoutUrl, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">Floor Plan {index + 1}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFile(layoutUrl, 'layouts')}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Documents Section */}
           <PropertyFilesSection propertyId={property.id} canEdit={true} />
         </div>
 
