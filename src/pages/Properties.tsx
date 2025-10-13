@@ -213,8 +213,8 @@ export const Properties = () => {
       if (error) throw error;
 
       const total = data?.length || 0;
-      const availableForSale = data?.filter(p => p.status === 'available' && p.offer_type === 'sale').length || 0;
-      const availableForRent = data?.filter(p => p.status === 'available' && p.offer_type === 'rent').length || 0;
+      const availableForSale = data?.filter(p => p.offer_type === 'sale').length || 0;
+      const availableForRent = data?.filter(p => p.offer_type === 'rent').length || 0;
       const totalValue = data?.reduce((sum, p) => sum + (p.price || 0), 0) || 0;
 
       setStats({
