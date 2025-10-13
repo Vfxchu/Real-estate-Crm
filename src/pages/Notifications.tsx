@@ -20,49 +20,45 @@ import {
   Settings,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: 'new_lead' | 'appointment' | 'system' | 'agent_activity' | 'reminder';
-  priority: 'low' | 'medium' | 'high';
-  isRead: boolean;
-  timestamp: string;
-  relatedId?: string;
-  actionUrl?: string;
-}
-
-// Mock notifications - in production, store in Supabase
-const mockNotifications: Notification[] = [];
+import { useNotifications } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 
 export const Notifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [filter, setFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const { toast } = useToast();
+  const { 
+    notifications, 
+    loading, 
+    unreadCount,
+    markAsRead, 
+    markAllAsRead: markAllReadFn, 
+    deleteNotification: deleteNotificationFn 
+  } = useNotifications();
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesRead = filter === 'all' || 
-                       (filter === 'unread' && !notification.isRead) ||
-                       (filter === 'read' && notification.isRead);
+                       (filter === 'unread' && !notification.is_read) ||
+                       (filter === 'read' && notification.is_read);
     const matchesPriority = priorityFilter === 'all' || notification.priority === priorityFilter;
     
     return matchesRead && matchesPriority;
   });
 
-  const getTypeIcon = (type: Notification['type']) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'new_lead': return <Target className="w-5 h-5 text-primary" />;
       case 'appointment': return <Calendar className="w-5 h-5 text-info" />;
       case 'system': return <Settings className="w-5 h-5 text-warning" />;
       case 'agent_activity': return <Users className="w-5 h-5 text-success" />;
       case 'reminder': return <Bell className="w-5 h-5 text-orange-500" />;
+      case 'warning': return <AlertCircle className="w-5 h-5 text-warning" />;
+      case 'info': return <Info className="w-5 h-5 text-info" />;
       default: return <Info className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
-  const getPriorityColor = (priority: Notification['priority']) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-destructive text-destructive-foreground';
       case 'medium': return 'bg-warning text-warning-foreground';
@@ -71,26 +67,24 @@ export const Notifications = () => {
     }
   };
 
-  const markAsRead = (notificationId: string) => {
-    setNotifications(notifications.map(notif => 
-      notif.id === notificationId ? { ...notif, isRead: true } : notif
-    ));
+  const handleMarkAsRead = async (notificationId: string) => {
+    await markAsRead(notificationId);
     toast({
       title: 'Marked as read',
       description: 'Notification has been marked as read',
     });
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notif => ({ ...notif, isRead: true })));
+  const handleMarkAllAsRead = async () => {
+    await markAllReadFn();
     toast({
       title: 'All notifications marked as read',
       description: 'All notifications have been marked as read',
     });
   };
 
-  const deleteNotification = (notificationId: string) => {
-    setNotifications(notifications.filter(notif => notif.id !== notificationId));
+  const handleDeleteNotification = async (notificationId: string) => {
+    await deleteNotificationFn(notificationId);
     toast({
       title: 'Notification deleted',
       description: 'Notification has been removed',
@@ -98,9 +92,22 @@ export const Notifications = () => {
   };
 
   const totalNotifications = notifications.length;
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-  const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.isRead).length;
-  const todayCount = notifications.filter(n => n.timestamp.startsWith('2024-01-20')).length;
+  const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.is_read).length;
+  
+  // Get today's date in ISO format for comparison
+  const today = new Date().toISOString().split('T')[0];
+  const todayCount = notifications.filter(n => n.created_at.startsWith(today)).length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Bell className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading notifications...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -113,7 +120,11 @@ export const Notifications = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={markAllAsRead}>
+          <Button 
+            variant="outline" 
+            onClick={handleMarkAllAsRead}
+            disabled={unreadCount === 0}
+          >
             <CheckCircle className="w-4 h-4 mr-2" />
             Mark All Read
           </Button>
@@ -213,7 +224,7 @@ export const Notifications = () => {
           {filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => (
               <Card key={notification.id} className={`card-elevated transition-all duration-200 hover:shadow-md ${
-                !notification.isRead ? 'border-l-4 border-l-primary bg-primary/5' : ''
+                !notification.is_read ? 'border-l-4 border-l-primary bg-primary/5' : ''
               }`}>
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
@@ -225,7 +236,7 @@ export const Notifications = () => {
                       <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold">{notification.title}</h4>
-                          {!notification.isRead && (
+                          {!notification.is_read && (
                             <div className="w-2 h-2 bg-primary rounded-full" />
                           )}
                         </div>
@@ -234,7 +245,7 @@ export const Notifications = () => {
                             {notification.priority}
                           </Badge>
                           <span className="text-sm text-muted-foreground whitespace-nowrap">
-                            {notification.timestamp}
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </span>
                         </div>
                       </div>
@@ -242,25 +253,20 @@ export const Notifications = () => {
                       <p className="text-muted-foreground mb-3">{notification.message}</p>
                       
                       <div className="flex items-center gap-2">
-                        {!notification.isRead && (
+                        {!notification.is_read && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={() => handleMarkAsRead(notification.id)}
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
                             Mark Read
                           </Button>
                         )}
-                        {notification.actionUrl && (
-                          <Button size="sm" variant="outline">
-                            View Details
-                          </Button>
-                        )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => deleteNotification(notification.id)}
+                          onClick={() => handleDeleteNotification(notification.id)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -289,49 +295,71 @@ export const Notifications = () => {
 
         {/* Important Notifications */}
         <TabsContent value="important" className="space-y-4">
-          {filteredNotifications.filter(n => n.priority === 'high').map((notification) => (
-            <Card key={notification.id} className="card-elevated border-l-4 border-l-destructive">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <AlertCircle className="w-5 h-5 text-destructive mt-1" />
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-2">{notification.title}</h4>
-                    <p className="text-muted-foreground mb-3">{notification.message}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-destructive text-destructive-foreground">
-                        High Priority
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {notification.timestamp}
-                      </span>
+          {filteredNotifications.filter(n => n.priority === 'high').length > 0 ? (
+            filteredNotifications.filter(n => n.priority === 'high').map((notification) => (
+              <Card key={notification.id} className="card-elevated border-l-4 border-l-destructive">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <AlertCircle className="w-5 h-5 text-destructive mt-1" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-2">{notification.title}</h4>
+                      <p className="text-muted-foreground mb-3">{notification.message}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-destructive text-destructive-foreground">
+                          High Priority
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="card-elevated">
+              <CardContent className="p-12 text-center">
+                <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No high priority notifications</h3>
+                <p className="text-muted-foreground">You don't have any urgent notifications at the moment</p>
               </CardContent>
             </Card>
-          ))}
+          )}
         </TabsContent>
 
         {/* Activity Notifications */}
         <TabsContent value="activity" className="space-y-4">
-          {filteredNotifications.filter(n => n.type === 'agent_activity' || n.type === 'new_lead').map((notification) => (
-            <Card key={notification.id} className="card-elevated">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback>
-                      {notification.type === 'new_lead' ? 'L' : 'A'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h4 className="font-semibold mb-1">{notification.title}</h4>
-                    <p className="text-muted-foreground text-sm mb-2">{notification.message}</p>
-                    <span className="text-xs text-muted-foreground">{notification.timestamp}</span>
+          {filteredNotifications.filter(n => n.type === 'agent_activity' || n.type === 'new_lead').length > 0 ? (
+            filteredNotifications.filter(n => n.type === 'agent_activity' || n.type === 'new_lead').map((notification) => (
+              <Card key={notification.id} className="card-elevated">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-10 h-10">
+                      <AvatarFallback>
+                        {notification.type === 'new_lead' ? 'L' : 'A'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-1">{notification.title}</h4>
+                      <p className="text-muted-foreground text-sm mb-2">{notification.message}</p>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="card-elevated">
+              <CardContent className="p-12 text-center">
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No activity notifications</h3>
+                <p className="text-muted-foreground">No recent activity to show</p>
               </CardContent>
             </Card>
-          ))}
+          )}
         </TabsContent>
       </Tabs>
     </div>

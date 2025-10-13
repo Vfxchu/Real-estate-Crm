@@ -12,6 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Menu,
   Search,
@@ -32,10 +35,14 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileSidebar }) => {
   const { user, profile, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { notifications, unreadCount, markAsRead } = useNotifications();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
   };
+
+  const recentNotifications = notifications.slice(0, 5);
 
   const getThemeIcon = () => {
     switch (theme) {
@@ -111,31 +118,55 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="relative p-2">
               <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-              <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 text-xs">
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center p-0 text-xs">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
               <span className="sr-only">Notifications</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="space-y-2 p-2">
-              <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
-                <p className="text-sm font-medium">New lead assigned</p>
-                <p className="text-xs text-muted-foreground">John Smith - High priority</p>
-              </div>
-              <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
-                <p className="text-sm font-medium">Follow-up reminder</p>
-                <p className="text-xs text-muted-foreground">Contact Sarah Jones today</p>
-              </div>
-              <div className="p-2 hover:bg-muted rounded-md cursor-pointer">
-                <p className="text-sm font-medium">Property inquiry</p>
-                <p className="text-xs text-muted-foreground">New inquiry for 123 Main St</p>
-              </div>
+              {recentNotifications.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  No notifications yet
+                </div>
+              ) : (
+                recentNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-2 hover:bg-muted rounded-md cursor-pointer transition-colors ${
+                      !notification.is_read ? 'bg-primary/5 border-l-2 border-l-primary' : ''
+                    }`}
+                    onClick={() => {
+                      markAsRead(notification.id);
+                      navigate('/notifications');
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{notification.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                      </div>
+                      {!notification.is_read && (
+                        <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="justify-center">
+            <DropdownMenuItem
+              className="justify-center cursor-pointer"
+              onClick={() => navigate('/notifications')}
+            >
               View all notifications
             </DropdownMenuItem>
           </DropdownMenuContent>
