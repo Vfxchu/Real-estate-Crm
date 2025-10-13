@@ -232,7 +232,7 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{file.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)} • {new Date(file.created_at).toLocaleDateString()}
+                    {file.size ? formatFileSize(file.size) : 'Unknown size'} • {new Date(file.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>

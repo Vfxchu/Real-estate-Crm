@@ -139,6 +139,26 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
   const handleFileUpload = async (files: FileList | null, type: 'images' | 'layouts' = 'images') => {
     if (!files || files.length === 0) return;
     
+    // Validate file types
+    const validTypes = type === 'images' 
+      ? ['image/jpeg', 'image/png', 'image/webp']
+      : ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    
+    const invalidFiles = Array.from(files).filter(
+      file => !validTypes.includes(file.type)
+    );
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: 'Invalid file type',
+        description: type === 'images' 
+          ? 'Only JPG, PNG, and WEBP images are allowed.'
+          : 'Only JPG, PNG, WEBP images and PDF files are allowed.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setUploadingFiles(true);
     const newFiles: string[] = [];
     
