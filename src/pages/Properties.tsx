@@ -768,164 +768,333 @@ export const Properties = () => {
             </div>
 
             {/* Properties Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="card-elevated">
-                <CardContent className="p-6">
-                  <div className="animate-pulse space-y-4">
-                    <div className="bg-muted h-48 rounded"></div>
-                    <div className="space-y-2">
-                      <div className="bg-muted h-4 rounded w-3/4"></div>
-                      <div className="bg-muted h-4 rounded w-1/2"></div>
-                    </div>
-                  </div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="card-elevated">
+                    <CardContent className="p-6">
+                      <div className="animate-pulse space-y-4">
+                        <div className="bg-muted h-48 rounded"></div>
+                        <div className="space-y-2">
+                          <div className="bg-muted h-4 rounded w-3/4"></div>
+                          <div className="bg-muted h-4 rounded w-1/2"></div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : filteredProperties.length === 0 ? (
+              <Card className="card-elevated">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Home className="w-16 h-16 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No properties found</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    {getActiveFilterCount() > 0
+                      ? "Try adjusting your filters to see more results"
+                      : "Get started by adding your first property listing"
+                    }
+                  </p>
+                  {getActiveFilterCount() > 0 && (
+                    <Button variant="outline" onClick={clearFilters} className="mt-4">
+                      Clear Filters
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        ) : filteredProperties.length === 0 ? (
-          <Card className="card-elevated">
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <Home className="w-16 h-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No properties found</h3>
-              <p className="text-muted-foreground text-center max-w-md">
-                {getActiveFilterCount() > 0
-                  ? "Try adjusting your filters to see more results"
-                  : "Get started by adding your first property listing"
-                }
-              </p>
-              {getActiveFilterCount() > 0 && (
-                <Button variant="outline" onClick={clearFilters} className="mt-4">
-                  Clear Filters
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property) => (
-              <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
-                <div className="relative">
-                  <PropertyGallery 
-                    images={property.images} 
-                    propertyId={property.id}
-                    propertyTitle={property.title}
-                  />
-                  {property.featured && (
-                    <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold line-clamp-1">{property.title}</h3>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                        <MapPin className="w-3 h-3" />
-                        {property.address}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Badge className={getStatusColor(property.status)}>
-                        {property.status}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {property.offer_type}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      {getTypeIcon(property.property_type)}
-                      <span className="text-sm capitalize">{property.property_type}</span>
-                      {property.subtype && (
-                        <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProperties.map((property) => (
+                  <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
+                    <div className="relative">
+                      <PropertyGallery 
+                        images={property.images} 
+                        propertyId={property.id}
+                        propertyTitle={property.title}
+                      />
+                      {property.featured && (
+                        <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
+                          Featured
+                        </Badge>
                       )}
                     </div>
-                    <div className="text-lg font-bold text-primary">
-                      {formatCurrency(property.price, currency)}
-                    </div>
-                  </div>
-
-                  {property.property_type !== 'commercial' && (
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Bed className="w-4 h-4" />
-                        <span>{property.bedrooms || 0}</span>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold line-clamp-1">{property.title}</h3>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {property.address}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Badge className={getStatusColor(property.status)}>
+                            {property.status}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {property.offer_type}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Bath className="w-4 h-4" />
-                        <span>{property.bathrooms || 0}</span>
+                    </CardHeader>
+                    
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {getTypeIcon(property.property_type)}
+                          <span className="text-sm capitalize">{property.property_type}</span>
+                          {property.subtype && (
+                            <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                          )}
+                        </div>
+                        <div className="text-lg font-bold text-primary">
+                          {formatCurrency(property.price, currency)}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Square className="w-4 h-4" />
-                        <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+
+                      {property.property_type !== 'commercial' && (
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Bed className="w-4 h-4" />
+                            <span>{property.bedrooms || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Bath className="w-4 h-4" />
+                            <span>{property.bathrooms || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Square className="w-4 h-4" />
+                            <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-sm text-muted-foreground">
+                        Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
                       </div>
-                    </div>
-                  )}
 
-                  <div className="text-sm text-muted-foreground">
-                    Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => handleViewProperty(property)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleScheduleViewing(property)}
-                      title="Schedule a viewing for this property"
-                    >
-                      <Calendar className="w-4 h-4" />
-                    </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost"
-                       onClick={() => handleShareProperty(property)}
-                     >
-                       <Share2 className="w-4 h-4" />
-                     </Button>
-                     <Button 
-                       size="sm" 
-                       variant="ghost"
-                       onClick={() => handleEditProperty(property)}
-                       disabled={!isAdmin && property.agent_id !== user?.id}
-                       title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
-                     >
-                       <Edit className="w-4 h-4" />
-                     </Button>
-                     {isAdmin && (
-                       <Button 
-                         size="sm" 
-                         variant="ghost" 
-                         className="text-destructive hover:text-destructive"
-                         onClick={() => handleDeleteProperty(property)}
-                         disabled={deleting === property.id}
-                         title="Delete property"
-                       >
-                         <Trash2 className="w-4 h-4" />
-                       </Button>
-                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleViewProperty(property)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleScheduleViewing(property)}
+                          title="Schedule a viewing for this property"
+                        >
+                          <Calendar className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleShareProperty(property)}
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEditProperty(property)}
+                          disabled={!isAdmin && property.agent_id !== user?.id}
+                          title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        {isAdmin && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteProperty(property)}
+                            disabled={deleting === property.id}
+                            title="Delete property"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredProperties.length} of {properties.length} properties
+            </p>
           </div>
-        )}
-      </div>
+
+          {/* Properties Grid for Admin */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="card-elevated">
+                  <CardContent className="p-6">
+                    <div className="animate-pulse space-y-4">
+                      <div className="bg-muted h-48 rounded"></div>
+                      <div className="space-y-2">
+                        <div className="bg-muted h-4 rounded w-3/4"></div>
+                        <div className="bg-muted h-4 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredProperties.length === 0 ? (
+            <Card className="card-elevated">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <Home className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No properties found</h3>
+                <p className="text-muted-foreground text-center max-w-md">
+                  {getActiveFilterCount() > 0
+                    ? "Try adjusting your filters to see more results"
+                    : "Get started by adding your first property listing"
+                  }
+                </p>
+                {getActiveFilterCount() > 0 && (
+                  <Button variant="outline" onClick={clearFilters} className="mt-4">
+                    Clear Filters
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProperties.map((property) => (
+                <Card key={property.id} className="card-elevated hover:shadow-lg transition-all duration-200">
+                  <div className="relative">
+                    <PropertyGallery 
+                      images={property.images} 
+                      propertyId={property.id}
+                      propertyTitle={property.title}
+                    />
+                    {property.featured && (
+                      <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
+                        Featured
+                      </Badge>
+                    )}
+                  </div>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold line-clamp-1">{property.title}</h3>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                          <MapPin className="w-3 h-3" />
+                          {property.address}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Badge className={getStatusColor(property.status)}>
+                          {property.status}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {property.offer_type}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        {getTypeIcon(property.property_type)}
+                        <span className="text-sm capitalize">{property.property_type}</span>
+                        {property.subtype && (
+                          <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                        )}
+                      </div>
+                      <div className="text-lg font-bold text-primary">
+                        {formatCurrency(property.price, currency)}
+                      </div>
+                    </div>
+
+                    {property.property_type !== 'commercial' && (
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Bed className="w-4 h-4" />
+                          <span>{property.bedrooms || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Bath className="w-4 h-4" />
+                          <span>{property.bathrooms || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Square className="w-4 h-4" />
+                          <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-sm text-muted-foreground">
+                      Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleViewProperty(property)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleScheduleViewing(property)}
+                        title="Schedule a viewing for this property"
+                      >
+                        <Calendar className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleShareProperty(property)}
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEditProperty(property)}
+                        disabled={!isAdmin && property.agent_id !== user?.id}
+                        title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      {isAdmin && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteProperty(property)}
+                          disabled={deleting === property.id}
+                          title="Delete property"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Property Add Dialog */}
       <AddPropertyForm
