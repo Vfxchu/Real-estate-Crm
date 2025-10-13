@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeads } from '@/hooks/useLeads';
+import { useNavigate, Link } from 'react-router-dom';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import LeadForm from "@/components/leads/LeadForm";
 import { EditLeadStatusForm } from '@/components/forms/EditLeadStatusForm';
@@ -25,11 +26,11 @@ import {
   ArrowRight,
   User,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export const AgentPanel = () => {
   const { user, profile } = useAuth();
   const { leads, loading, fetchLeads } = useLeads();
+  const navigate = useNavigate();
   const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
   const [editLeadOpen, setEditLeadOpen] = useState(false);
   const [selectedEditLead, setSelectedEditLead] = useState<any>(null);
@@ -88,10 +89,38 @@ export const AgentPanel = () => {
   ];
 
   const quickAgentActions = [
-    { label: 'Add New Lead', icon: Plus, color: 'bg-primary', action: () => setAddLeadFormOpen(true) },
-    { label: 'Make a Call', icon: Phone, color: 'bg-success', action: () => {} },
-    { label: 'Send Email', icon: Mail, color: 'bg-info', action: () => {} },
-    { label: 'Schedule Meeting', icon: Calendar, color: 'bg-warning', action: () => {} },
+    { 
+      label: 'Add New Lead', 
+      icon: Plus, 
+      color: 'bg-primary', 
+      action: () => setAddLeadFormOpen(true) 
+    },
+    { 
+      label: 'Make a Call', 
+      icon: Phone, 
+      color: 'bg-success', 
+      action: () => {
+        const leadWithPhone = myLeads.find(l => l.phone && ['new', 'contacted'].includes(l.status));
+        if (leadWithPhone) {
+          setSelectedChatLead({ name: leadWithPhone.name, phone: leadWithPhone.phone });
+          setChatOpen(true);
+        } else {
+          navigate('/my-leads');
+        }
+      }
+    },
+    { 
+      label: 'Send Email', 
+      icon: Mail, 
+      color: 'bg-info', 
+      action: () => navigate('/communication')
+    },
+    { 
+      label: 'Schedule Meeting', 
+      icon: Calendar, 
+      color: 'bg-warning', 
+      action: () => navigate('/calendar')
+    },
   ];
 
   const priorityLeads = myLeads

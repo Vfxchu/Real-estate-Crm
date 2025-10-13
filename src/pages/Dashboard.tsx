@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeads } from '@/hooks/useLeads';
+import { useNavigate } from 'react-router-dom';
 import LeadForm from "@/components/leads/LeadForm";
 import { WhatsAppFloatingButton } from '@/components/chat/WhatsAppFloatingButton';
 import { WhatsAppChat } from '@/components/chat/WhatsAppChat';
@@ -28,12 +29,51 @@ import {
 export const Dashboard = () => {
   const { user, profile } = useAuth();
   const { leads, loading, fetchLeads } = useLeads();
+  const navigate = useNavigate();
   const isAdmin = profile?.role === 'admin';
   const [addLeadFormOpen, setAddLeadFormOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [selectedChatLead, setSelectedChatLead] = useState<{name: string, phone?: string} | null>(null);
   const [editLeadOpen, setEditLeadOpen] = useState(false);
   const [selectedEditLead, setSelectedEditLead] = useState<any>(null);
+
+  const handleQuickAction = (label: string) => {
+    switch (label) {
+      case 'Add New Lead':
+        setAddLeadFormOpen(true);
+        break;
+      case 'View All Leads':
+        navigate('/leads');
+        break;
+      case 'Agent Performance':
+        navigate('/team');
+        break;
+      case 'Communication Logs':
+        navigate('/communication');
+        break;
+      case 'Make a Call':
+        if (leads.length > 0) {
+          const firstLead = leads.find(l => l.phone);
+          if (firstLead) {
+            setSelectedChatLead({ name: firstLead.name, phone: firstLead.phone });
+            setChatOpen(true);
+          } else {
+            navigate('/leads');
+          }
+        } else {
+          navigate('/leads');
+        }
+        break;
+      case 'Send Email':
+        navigate('/communication');
+        break;
+      case 'Schedule Meeting':
+        navigate('/calendar');
+        break;
+      default:
+        break;
+    }
+  };
 
   // Calculate real stats from data
   const totalLeads = leads.length;
@@ -160,11 +200,7 @@ export const Dashboard = () => {
                 key={index}
                 variant="outline"
                 className="h-16 sm:h-20 flex-col gap-1 sm:gap-2 hover:scale-105 transition-transform"
-                onClick={() => {
-                  if (action.label === 'Add New Lead') {
-                    setAddLeadFormOpen(true);
-                  }
-                }}
+                onClick={() => handleQuickAction(action.label)}
               >
                 <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full ${action.color} flex items-center justify-center`}>
                   <action.icon className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
@@ -198,7 +234,11 @@ export const Dashboard = () => {
           <CardTitle>
             {isAdmin ? 'Recent Leads' : 'My Active Leads'}
           </CardTitle>
-          <Button variant="ghost" size="sm">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/leads')}
+          >
             View All
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -260,7 +300,16 @@ export const Dashboard = () => {
                   >
                     <Phone className="w-4 h-4" />
                   </Button>
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (lead.email) {
+                        window.location.href = `mailto:${lead.email}`;
+                      }
+                    }}
+                  >
                     <Mail className="w-4 h-4" />
                   </Button>
                   <Button 
