@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Upload, Trash2, Download, Image, File, Eye } from 'lucide-react';
+import { FileText, Upload, Trash2, Download, Image, File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { getPropertyFileUrl } from '@/services/propertyFiles';
@@ -201,24 +201,6 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     }
   };
 
-  const handleViewFile = async (file: PropertyFile) => {
-    try {
-      const url = await getPropertyFileUrl({ ...file, property_id: propertyId, type: 'document' } as any);
-      window.open(url, '_blank');
-    } catch (error: any) {
-      const message = error.status === 403 
-        ? "You don't have access to this file"
-        : error.status === 404
-        ? "File not found. It may have been moved or deleted"
-        : error.message || "Could not generate view URL";
-      
-      toast({
-        title: "View Failed",
-        description: message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -293,14 +275,6 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleViewFile(file)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
                   <Button
                     type="button"
                     size="sm"
