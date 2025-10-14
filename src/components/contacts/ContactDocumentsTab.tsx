@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Eye, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { createSignedUrl } from "@/services/storage";
+import { getPropertyFileUrl } from "@/services/propertyFiles";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -128,11 +128,9 @@ export function ContactDocumentsTab({ contactId }: ContactDocumentsTabProps) {
     try {
       const url = await getPropertyFileUrl({ id: file.id, type: file.source === 'property' ? 'document' : 'document' } as any);
       if (!url) throw new Error('Could not generate download URL');
-        throw new Error('Failed to create download link');
-      }
-
+      
       // Open in new tab for download
-      window.open(data.signedUrl, '_blank');
+      window.open(url, '_blank');
     } catch (error) {
       toast({
         title: "Download Failed",
