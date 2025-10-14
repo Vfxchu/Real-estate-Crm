@@ -53,9 +53,9 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    const trySign = async (pth: string) => {
+    const trySign = async (pth: string) => {
       return await admin.storage.from('documents').createSignedUrl(pth, 900, { download: fileRow.name });
-    }
+    };
 
     const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._\/-]/g, '_');
 
