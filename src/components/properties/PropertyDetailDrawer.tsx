@@ -81,6 +81,8 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || property?.agent_id === user?.id;
   const canViewSensitive = property ? canViewSensitiveFields(property, user?.id, profile?.role) : false;
+  const canDownload = canEdit; // Can download if can edit (admin or assigned agent)
+  const showActivities = canEdit; // Show activities only for admin or assigned agent
 
   useEffect(() => {
     if (property?.id && open) {
@@ -294,7 +296,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="images">Images</TabsTrigger>
                 {canViewSensitive && <TabsTrigger value="documents">Documents</TabsTrigger>}
-                <TabsTrigger value="activities">Activities</TabsTrigger>
+                {showActivities && <TabsTrigger value="activities">Activities</TabsTrigger>}
               </TabsList>
 
               {/* Overview Tab - Comprehensive view */}
@@ -546,6 +548,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                         <PropertyLayoutGallery 
                           propertyId={property.id} 
                           canEdit={canEdit}
+                          canDownload={canDownload}
                           onUpdate={onUpdate}
                         />
                       </CardContent>
@@ -569,45 +572,47 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
               )}
 
               {/* Activities Tab */}
-              <TabsContent value="activities" className="space-y-4 mt-4">
-                {activities.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      No activity yet
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {activities.map((activity) => (
-                      <Card key={activity.id}>
-                        <CardContent className="py-3">
-                          <div className="flex items-start gap-3">
-                            <Activity className="w-4 h-4 mt-0.5 text-muted-foreground" />
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium capitalize">
-                                  {activity.type.replace('_', ' ')}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(activity.created_at).toLocaleString()}
-                                </span>
-                              </div>
-                              <p className="text-sm text-muted-foreground">
-                                {activity.description}
-                              </p>
-                              {activity.profiles && (
-                                <p className="text-xs text-muted-foreground">
-                                  by {activity.profiles.name}
+              {showActivities && (
+                <TabsContent value="activities" className="space-y-4 mt-4">
+                  {activities.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted-foreground">
+                        No activity yet
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-3">
+                      {activities.map((activity) => (
+                        <Card key={activity.id}>
+                          <CardContent className="py-3">
+                            <div className="flex items-start gap-3">
+                              <Activity className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium capitalize">
+                                    {activity.type.replace('_', ' ')}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(activity.created_at).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {activity.description}
                                 </p>
-                              )}
+                                {activity.profiles && (
+                                  <p className="text-xs text-muted-foreground">
+                                    by {activity.profiles.name}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </ScrollArea>
