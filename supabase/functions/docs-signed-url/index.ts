@@ -49,28 +49,9 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    // Get property to check agent
-    const { data: prop, error: propErr } = await supabase
-      .from('properties')
-      .select('agent_id')
-      .eq('id', fileRow.property_id)
-      .single();
-
-    if (propErr || !prop) {
-      return new Response(JSON.stringify({ error: "Property not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
-    }
-
-    // Is admin?
-    const { data: isAdminData } = await supabase.rpc('is_admin');
-    const isAdmin = Boolean(isAdminData);
-
-    // Authorization: admin OR uploader OR property agent
-    const isUploader = fileRow.created_by === userId;
-    const isAgent = prop.agent_id === userId;
-
-    if (!(isAdmin || isUploader || isAgent)) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
-    }
+    // Authorization: All authenticated users can download property files
+    // (Admin and Agents can view/download all files across the CRM)
+    // User is already authenticated at this point (checked in lines 35-38)
 
     const bucket = fileRow.type === 'layout' ? 'property-layouts' : 'property-docs';
 
@@ -113,8 +94,6 @@ serve(async (req: Request) => {
 
     console.error('Sign error (all strategies failed)', { id, userId, path: fileRow.path, bucket });
     return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
-
-    return new Response(JSON.stringify({ signedUrl: signed.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (e) {
     console.error('docs-signed-url fatal', e);
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
