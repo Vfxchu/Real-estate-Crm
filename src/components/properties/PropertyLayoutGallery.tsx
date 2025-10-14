@@ -350,7 +350,7 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
                         onClick={() => handleDownloadFile(file)}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        View
+                        Download
                       </Button>
                     ) : (
                       <Tooltip>
@@ -363,7 +363,7 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
                               disabled
                             >
                               <Download className="w-4 h-4 mr-2" />
-                              View
+                              Download
                             </Button>
                           </span>
                         </TooltipTrigger>

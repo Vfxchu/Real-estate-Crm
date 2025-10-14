@@ -81,7 +81,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || property?.agent_id === user?.id;
   const canViewSensitive = property ? canViewSensitiveFields(property, user?.id, profile?.role) : false;
-  const canDownload = canEdit; // Can download if can edit (admin or assigned agent)
+  const canDownload = !!user; // All authenticated users can download files
   const showActivities = canEdit; // Show activities only for admin or assigned agent
 
   useEffect(() => {

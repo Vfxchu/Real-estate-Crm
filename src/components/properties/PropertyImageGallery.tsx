@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -147,6 +147,33 @@ export const PropertyImageGallery: React.FC<PropertyImageGalleryProps> = ({ imag
     setSelectedIndex(selectedIndex === imageUrls.length - 1 ? 0 : selectedIndex + 1);
   };
 
+  const handleDownload = async (url: string, index: number) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `property-image-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      toast({
+        title: 'Download Started',
+        description: `Downloading image ${index + 1}`,
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: 'Download Failed',
+        description: 'Failed to download image. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!displayImages || displayImages.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -167,17 +194,29 @@ export const PropertyImageGallery: React.FC<PropertyImageGalleryProps> = ({ imag
         {displayImages.map((url, index) => (
           <div
             key={index}
-            className="relative aspect-video rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity border"
-            onClick={() => setSelectedIndex(index)}
+            className="relative group aspect-video rounded-lg overflow-hidden border"
           >
             <img
               src={url}
               alt={`Property image ${index + 1}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setSelectedIndex(index)}
               onError={(e) => {
                 console.warn('Image failed to load:', url);
               }}
             />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(url, index);
+                }}
+              >
+                <Download className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -186,14 +225,24 @@ export const PropertyImageGallery: React.FC<PropertyImageGalleryProps> = ({ imag
       <Dialog open={selectedIndex !== null} onOpenChange={() => setSelectedIndex(null)}>
         <DialogContent className="max-w-4xl p-0 border-0">
           <div className="relative bg-black">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20"
-              onClick={() => setSelectedIndex(null)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={() => selectedIndex !== null && handleDownload(displayImages[selectedIndex], selectedIndex)}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={() => setSelectedIndex(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
             {selectedIndex !== null && (
               <>
