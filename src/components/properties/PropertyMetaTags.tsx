@@ -21,7 +21,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorIsAdmin ? 'Admin' : (creatorName || 'System');
+  const listedByText = creatorIsAdmin ? 'Admin' : creatorName;
 
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className}`}>
@@ -38,16 +38,18 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline" className="text-xs flex items-center gap-1">
-              <span className="truncate max-w-[120px]">Listed by: {listedByText}</span>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Created on: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}</p>
-          </TooltipContent>
-        </Tooltip>
+        {listedByText && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-xs flex items-center gap-1">
+                <span className="truncate max-w-[120px]">Listed by: {listedByText}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Created on: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </TooltipProvider>
     </div>
   );
