@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { PropertyMetaTags } from '@/components/properties/PropertyMetaTags';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -872,9 +873,12 @@ export const Properties = () => {
                         </div>
                       )}
 
-                      <div className="text-sm text-muted-foreground">
-                        Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
-                      </div>
+                      <PropertyMetaTags
+                        assignedAgentName={property.assigned_agent?.name}
+                        creatorName={property.creator_profile?.name}
+                        creatorIsAdmin={property.creator_profile?.is_admin}
+                        createdAt={property.created_at}
+                      />
 
                       <div className="flex gap-2">
                         <Button
@@ -1040,9 +1044,12 @@ export const Properties = () => {
                       </div>
                     )}
 
-                    <div className="text-sm text-muted-foreground">
-                      Listed by {property.profiles?.name || 'Agent'} • {new Date(property.created_at).toLocaleDateString()}
-                    </div>
+                    <PropertyMetaTags
+                      assignedAgentName={property.assigned_agent?.name}
+                      creatorName={property.creator_profile?.name}
+                      creatorIsAdmin={property.creator_profile?.is_admin}
+                      createdAt={property.created_at}
+                    />
 
                     <div className="flex gap-2">
                       <Button

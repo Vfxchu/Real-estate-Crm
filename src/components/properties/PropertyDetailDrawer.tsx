@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { PropertyMetaTags } from "./PropertyMetaTags";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,15 @@ export interface PropertyWithOwner extends Property {
     phone?: string;
     email?: string;
   } | null;
+  assigned_agent?: {
+    name: string;
+    email: string;
+  };
+  creator_profile?: {
+    name: string;
+    email: string;
+    is_admin: boolean;
+  };
 }
 
 interface PropertyDetailDrawerProps {
@@ -202,13 +212,14 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                     {property.featured && (
                       <Badge variant="secondary">Featured</Badge>
                     )}
-                    {property.profiles && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {property.profiles.name}
-                      </Badge>
-                    )}
                   </div>
+                  <PropertyMetaTags
+                    assignedAgentName={property.assigned_agent?.name}
+                    creatorName={property.creator_profile?.name}
+                    creatorIsAdmin={property.creator_profile?.is_admin}
+                    createdAt={property.created_at}
+                    className="mt-2"
+                  />
                   <div className="text-2xl font-bold text-primary">
                     {formatPrice(property.price)}
                   </div>

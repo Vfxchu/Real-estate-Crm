@@ -34,9 +34,19 @@ export interface Property {
   view?: string | null;
   created_at: string;
   updated_at: string;
+  created_by?: string | null;
   profiles?: {
     name: string;
     email: string;
+  };
+  assigned_agent?: {
+    name: string;
+    email: string;
+  };
+  creator_profile?: {
+    name: string;
+    email: string;
+    is_admin: boolean;
   };
 }
 
@@ -53,29 +63,41 @@ export const useProperties = () => {
       
       const { data, error } = await supabase
         .from('properties')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*, created_by')
+        .order('created_at', { ascending: false});
 
       if (error) throw error;
 
       console.log('[PROPERTIES] Query result:', { data: data?.length || 0 });
 
-      // Fetch profile data separately for each property that has an agent_id
+      // Collect all unique user IDs (agent_id + created_by)
+      const userIds = new Set<string>();
+      (data || []).forEach(property => {
+        if (property.agent_id) userIds.add(property.agent_id);
+        if (property.created_by) userIds.add(property.created_by);
+      });
+
+      // Fetch all profiles in one query
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, name, email')
+        .in('user_id', Array.from(userIds));
+
+      // Check which users are admins
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', Array.from(userIds))
+        .eq('role', 'admin');
+
+      const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+      const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
+
+      // Process properties with profiles
       const propertiesWithProfiles = await Promise.all(
         (data || []).map(async (property) => {
-          let profileData = null;
-          
-          if (property.agent_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('name, email')
-              .eq('user_id', property.agent_id)
-              .single();
-            
-            profileData = profile || { name: 'Unknown', email: 'unknown@example.com' };
-          } else {
-            profileData = { name: 'Unknown', email: 'unknown@example.com' };
-          }
+          const assignedProfile = property.agent_id ? profileMap.get(property.agent_id) : null;
+          const creatorProfile = property.created_by ? profileMap.get(property.created_by) : null;
 
           // Transform image URLs to secure signed URLs
           const secureImages = property.images ? await Promise.all(
@@ -90,7 +112,12 @@ export const useProperties = () => {
           return {
             ...property,
             images: secureImages,
-            profiles: profileData
+            profiles: assignedProfile || { name: 'Unknown', email: 'unknown@example.com' },
+            assigned_agent: assignedProfile || null,
+            creator_profile: creatorProfile ? {
+              ...creatorProfile,
+              is_admin: adminUserIds.has(property.created_by || '')
+            } : null
           };
         })
       );
@@ -109,31 +136,54 @@ export const useProperties = () => {
     }
   };
 
-  const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles'>) => {
+  const createProperty = async (propertyData: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'profiles' | 'assigned_agent' | 'creator_profile'>) => {
     try {
       console.log('[PROPERTIES] Creating property:', propertyData);
-      // Direct insert - simplified, no RPC
+      // Direct insert with created_by
       const { data, error } = await supabase
         .from('properties')
-        .insert([propertyData])
-        .select('*')
+        .insert([{
+          ...propertyData,
+          created_by: user?.id
+        }])
+        .select('*, created_by')
         .single();
 
       if (error) throw error;
 
       // Fetch the profile data separately if the property has an agent_id
       let propertyWithProfile = data;
-      if (data?.agent_id) {
-        const { data: profileData } = await supabase
+      if (data?.agent_id || data?.created_by) {
+        const userIds = [];
+        if (data.agent_id) userIds.push(data.agent_id);
+        if (data.created_by) userIds.push(data.created_by);
+
+        const { data: profilesData } = await supabase
           .from('profiles')
-          .select('name, email')
-          .eq('user_id', data.agent_id)
-          .single();
-        
-      propertyWithProfile = {
-        ...data,
-        profiles: profileData || { name: 'Unknown', email: 'unknown@example.com' }
-      } as any;
+          .select('user_id, name, email')
+          .in('user_id', userIds);
+
+        const { data: adminRoles } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', userIds)
+          .eq('role', 'admin');
+
+        const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+        const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
+
+        const assignedProfile = data.agent_id ? profileMap.get(data.agent_id) : null;
+        const creatorProfile = data.created_by ? profileMap.get(data.created_by) : null;
+
+        propertyWithProfile = {
+          ...data,
+          profiles: assignedProfile || { name: 'Unknown', email: 'unknown@example.com' },
+          assigned_agent: assignedProfile || null,
+          creator_profile: creatorProfile ? {
+            ...creatorProfile,
+            is_admin: adminUserIds.has(data.created_by || '')
+          } : null
+        } as any;
       }
 
       console.log('[PROPERTIES] Property created successfully');
