@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PropertyMetaTags } from '@/components/properties/PropertyMetaTags';
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -873,13 +873,6 @@ export const Properties = () => {
                         </div>
                       )}
 
-                      <PropertyMetaTags
-                        assignedAgentName={property.assigned_agent?.name}
-                        creatorName={property.creator_profile?.name}
-                        creatorIsAdmin={property.creator_profile?.is_admin}
-                        createdAt={property.created_at}
-                      />
-
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -1043,13 +1036,6 @@ export const Properties = () => {
                         </div>
                       </div>
                     )}
-
-                    <PropertyMetaTags
-                      assignedAgentName={property.assigned_agent?.name}
-                      creatorName={property.creator_profile?.name}
-                      creatorIsAdmin={property.creator_profile?.is_admin}
-                      createdAt={property.created_at}
-                    />
 
                     <div className="flex gap-2">
                       <Button
