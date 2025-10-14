@@ -89,6 +89,23 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
     }
   }, [property?.id, open]);
 
+  // Listen for property updates to refresh data
+  useEffect(() => {
+    const handlePropertyRefresh = () => {
+      if (property?.id && open) {
+        loadActivities();
+        loadFiles();
+        onUpdate?.();
+      }
+    };
+
+    window.addEventListener('properties:refresh', handlePropertyRefresh);
+    
+    return () => {
+      window.removeEventListener('properties:refresh', handlePropertyRefresh);
+    };
+  }, [property?.id, open, onUpdate]);
+
   const loadActivities = async () => {
     if (!property?.id) return;
     
@@ -488,42 +505,53 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
               </TabsContent>
 
               {/* Images Tab - Property Images & Floor Plans */}
-              <TabsContent value="images" className="mt-4 space-y-4">
-                {/* Property Images Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ImageIcon className="w-5 h-5" />
-                      Property Images
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {property.images && property.images.length > 0 ? (
-                      <PropertyImageGallery images={property.images} propertyId={property.id} />
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No property images uploaded.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              <TabsContent value="images" className="mt-4">
+                <Tabs defaultValue="property-images" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="property-images">Images</TabsTrigger>
+                    <TabsTrigger value="floor-plans">Floor Plan & Layouts</TabsTrigger>
+                  </TabsList>
 
-                {/* Floor Plan & Layout Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      Floor Plan & Layout
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <PropertyLayoutGallery 
-                      propertyId={property.id} 
-                      canEdit={canEdit}
-                      onUpdate={onUpdate}
-                    />
-                  </CardContent>
-                </Card>
+                  {/* Property Images Sub-tab */}
+                  <TabsContent value="property-images" className="mt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <ImageIcon className="w-5 h-5" />
+                          Property Images
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {property.images && property.images.length > 0 ? (
+                          <PropertyImageGallery images={property.images} propertyId={property.id} />
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            No property images uploaded.
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Floor Plans & Layouts Sub-tab */}
+                  <TabsContent value="floor-plans" className="mt-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          Floor Plan & Layouts
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <PropertyLayoutGallery 
+                          propertyId={property.id} 
+                          canEdit={canEdit}
+                          onUpdate={onUpdate}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
               </TabsContent>
 
               {/* Documents Tab */}

@@ -19,7 +19,10 @@ export const PropertyImageGallery: React.FC<PropertyImageGalleryProps> = ({ imag
   // Load signed URLs for images with robust handling
   useEffect(() => {
     const loadSignedUrls = async () => {
-      if (!images || images.length === 0) return;
+      if (!images || images.length === 0) {
+        setImageUrls([]);
+        return;
+      }
       
       setLoading(true);
       try {
@@ -116,6 +119,20 @@ export const PropertyImageGallery: React.FC<PropertyImageGalleryProps> = ({ imag
 
     loadSignedUrls();
   }, [images, propertyId, toast]);
+
+  // Listen for property refresh events
+  useEffect(() => {
+    const handleRefresh = () => {
+      // Trigger reload by resetting and refetching
+      setImageUrls([]);
+    };
+
+    window.addEventListener('properties:refresh', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('properties:refresh', handleRefresh);
+    };
+  }, []);
 
   // Use signed URLs if available, otherwise fallback to original images
   const displayImages = imageUrls.length > 0 ? imageUrls : images;

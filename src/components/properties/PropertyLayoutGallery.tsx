@@ -37,6 +37,28 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
     }
   }, [propertyId]);
 
+  // Listen for real-time updates to property files
+  useEffect(() => {
+    if (!propertyId) return;
+
+    const channel = supabase
+      .channel(`property-files-${propertyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'property_files',
+        filter: `property_id=eq.${propertyId}`
+      }, (payload) => {
+        console.log('Property files changed:', payload);
+        loadLayouts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [propertyId]);
+
   const loadLayouts = async () => {
     try {
       const { data, error } = await supabase

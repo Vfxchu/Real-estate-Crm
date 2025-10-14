@@ -204,6 +204,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         title: `${type === 'images' ? 'Images' : 'Floor plans'} uploaded`,
         description: `${newFiles.length} file(s) uploaded successfully`,
       });
+
+      // Dispatch event for cross-component sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
     } catch (error: any) {
       console.error(`${type} upload error:`, error);
       toast({
@@ -248,6 +251,9 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
         title: `${type === 'images' ? 'Image' : 'Floor plan'} removed`,
         description: 'File has been removed successfully',
       });
+
+      // Dispatch event for cross-component sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
     } catch (error: any) {
       console.error(`Error removing ${type}:`, error);
       toast({
