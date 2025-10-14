@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, type UserRole } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
@@ -118,6 +118,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const filteredNavigation = navigation.filter(item => 
     profile?.role && item.roles.includes(profile.role as UserRole)
@@ -179,7 +180,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       {/* User Info */}
       {!isCollapsed && profile && (
         <div className="p-4 border-t border-sidebar-border flex-shrink-0">
-          <div className="flex items-center gap-3 animate-fade-in">
+          <div 
+            className="flex items-center gap-3 animate-fade-in cursor-pointer hover:bg-sidebar-accent/50 rounded-lg p-2 transition-colors"
+            onClick={() => navigate('/settings')}
+          >
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <span className="text-xs font-medium text-primary-foreground">
                 {profile.name.split(' ').map(n => n[0]).join('')}
