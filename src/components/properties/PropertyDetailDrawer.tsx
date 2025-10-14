@@ -213,13 +213,6 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                       <Badge variant="secondary">Featured</Badge>
                     )}
                   </div>
-                  <PropertyMetaTags
-                    assignedAgentName={property.assigned_agent?.name}
-                    creatorName={property.creator_profile?.name}
-                    creatorIsAdmin={property.creator_profile?.is_admin}
-                    createdAt={property.created_at}
-                    className="mt-2"
-                  />
                   <div className="text-2xl font-bold text-primary">
                     {formatPrice(property.price)}
                   </div>
@@ -268,20 +261,14 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 )}
               </div>
 
-              {/* Agent Info */}
-              {property.profiles && (
-                <div className="flex items-center gap-3 pt-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {property.profiles.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="text-sm">
-                    <div className="font-medium">{property.profiles.name}</div>
-                    <div className="text-muted-foreground">{property.profiles.email}</div>
-                  </div>
-                </div>
-              )}
+              {/* Property Meta Tags */}
+              <PropertyMetaTags
+                assignedAgentName={property.assigned_agent?.name}
+                creatorName={property.creator_profile?.name}
+                creatorIsAdmin={property.creator_profile?.is_admin}
+                createdAt={property.created_at}
+                className="pt-2"
+              />
             </SheetHeader>
 
             {/* Tabs */}
