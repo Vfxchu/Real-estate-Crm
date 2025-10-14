@@ -129,18 +129,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Logo */}
-      <div className="p-4 border-b border-sidebar-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-            <img src="/dkv-logo.svg" alt="DKV International" className="w-8 h-8 object-contain" />
-          </div>
-          {!isCollapsed && (
-            <div className="animate-fade-in">
-              <h1 className="font-bold text-lg text-sidebar-foreground">RealEstate</h1>
-              <p className="text-xs text-sidebar-foreground/60">CRM</p>
+      <div className="p-6 border-b border-sidebar-border flex-shrink-0">
+        {!isCollapsed && (
+          <div className="flex flex-col items-center gap-2 animate-fade-in">
+            <img src="/dkv-logo-white.png" alt="DKV Logo" className="w-20 h-20 object-contain" />
+            <div className="text-center">
+              <h1 className="font-bold text-sm text-sidebar-foreground tracking-wide">DKV REALESTATE</h1>
+              <p className="text-xs text-sidebar-foreground/60 font-medium">CRM</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        {isCollapsed && (
+          <div className="flex justify-center">
+            <img src="/dkv-logo-white.png" alt="DKV Logo" className="w-8 h-8 object-contain" />
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
