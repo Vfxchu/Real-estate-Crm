@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Trash2, Download, Image, File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { createSignedUrl } from '@/services/storage';
+import { getPropertyFileUrl } from '@/services/propertyFiles';
 import propertyPlaceholder from '@/assets/property-placeholder.jpg';
 
 interface PropertyFile {
@@ -51,16 +51,11 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
       const files = data || [];
       setLayouts(files);
 
-      // Generate signed URLs for all layouts
       const urls: Record<string, string> = {};
       for (const file of files) {
-        const { data: signedData, error: signError } = await createSignedUrl(
-          'property-layouts',
-          file.path,
-          3600
-        );
-        if (signedData && !signError) {
-          urls[file.id] = signedData.signedUrl;
+        const url = await getPropertyFileUrl(file as any);
+        if (url) {
+          urls[file.id] = url;
         }
       }
       setSignedUrls(urls);
@@ -123,14 +118,9 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
 
   const handleDownloadFile = async (file: PropertyFile) => {
     try {
-      const url = signedUrls[file.id];
-      if (!url) {
-        const { data, error } = await createSignedUrl('property-layouts', file.path, 3600);
-        if (error || !data) throw new Error('Could not generate download URL');
-        window.open(data.signedUrl, '_blank');
-      } else {
-        window.open(url, '_blank');
-      }
+      const url = signedUrls[file.id] || await getPropertyFileUrl(file as any);
+      if (!url) throw new Error('Could not generate download URL');
+      window.open(url, '_blank');
     } catch (error: any) {
       console.error('Error downloading file:', error);
       toast({

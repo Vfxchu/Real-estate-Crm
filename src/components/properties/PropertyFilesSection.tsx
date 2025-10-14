@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Upload, Trash2, Download, Image, File } from 'lucide-react';
+import { FileText, Upload, Trash2, Download, Image, File, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { uploadFile, deleteFile, createSignedUrl } from '@/services/storage';
-
+import { uploadFile, deleteFile } from '@/services/storage';
+import { getPropertyFileUrl } from '@/services/propertyFiles';
 interface PropertyFile {
   id: string;
   name: string;
@@ -183,17 +183,30 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
 
   const handleDownloadFile = async (file: PropertyFile) => {
     try {
-      const bucket = 'property-docs';
-      const { data, error } = await createSignedUrl(bucket, file.path, 3600);
-      
-      if (error || !data) throw new Error('Could not generate download URL');
-
-      window.open(data.signedUrl, '_blank');
+      const url = await getPropertyFileUrl({ ...file, property_id: propertyId, type: 'document' } as any);
+      if (!url) throw new Error('Could not generate download URL');
+      window.open(url, '_blank');
     } catch (error: any) {
       console.error('Error downloading file:', error);
       toast({
         title: 'Download failed',
-        description: error.message,
+        description: error.message === 'Forbidden' ? "You don't have access to this file." : error.message,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleViewFile = async (file: PropertyFile) => {
+    try {
+      const url = await getPropertyFileUrl({ ...file, property_id: propertyId, type: 'document' } as any);
+      if (!url) throw new Error('Could not generate download URL');
+      // Open in new tab for stable preview (works for images and PDFs)
+      window.open(url, '_blank');
+    } catch (error: any) {
+      console.error('Error opening file:', error);
+      toast({
+        title: 'View failed',
+        description: error.message === 'Forbidden' ? "You don't have access to this file." : error.message,
         variant: 'destructive'
       });
     }
@@ -204,7 +217,6 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
-
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
@@ -273,6 +285,14 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleViewFile(file)}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
                   <Button
                     type="button"
                     size="sm"

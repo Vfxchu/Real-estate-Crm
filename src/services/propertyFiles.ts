@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { uploadFile, deleteFile, createSignedUrl } from "./storage";
+import { uploadFile, deleteFile } from "./storage";
 
 export interface PropertyFile {
   id: string;
@@ -97,7 +97,14 @@ export async function deletePropertyFile(fileId: string) {
 }
 
 export async function getPropertyFileUrl(file: PropertyFile) {
-  const bucket = file.type === 'layout' ? 'property-layouts' : 'property-docs';
-  const { data, error } = await createSignedUrl(bucket, file.path, 3600);
-  return data?.signedUrl || null;
+  try {
+    const { data, error } = await supabase.functions.invoke('docs-signed-url', {
+      body: { id: file.id }
+    });
+    if (error) throw new Error(error.message || 'Failed to generate signed URL');
+    return (data as any)?.signedUrl || null;
+  } catch (err) {
+    console.error('getPropertyFileUrl error:', err);
+    return null;
+  }
 }

@@ -126,10 +126,8 @@ export function ContactDocumentsTab({ contactId }: ContactDocumentsTabProps) {
 
   const handleFileDownload = async (file: ContactFile) => {
     try {
-      const bucket = file.source === 'contact' ? 'documents' : 'property-docs';
-      const { data, error } = await createSignedUrl(bucket, file.path, 300);
-
-      if (error || !data) {
+      const url = await getPropertyFileUrl({ id: file.id, type: file.source === 'property' ? 'document' : 'document' } as any);
+      if (!url) throw new Error('Could not generate download URL');
         throw new Error('Failed to create download link');
       }
 
