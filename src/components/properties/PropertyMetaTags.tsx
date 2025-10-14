@@ -21,34 +21,31 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorIsAdmin ? 'Admin' : (creatorName || 'Unknown');
+  const listedByText = creatorIsAdmin ? 'Admin' : (creatorName || 'System');
 
   return (
-    <div className={`flex items-center gap-3 flex-wrap ${className}`}>
+    <div className={`flex items-center gap-2 flex-wrap ${className}`}>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="secondary" className="text-xs flex items-center gap-1.5 px-3 py-1">
-              <User className="w-3.5 h-3.5" />
-              <span className="font-medium truncate max-w-[150px]">{assignedText}</span>
+            <Badge variant="secondary" className="text-xs flex items-center gap-1">
+              <User className="w-3 h-3" />
+              <span className="truncate max-w-[120px]">Assigned to: {assignedText}</span>
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="font-medium">Assigned to: {assignedText}</p>
+            <p>Assigned to: {assignedText}</p>
           </TooltipContent>
         </Tooltip>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant="outline" className="text-xs flex items-center gap-1.5 px-3 py-1">
-              <span className="font-medium truncate max-w-[150px]">{listedByText}</span>
+            <Badge variant="outline" className="text-xs flex items-center gap-1">
+              <span className="truncate max-w-[120px]">Listed by: {listedByText}</span>
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="font-medium">Listed by: {listedByText}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Created: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
-            </p>
+            <p>Created on: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
