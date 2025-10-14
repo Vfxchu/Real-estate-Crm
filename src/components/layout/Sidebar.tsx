@@ -131,8 +131,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       {/* Logo */}
       <div className="p-4 border-b border-sidebar-border flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <Home className="w-4 h-4 text-primary-foreground" />
+          <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <img src="/dkv-logo.svg" alt="DKV International" className="w-8 h-8 object-contain" />
           </div>
           {!isCollapsed && (
             <div className="animate-fade-in">
