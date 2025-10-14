@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
           </div>
           {!isCollapsed && (
             <div className="animate-fade-in">
-              <h1 className="font-bold text-lg text-sidebar-foreground">RealEstate</h1>
+              <h1 className="font-bold text-lg text-sidebar-foreground">DKV REALESTATE</h1>
               <p className="text-xs text-sidebar-foreground/60">CRM</p>
             </div>
           )}
