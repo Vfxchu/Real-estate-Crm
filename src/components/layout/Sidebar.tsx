@@ -129,11 +129,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       isCollapsed ? "w-16" : "w-64"
     )}>
       {/* Logo */}
-      <div className="py-4 px-6 border-b border-sidebar-border flex-shrink-0">
+      <div className="py-3 px-4 border-b border-sidebar-border flex-shrink-0">
         {!isCollapsed && (
           <div className="flex flex-col items-center animate-fade-in">
             <img src="/dkv-logo-white.png" alt="DKV Logo" className="w-24 h-24 object-contain" />
-            <div className="text-center -mt-2">
+            <div className="text-center -mt-3">
               <h1 className="font-bold text-sm text-sidebar-foreground tracking-wide">DKV REALESTATE</h1>
               <p className="text-xs text-sidebar-foreground/60 font-medium">CRM</p>
             </div>
