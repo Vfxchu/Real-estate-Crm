@@ -887,7 +887,8 @@ export const Properties = () => {
                           size="sm" 
                           variant="outline"
                           onClick={() => handleScheduleViewing(property)}
-                          title="Schedule a viewing for this property"
+                          disabled={!isAdmin && property.agent_id !== user?.id}
+                          title={!isAdmin && property.agent_id !== user?.id ? "You can only schedule viewings for your own properties" : "Schedule a viewing for this property"}
                         >
                           <Calendar className="w-4 h-4" />
                         </Button>
@@ -895,6 +896,8 @@ export const Properties = () => {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleShareProperty(property)}
+                          disabled={!isAdmin && property.agent_id !== user?.id}
+                          title={!isAdmin && property.agent_id !== user?.id ? "You can only share your own properties" : "Share property"}
                         >
                           <Share2 className="w-4 h-4" />
                         </Button>
