@@ -21,7 +21,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorIsAdmin ? 'Admin' : (creatorName || 'Unknown');
+  const listedByText = creatorName || (creatorIsAdmin ? 'Admin' : 'Unknown');
 
   return (
     <div className={`flex items-center gap-3 flex-wrap ${className}`}>
@@ -30,6 +30,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
           <TooltipTrigger asChild>
             <Badge variant="secondary" className="text-xs flex items-center gap-1.5 px-3 py-1">
               <User className="w-3.5 h-3.5" />
+              <span className="text-muted-foreground">Assigned</span>
               <span className="font-medium truncate max-w-[150px]">{assignedText}</span>
             </Badge>
           </TooltipTrigger>
@@ -41,6 +42,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge variant="outline" className="text-xs flex items-center gap-1.5 px-3 py-1">
+              <span className="text-muted-foreground">Listed by</span>
               <span className="font-medium truncate max-w-[150px]">{listedByText}</span>
             </Badge>
           </TooltipTrigger>
