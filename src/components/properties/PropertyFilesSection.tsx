@@ -90,15 +90,16 @@ export const PropertyFilesSection: React.FC<PropertyFilesSectionProps> = ({
       const bucket = 'property-docs';
       const filePath = `${propertyId}/${Date.now()}_${file.name}`;
       
-      const { error: uploadError } = await uploadFile(bucket, filePath, file);
-      if (uploadError) throw uploadError;
+      const uploadRes = await uploadFile(bucket, filePath, file);
+      if (uploadRes.error) throw uploadRes.error;
+      const storedPath = uploadRes.path || filePath;
 
       const { error: dbError } = await supabase
         .from('property_files')
         .insert({
           property_id: propertyId,
           name: file.name,
-          path: filePath,
+          path: storedPath,
           type: 'document',
           size: file.size,
           created_by: user.id

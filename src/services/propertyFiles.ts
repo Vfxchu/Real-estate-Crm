@@ -30,8 +30,9 @@ export async function uploadPropertyFile(
   const filePath = `${propertyId}/${Date.now()}_${file.name}`;
 
   // Upload to storage
-  const { error: uploadError } = await uploadFile(bucket, filePath, file);
-  if (uploadError) return { data: null, error: uploadError };
+  const uploadRes = await uploadFile(bucket, filePath, file);
+  if (uploadRes.error) return { data: null, error: uploadRes.error };
+  const storedPath = uploadRes.path || filePath;
 
   // Create DB record
   const { data, error } = await supabase
@@ -39,7 +40,7 @@ export async function uploadPropertyFile(
     .insert({
       property_id: propertyId,
       name: file.name,
-      path: filePath,
+      path: storedPath,
       type,
       size: file.size
     })

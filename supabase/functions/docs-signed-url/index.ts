@@ -74,34 +74,45 @@ serve(async (req: Request) => {
 
     const bucket = fileRow.type === 'layout' ? 'property-layouts' : 'property-docs';
 
-    let signed = null;
-    let signErr = null;
+    const trySign = async (bkt: string, pth: string) => {
+      return await admin.storage.from(bkt).createSignedUrl(pth, 900, { download: fileRow.name });
+    };
 
-    // Try primary bucket
-    const primaryResult = await admin.storage.from(bucket).createSignedUrl(fileRow.path, 900, { download: fileRow.name });
-    
-    if (primaryResult.error) {
-      // Auto-recover: try alternate bucket on 404
-      const alternateBucket = bucket === 'property-layouts' ? 'property-docs' : 'property-layouts';
-      console.warn('Primary bucket failed, trying alternate', { id, userId, primaryBucket: bucket, alternateBucket, error: primaryResult.error });
-      
-      const fallbackResult = await admin.storage.from(alternateBucket).createSignedUrl(fileRow.path, 900, { download: fileRow.name });
-      
-      if (fallbackResult.error) {
-        console.error('Sign error (both buckets failed)', { id, userId, primaryError: primaryResult.error, fallbackError: fallbackResult.error });
-        return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
-      }
-      
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._\/-]/g, '_');
+
+    // 1) Try primary
+    let primary = await trySign(bucket, fileRow.path);
+    if (!primary.error && primary.data?.signedUrl) {
+      return new Response(JSON.stringify({ signedUrl: primary.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
+    // 2) Try alternate bucket with same path
+    const alternateBucket = bucket === 'property-layouts' ? 'property-docs' : 'property-layouts';
+    let alternate = await trySign(alternateBucket, fileRow.path);
+    if (!alternate.error && alternate.data?.signedUrl) {
       console.warn('Bucket mismatch recovered', { id, userId, expectedBucket: bucket, actualBucket: alternateBucket });
-      signed = fallbackResult.data;
-    } else {
-      signed = primaryResult.data;
+      return new Response(JSON.stringify({ signedUrl: alternate.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    if (!signed?.signedUrl) {
-      console.error('Sign error (no URL)', { id, userId });
-      return new Response(JSON.stringify({ error: "Could not generate download URL" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    // 3) Try sanitized path in primary
+    const sanitizedPath = sanitize(fileRow.path);
+    if (sanitizedPath !== fileRow.path) {
+      primary = await trySign(bucket, sanitizedPath);
+      if (!primary.error && primary.data?.signedUrl) {
+        console.warn('Sanitized path recovered (primary)', { id, userId, original: fileRow.path, sanitized: sanitizedPath });
+        return new Response(JSON.stringify({ signedUrl: primary.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+
+      // 4) Try sanitized path in alternate
+      alternate = await trySign(alternateBucket, sanitizedPath);
+      if (!alternate.error && alternate.data?.signedUrl) {
+        console.warn('Sanitized path recovered (alternate)', { id, userId, original: fileRow.path, sanitized: sanitizedPath, bucket: alternateBucket });
+        return new Response(JSON.stringify({ signedUrl: alternate.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
     }
+
+    console.error('Sign error (all strategies failed)', { id, userId, path: fileRow.path, bucket });
+    return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
     return new Response(JSON.stringify({ signedUrl: signed.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (e) {

@@ -53,17 +53,30 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    const { data: signed, error: signErr } = await admin
-      .storage
-      .from('documents')
-      .createSignedUrl(fileRow.path, 900, { download: fileRow.name });
-
-    if (signErr || !signed?.signedUrl) {
-      console.error('Sign error (contact)', { id, userId, error: signErr });
-      return new Response(JSON.stringify({ error: "Could not generate download URL" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    const trySign = async (pth: string) => {
+      return await admin.storage.from('documents').createSignedUrl(pth, 900, { download: fileRow.name });
     }
 
-    return new Response(JSON.stringify({ signedUrl: signed.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9._\/-]/g, '_');
+
+    // 1) Try original path
+    let signedRes = await trySign(fileRow.path);
+    if (!signedRes.error && signedRes.data?.signedUrl) {
+      return new Response(JSON.stringify({ signedUrl: signedRes.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+
+    // 2) Try sanitized path
+    const sanitizedPath = sanitize(fileRow.path);
+    if (sanitizedPath !== fileRow.path) {
+      signedRes = await trySign(sanitizedPath);
+      if (!signedRes.error && signedRes.data?.signedUrl) {
+        console.warn('Sanitized path recovered (contact)', { id, userId, original: fileRow.path, sanitized: sanitizedPath });
+        return new Response(JSON.stringify({ signedUrl: signedRes.data.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
+      }
+    }
+
+    console.error('Sign error (contact) all strategies failed', { id, userId, path: fileRow.path });
+    return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (e) {
     console.error('contact-docs-signed-url fatal', e);
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });

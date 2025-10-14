@@ -94,7 +94,7 @@ export default function ContactDetailDrawer({
     setUploading(true);
     try {
       const filePath = `contacts/${contact.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await uploadFile('documents', filePath, file);
+      const { error: uploadError, path: storedPath } = await uploadFile('documents', filePath, file) as any;
       
       if (uploadError) throw uploadError;
 
@@ -103,7 +103,7 @@ export default function ContactDetailDrawer({
         .insert({
           contact_id: contact.id,
           name: file.name,
-          path: filePath,
+          path: storedPath || filePath,
           type: file.type,
           size: file.size,
         });

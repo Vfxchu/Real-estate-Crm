@@ -244,12 +244,12 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         const fileName = `${Date.now()}_${i}.${fileExt}`;
         const filePath = `temp/${fileName}`;
 
-        const { error: uploadError } = await uploadFile(bucketMap[type], filePath, file);
+        const uploadRes = await uploadFile(bucketMap[type], filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadRes.error) throw uploadRes.error;
 
         // For private buckets, we'll store the path and get signed URLs on read
-        newFiles.push(filePath);
+        newFiles.push(uploadRes.path || filePath);
       }
       
       if (type === 'images') {

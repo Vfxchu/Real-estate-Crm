@@ -26,7 +26,7 @@ export async function uploadFile(bucket: string, path: string, file: File) {
       contentType: file.type,
       duplex: 'half'
     });
-  return { data, error } as const;
+  return { data, error, path: sanitizedPath } as const;
 }
 
 export async function deleteFile(bucket: string, path: string) {

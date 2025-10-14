@@ -91,15 +91,15 @@ function ContactProfileDrawer({ contact, open, onClose }: ContactProfileDrawerPr
       const filePath = `documents/${user.id}/${contact.id}/general/${fileName}`;
 
       // Upload to storage
-      const { error: uploadError } = await uploadFile("documents", filePath, file);
+      const { error: uploadError, path: storedPath } = await uploadFile("documents", filePath, file) as any;
       if (uploadError) throw uploadError;
 
       // Save to database (NOTE: your table does not have "size", so we don't send it)
       const { error: dbError } = await supabase.from("contact_files").insert({
         contact_id: contact.id,
         name: file.name,
-        path: filePath,
-        type: "document", // or 'manual'/'upload' depending on your UI
+        path: storedPath || filePath,
+        type: "document",
         // tag: 'id', // optionally add default tag
       });
 

@@ -289,12 +289,12 @@ export default function UnifiedContactForm({
         const fileName = `${Date.now()}-${i}.${fileExt}`;
         const filePath = `documents/${user.id}/temp/${fileName}`;
 
-        const { error: uploadError } = await uploadFile('documents', filePath, file);
-        if (uploadError) throw uploadError;
+        const uploadRes = await uploadFile('documents', filePath, file);
+        if (uploadRes.error) throw uploadRes.error;
 
         newFiles.push({
           name: file.name,
-          path: filePath
+          path: uploadRes.path || filePath
         });
       }
 
