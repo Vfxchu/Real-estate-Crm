@@ -292,10 +292,6 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm text-muted-foreground">Type</div>
-                        <div className="font-medium capitalize">{property.property_type}</div>
-                      </div>
                       {property.segment && (
                         <div>
                           <div className="text-sm text-muted-foreground">Segment</div>
