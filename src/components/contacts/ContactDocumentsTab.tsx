@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Eye, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPropertyFileUrl } from "@/services/propertyFiles";
+import { getContactFileUrl } from "@/services/contactFiles";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -126,15 +127,21 @@ export function ContactDocumentsTab({ contactId }: ContactDocumentsTabProps) {
 
   const handleFileDownload = async (file: ContactFile) => {
     try {
-      const url = await getPropertyFileUrl({ id: file.id, type: file.source === 'property' ? 'document' : 'document' } as any);
-      if (!url) throw new Error('Could not generate download URL');
+      const url = file.source === 'property' 
+        ? await getPropertyFileUrl({ id: file.id, type: 'document' } as any)
+        : await getContactFileUrl(file.id);
       
-      // Open in new tab for download
       window.open(url, '_blank');
-    } catch (error) {
+    } catch (error: any) {
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not generate download URL";
+      
       toast({
         title: "Download Failed",
-        description: "Could not download the file",
+        description: message,
         variant: "destructive",
       });
     }

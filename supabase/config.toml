@@ -1,13 +1,16 @@
 project_id = "lnszidczioariaebsquo"
 
 [functions.sla-monitor]
-verify_jwt = false  # Cron job - uses secret validation instead
+verify_jwt = false
 
 [functions.trigger-automation]
-verify_jwt = true  # Requires JWT authentication
+verify_jwt = true
 
 [functions.n8n-webhook]
-verify_jwt = false  # External webhook - uses signature validation
+verify_jwt = false
 
 [functions.docs-signed-url]
-verify_jwt = true  # Requires JWT (role-aware signed URLs)
+verify_jwt = true
+
+[functions.contact-docs-signed-url]
+verify_jwt = true

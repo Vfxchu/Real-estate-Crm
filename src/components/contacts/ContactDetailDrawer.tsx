@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, deleteFile } from '@/services/storage';
+import { getContactFileUrl } from '@/services/contactFiles';
 import ContactForm from './ContactForm';
 import ContactActivitiesTab from './ContactActivitiesTab';
 import ContactTasksEventsTab from './ContactTasksEventsTab';
@@ -125,16 +126,18 @@ export default function ContactDetailDrawer({
 
   const handleFileDownload = async (file: ContactFile) => {
     try {
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .createSignedUrl(file.path, 300);
-
-      if (error) throw error;
-      window.open(data.signedUrl, '_blank');
+      const url = await getContactFileUrl(file.id);
+      window.open(url, '_blank');
     } catch (error: any) {
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not download file";
+      
       toast({
         title: 'Download failed',
-        description: error.message,
+        description: message,
         variant: 'destructive'
       });
     }

@@ -8,7 +8,8 @@ import { Lead } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { uploadFile, createSignedUrl, deleteFile } from "@/services/storage";
+import { uploadFile, deleteFile } from "@/services/storage";
+import { getContactFileUrl } from "@/services/contactFiles";
 import ContactForm from "./ContactForm";
 import { ContactHeader } from "./ContactHeader";
 import { ContactEnhancedTabs } from "./ContactEnhancedTabs";
@@ -123,14 +124,18 @@ function ContactProfileDrawer({ contact, open, onClose }: ContactProfileDrawerPr
 
   const handleFileDownload = async (file: ContactFile) => {
     try {
-      const { data: signedUrl, error } = await createSignedUrl("documents", file.path, 300);
-      if (error) throw error;
-      if (!signedUrl?.signedUrl) throw new Error("No signed URL received");
-      window.open(signedUrl.signedUrl, "_blank");
+      const url = await getContactFileUrl(file.id);
+      window.open(url, "_blank");
     } catch (error: any) {
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not download file";
+      
       toast({
         title: "Download failed",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     }

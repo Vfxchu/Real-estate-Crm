@@ -118,14 +118,17 @@ export const PropertyLayoutGallery: React.FC<PropertyLayoutGalleryProps> = ({
 
   const handleDownloadFile = async (file: PropertyFile) => {
     try {
-      const url = signedUrls[file.id] || await getPropertyFileUrl(file as any);
-      if (!url) throw new Error('Could not generate download URL');
+      const url = await getPropertyFileUrl(file as any);
       window.open(url, '_blank');
     } catch (error: any) {
-      console.error('Error downloading file:', error);
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not generate download URL";
       toast({
         title: 'Download failed',
-        description: error.message,
+        description: message,
         variant: 'destructive'
       });
     }

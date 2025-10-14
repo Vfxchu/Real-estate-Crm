@@ -96,15 +96,27 @@ export async function deletePropertyFile(fileId: string) {
   return { error: null };
 }
 
-export async function getPropertyFileUrl(file: PropertyFile) {
+export async function getPropertyFileUrl(file: PropertyFile): Promise<string> {
   try {
     const { data, error } = await supabase.functions.invoke('docs-signed-url', {
       body: { id: file.id }
     });
-    if (error) throw new Error(error.message || 'Failed to generate signed URL');
-    return (data as any)?.signedUrl || null;
-  } catch (err) {
-    console.error('getPropertyFileUrl error:', err);
-    return null;
+
+    if (error) {
+      const status = error.context?.status || 500;
+      throw { status, message: error.message || 'Failed to get file URL' };
+    }
+
+    if (!data?.signedUrl) {
+      throw { status: 500, message: 'No signed URL received' };
+    }
+
+    return data.signedUrl;
+  } catch (error: any) {
+    console.error('getPropertyFileUrl error:', error);
+    throw {
+      status: error.status || 500,
+      message: error.message || 'Failed to generate download URL'
+    };
   }
 }

@@ -13,7 +13,6 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Clients call via supabase.functions.invoke with POST { id }
     const { id } = req.method === 'POST' ? await req.json() : Object.fromEntries(new URL(req.url).searchParams);
     if (!id) {
       return new Response(JSON.stringify({ error: "Missing file id" }), { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } });
@@ -23,25 +22,21 @@ serve(async (req: Request) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Auth-bound client to read with user's RLS context
     const supabase = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
     });
 
-    // Admin client for signing URLs
     const admin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Identify requester
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
     const userId = userData.user.id;
 
-    // Fetch file row
     const { data: fileRow, error: fileErr } = await supabase
-      .from('property_files')
-      .select('id, path, type, name, created_by, property_id')
+      .from('contact_files')
+      .select('id, path, type, name, created_by')
       .eq('id', id)
       .single();
 
@@ -49,63 +44,28 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    // Get property to check agent
-    const { data: prop, error: propErr } = await supabase
-      .from('properties')
-      .select('agent_id')
-      .eq('id', fileRow.property_id)
-      .single();
-
-    if (propErr || !prop) {
-      return new Response(JSON.stringify({ error: "Property not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
-    }
-
-    // Is admin?
     const { data: isAdminData } = await supabase.rpc('is_admin');
     const isAdmin = Boolean(isAdminData);
 
-    // Authorization: admin OR uploader OR property agent
     const isUploader = fileRow.created_by === userId;
-    const isAgent = prop.agent_id === userId;
 
-    if (!(isAdmin || isUploader || isAgent)) {
+    if (!(isAdmin || isUploader)) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
-    const bucket = fileRow.type === 'layout' ? 'property-layouts' : 'property-docs';
+    const { data: signed, error: signErr } = await admin
+      .storage
+      .from('documents')
+      .createSignedUrl(fileRow.path, 900, { download: fileRow.name });
 
-    let signed = null;
-    let signErr = null;
-
-    // Try primary bucket
-    const primaryResult = await admin.storage.from(bucket).createSignedUrl(fileRow.path, 900, { download: fileRow.name });
-    
-    if (primaryResult.error) {
-      // Auto-recover: try alternate bucket on 404
-      const alternateBucket = bucket === 'property-layouts' ? 'property-docs' : 'property-layouts';
-      console.warn('Primary bucket failed, trying alternate', { id, userId, primaryBucket: bucket, alternateBucket, error: primaryResult.error });
-      
-      const fallbackResult = await admin.storage.from(alternateBucket).createSignedUrl(fileRow.path, 900, { download: fileRow.name });
-      
-      if (fallbackResult.error) {
-        console.error('Sign error (both buckets failed)', { id, userId, primaryError: primaryResult.error, fallbackError: fallbackResult.error });
-        return new Response(JSON.stringify({ error: "File not found" }), { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
-      }
-      
-      console.warn('Bucket mismatch recovered', { id, userId, expectedBucket: bucket, actualBucket: alternateBucket });
-      signed = fallbackResult.data;
-    } else {
-      signed = primaryResult.data;
-    }
-
-    if (!signed?.signedUrl) {
-      console.error('Sign error (no URL)', { id, userId });
+    if (signErr || !signed?.signedUrl) {
+      console.error('Sign error (contact)', { id, userId, error: signErr });
       return new Response(JSON.stringify({ error: "Could not generate download URL" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     return new Response(JSON.stringify({ signedUrl: signed.signedUrl }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (e) {
-    console.error('docs-signed-url fatal', e);
+    console.error('contact-docs-signed-url fatal', e);
     return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
 });

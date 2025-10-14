@@ -9,6 +9,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Lead } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { getContactFileUrl } from "@/services/contactFiles";
 
 interface LeadDocumentsTabProps {
   lead: Lead;
@@ -83,21 +84,18 @@ export const LeadDocumentsTab: React.FC<LeadDocumentsTabProps> = ({ lead }) => {
 
   const handleDownload = async (file: ContactFile) => {
     try {
-      // Get signed URL for download
-      const { data, error } = await supabase
-        .storage
-        .from('documents')
-        .createSignedUrl(file.path, 60); // Valid for 1 minute
-
-      if (error) throw error;
-      
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank');
-      }
+      const url = await getContactFileUrl(file.id);
+      window.open(url, '_blank');
     } catch (error: any) {
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not download file";
+      
       toast({
-        title: 'Error downloading file',
-        description: error.message,
+        title: 'Download Failed',
+        description: message,
         variant: 'destructive',
       });
     }
@@ -105,26 +103,22 @@ export const LeadDocumentsTab: React.FC<LeadDocumentsTabProps> = ({ lead }) => {
 
   const handlePreview = async (file: ContactFile) => {
     try {
-      // For images and PDFs, try to get a signed URL for preview
       if (file.type.startsWith('image/') || file.type.includes('pdf')) {
-        const { data, error } = await supabase
-          .storage
-          .from('documents')
-          .createSignedUrl(file.path, 60);
-
-        if (error) throw error;
-        
-        if (data?.signedUrl) {
-          window.open(data.signedUrl, '_blank');
-        }
+        const url = await getContactFileUrl(file.id);
+        window.open(url, '_blank');
       } else {
-        // For other file types, just download
         handleDownload(file);
       }
     } catch (error: any) {
+      const message = error.status === 403 
+        ? "You don't have access to this file"
+        : error.status === 404
+        ? "File not found. It may have been moved or deleted"
+        : error.message || "Could not preview file";
+      
       toast({
-        title: 'Error previewing file',
-        description: error.message,
+        title: 'Preview Failed',
+        description: message,
         variant: 'destructive',
       });
     }
