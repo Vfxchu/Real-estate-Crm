@@ -1601,6 +1601,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_public_info: {
+        Args: { user_ids: string[] }
+        Returns: {
+          is_admin: boolean
+          name: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args:
           | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }

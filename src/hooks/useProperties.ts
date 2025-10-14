@@ -77,27 +77,21 @@ export const useProperties = () => {
         if (property.created_by) userIds.add(property.created_by);
       });
 
-      // Fetch all profiles in one query
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('user_id, name, email')
-        .in('user_id', Array.from(userIds));
+      // Fetch user public info (names and admin status) via RPC
+      const { data: publicUsers } = await supabase.rpc('get_user_public_info', {
+        user_ids: Array.from(userIds)
+      });
 
-      // Check which users are admins
-      const { data: adminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('user_id', Array.from(userIds))
-        .eq('role', 'admin');
-
-      const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
-      const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
+      // Build map of user_id -> { name, is_admin }
+      const userMap = new Map(
+        (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+      );
 
       // Process properties with profiles
       const propertiesWithProfiles = await Promise.all(
         (data || []).map(async (property) => {
-          const assignedProfile = property.agent_id ? profileMap.get(property.agent_id) : null;
-          const creatorProfile = property.created_by ? profileMap.get(property.created_by) : null;
+          const assignedUser = property.agent_id ? userMap.get(property.agent_id) : null;
+          const creatorUser = property.created_by ? userMap.get(property.created_by) : null;
 
           // Transform image URLs to secure signed URLs
           const secureImages = property.images ? await Promise.all(
@@ -112,11 +106,12 @@ export const useProperties = () => {
           return {
             ...property,
             images: secureImages,
-            profiles: assignedProfile || { name: 'Unknown', email: 'unknown@example.com' },
-            assigned_agent: assignedProfile || null,
-            creator_profile: creatorProfile ? {
-              ...creatorProfile,
-              is_admin: adminUserIds.has(property.created_by || '')
+            profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+            creator_profile: creatorUser ? {
+              name: creatorUser.name,
+              email: '',
+              is_admin: creatorUser.is_admin
             } : null
           };
         })
@@ -158,30 +153,25 @@ export const useProperties = () => {
         if (data.agent_id) userIds.push(data.agent_id);
         if (data.created_by) userIds.push(data.created_by);
 
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, name, email')
-          .in('user_id', userIds);
+        const { data: publicUsers } = await supabase.rpc('get_user_public_info', {
+          user_ids: userIds
+        });
 
-        const { data: adminRoles } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .in('user_id', userIds)
-          .eq('role', 'admin');
+        const userMap = new Map(
+          (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+        );
 
-        const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
-        const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
-
-        const assignedProfile = data.agent_id ? profileMap.get(data.agent_id) : null;
-        const creatorProfile = data.created_by ? profileMap.get(data.created_by) : null;
+        const assignedUser = data.agent_id ? userMap.get(data.agent_id) : null;
+        const creatorUser = data.created_by ? userMap.get(data.created_by) : null;
 
         propertyWithProfile = {
           ...data,
-          profiles: assignedProfile || { name: 'Unknown', email: 'unknown@example.com' },
-          assigned_agent: assignedProfile || null,
-          creator_profile: creatorProfile ? {
-            ...creatorProfile,
-            is_admin: adminUserIds.has(data.created_by || '')
+          profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
+          assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+          creator_profile: creatorUser ? {
+            name: creatorUser.name,
+            email: '',
+            is_admin: creatorUser.is_admin
           } : null
         } as any;
       }
@@ -352,17 +342,21 @@ export const useProperties = () => {
           console.log('[PROPERTIES] Real-time update received:', payload);
           const updatedProperty = payload.new as any;
           
-          // Fetch profile data if agent changed
-          let profileData = null;
-          if (updatedProperty.agent_id) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('name, email')
-              .eq('user_id', updatedProperty.agent_id)
-              .single();
-            
-            profileData = profile || { name: 'Unknown', email: 'unknown@example.com' };
-          }
+          // Fetch user info for agent and creator
+          const userIds = [];
+          if (updatedProperty.agent_id) userIds.push(updatedProperty.agent_id);
+          if (updatedProperty.created_by) userIds.push(updatedProperty.created_by);
+
+          const { data: publicUsers } = await supabase.rpc('get_user_public_info', {
+            user_ids: userIds
+          });
+
+          const userMap = new Map(
+            (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+          );
+
+          const assignedUser = updatedProperty.agent_id ? userMap.get(updatedProperty.agent_id) : null;
+          const creatorUser = updatedProperty.created_by ? userMap.get(updatedProperty.created_by) : null;
           
           // Transform image URLs to secure signed URLs
           const secureImages = updatedProperty.images ? await Promise.all(
@@ -377,7 +371,13 @@ export const useProperties = () => {
           const enrichedProperty = {
             ...updatedProperty,
             images: secureImages,
-            profiles: profileData
+            profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+            creator_profile: creatorUser ? {
+              name: creatorUser.name,
+              email: '',
+              is_admin: creatorUser.is_admin
+            } : null
           };
           
           // Update local state
