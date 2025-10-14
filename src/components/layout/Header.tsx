@@ -192,11 +192,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onToggleMobileS
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
               <User className="w-4 h-4 mr-2" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </DropdownMenuItem>
