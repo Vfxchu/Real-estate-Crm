@@ -227,7 +227,20 @@ export const useProperties = () => {
 
   const deleteProperty = async (id: string) => {
     try {
-      // First delete associated images from storage
+      // First delete property files from storage and database
+      const { data: propertyFiles } = await supabase
+        .from('property_files')
+        .select('path')
+        .eq('property_id', id);
+
+      if (propertyFiles && propertyFiles.length > 0) {
+        const filePaths = propertyFiles.map(file => file.path);
+        await supabase.storage
+          .from('property-docs')
+          .remove(filePaths);
+      }
+
+      // Then delete associated images from storage
       const property = properties.find(p => p.id === id);
       if (property?.images?.length) {
         const imagePaths = property.images.map(url => {
@@ -240,6 +253,7 @@ export const useProperties = () => {
           .remove(imagePaths);
       }
 
+      // Delete the property (CASCADE will handle property_files table records)
       const { error } = await supabase
         .from('properties')
         .delete()
