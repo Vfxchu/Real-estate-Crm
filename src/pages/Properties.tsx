@@ -349,10 +349,10 @@ export const Properties = () => {
   }, [properties, filters, debouncedSearch, isAdvancedMode, activeTab, isAgent, user?.id]);
 
   const handleDeleteProperty = async (property: Property) => {
-    if (!isAdmin && property.agent_id !== user?.id) {
+    if (!isAdmin) {
       toast({
         title: 'Access denied',
-        description: 'You can only delete your own properties.',
+        description: 'Only administrators can delete properties.',
         variant: 'destructive',
       });
       return;
