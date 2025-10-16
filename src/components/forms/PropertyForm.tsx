@@ -126,6 +126,18 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     },
   });
 
+  // Validate session when form opens
+  useEffect(() => {
+    if (open && !user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to create or edit properties',
+        variant: 'destructive',
+      });
+      onOpenChange(false);
+    }
+  }, [open, user]);
+
   // Reset form when editProperty changes
   useEffect(() => {
     if (editProperty) {
@@ -355,9 +367,8 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     try {
       setLoading(true);
 
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
+      // Use cached auth state instead of making fresh API call
+      if (!user) {
         throw new Error('Please sign in to continue');
       }
 
