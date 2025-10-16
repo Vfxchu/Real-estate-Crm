@@ -573,6 +573,13 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         description: editProperty ? 'Property has been updated.' : 'New property has been added to your listings.',
       });
 
+      // Dispatch events for real-time sync across the app
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
+      window.dispatchEvent(new CustomEvent('properties:updated'));
+      if (data.owner_contact_id) {
+        window.dispatchEvent(new CustomEvent('contacts:updated'));
+      }
+
       form.reset();
       setUploadedImages([]);
       setUploadedLayouts([]);

@@ -10,6 +10,7 @@ import { getContactProperties, linkPropertyToContact, unlinkPropertyFromContact,
 import { useProperties } from "@/hooks/useProperties";
 import { toast } from "@/hooks/use-toast";
 import { useSync } from "@/hooks/useSync";
+import { supabase } from "@/integrations/supabase/client";
 // Format currency helper
 const formatCurrency = (amount: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -34,6 +35,11 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
   // Listen for property changes to refresh the list
   useSync({
     onPropertiesChange: () => {
+      console.log('[ContactPropertiesTab] Properties changed, reloading...');
+      loadContactProperties();
+    },
+    onContactsChange: () => {
+      console.log('[ContactPropertiesTab] Contacts changed, reloading...');
       loadContactProperties();
     }
   });
@@ -42,12 +48,51 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
     loadContactProperties();
   }, [contactId]);
 
+  // Set up real-time subscription for contact_properties
+  useEffect(() => {
+    const channel = supabase
+      .channel(`contact-properties-${contactId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contact_properties',
+          filter: `contact_id=eq.${contactId}`
+        },
+        (payload) => {
+          console.log('[ContactPropertiesTab] Real-time change:', payload);
+          loadContactProperties();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [contactId]);
+
   const loadContactProperties = async () => {
     try {
-      const { data } = await getContactProperties(contactId);
-      setContactProperties(data || []);
-    } catch (error) {
-      console.error('Failed to load contact properties:', error);
+      const { data, error } = await getContactProperties(contactId);
+      if (error) {
+        console.error('[ContactPropertiesTab] Failed to load properties:', error);
+        toast({
+          title: "Error loading properties",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        console.log('[ContactPropertiesTab] Loaded properties:', data);
+        setContactProperties(data || []);
+      }
+    } catch (error: any) {
+      console.error('[ContactPropertiesTab] Error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load contact properties",
+        variant: "destructive"
+      });
     }
     setLoading(false);
   };
@@ -56,11 +101,17 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
     if (!selectedProperty) return;
     
     try {
-      await linkPropertyToContact({
+      console.log('[ContactPropertiesTab] Linking property:', { contactId, propertyId: selectedProperty, role: selectedRole });
+      const { error } = await linkPropertyToContact({
         contactId,
         propertyId: selectedProperty,
         role: selectedRole
       });
+      
+      if (error) {
+        console.error('[ContactPropertiesTab] Link error:', error);
+        throw error;
+      }
       
       toast({
         title: "Property Linked",
@@ -69,11 +120,16 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
       
       setShowLinkDialog(false);
       setSelectedProperty('');
+      
+      // Dispatch event for cross-app sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
+      
       loadContactProperties();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to link property",
+        description: error.message || "Failed to link property",
         variant: "destructive",
       });
     }
