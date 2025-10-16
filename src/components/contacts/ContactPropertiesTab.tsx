@@ -2,22 +2,34 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Plus, ExternalLink, Unlink } from "lucide-react";
+import { Plus, Unlink, MapPin, Bed, Bath, Square, Home, Building, Eye } from "lucide-react";
 import { getContactProperties, linkPropertyToContact, unlinkPropertyFromContact, ContactPropertyRole, resolveRelatedContactIds } from "@/services/contacts";
-import { useProperties } from "@/hooks/useProperties";
+import { useProperties, Property } from "@/hooks/useProperties";
 import { toast } from "@/hooks/use-toast";
 import { useSync } from "@/hooks/useSync";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { PropertyGallery } from "@/components/properties/PropertyGallery";
+
 // Format currency helper
-const formatCurrency = (amount: number, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+const formatCurrency = (amount: number, currency = 'AED') => {
+  if (currency === 'AED') {
+    return new Intl.NumberFormat('en-AE', { 
+      style: 'currency', 
+      currency: 'AED',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+  return new Intl.NumberFormat('en-US', { 
+    style: 'currency', 
     currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(amount);
 };
 
@@ -179,18 +191,41 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
     }
   };
 
+  const getStatusColor = (status: Property['status']) => {
+    switch (status) {
+      case 'available': return 'bg-success text-success-foreground';
+      case 'pending': return 'bg-warning text-warning-foreground';
+      case 'sold': return 'bg-info text-info-foreground';
+      case 'off_market': return 'bg-muted text-muted-foreground';
+      case 'rented': return 'bg-info text-info-foreground';
+      case 'vacant': return 'bg-muted text-muted-foreground';
+      case 'in_development': return 'bg-warning text-warning-foreground';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'house': return <Home className="w-4 h-4" />;
+      case 'condo': return <Building className="w-4 h-4" />;
+      case 'apartment': return <Building className="w-4 h-4" />;
+      case 'commercial': return <Building className="w-4 h-4" />;
+      default: return <Home className="w-4 h-4" />;
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/10 text-green-700 dark:text-green-400';
       case 'buyer_interest':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
       case 'tenant':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-500/10 text-purple-700 dark:text-purple-400';
       case 'investor':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-500/10 text-orange-700 dark:text-orange-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
     }
   };
 
@@ -281,63 +316,107 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
         </Dialog>
       </div>
 
-      <div className="grid gap-4">
-        {contactProperties.map((item) => (
-          <Card key={`${item.property_id}-${item.role}`}>
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">{item.properties.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{item.properties.address}</p>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Badge className={getRoleColor(item.role)}>
-                    {getRoleLabel(item.role)}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {contactProperties.map((item) => {
+          const property = item.properties;
+          return (
+            <Card key={`${item.property_id}-${item.role}`} className="card-elevated hover:shadow-lg transition-all duration-200 overflow-hidden">
+              <div className="relative">
+                <PropertyGallery 
+                  images={property.images} 
+                  propertyId={property.id}
+                  propertyTitle={property.title}
+                />
+                {property.featured && (
+                  <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
+                    Featured
                   </Badge>
-                  <Badge variant="outline">
-                    {item.properties.status}
-                  </Badge>
-                </div>
+                )}
+                <Badge className={`absolute top-2 left-2 ${getRoleColor(item.role)}`}>
+                  {getRoleLabel(item.role)}
+                </Badge>
               </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-muted-foreground">
-                  {formatCurrency(item.properties.price)} • {item.properties.property_type}
-                  {item.properties.bedrooms && ` • ${item.properties.bedrooms} bed`}
-                  {item.properties.bathrooms && ` • ${item.properties.bathrooms} bath`}
+              
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold line-clamp-1">{property.title}</h3>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                      <MapPin className="w-3 h-3" />
+                      {property.address}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Badge className={getStatusColor(property.status)}>
+                      {property.status}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {property.offer_type}
+                    </Badge>
+                  </div>
                 </div>
-                
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    {getTypeIcon(property.property_type)}
+                    <span className="text-sm capitalize">{property.property_type}</span>
+                    {property.subtype && (
+                      <span className="text-xs text-muted-foreground">• {property.subtype}</span>
+                    )}
+                  </div>
+                  <div className="text-lg font-bold text-primary">
+                    {formatCurrency(property.price)}
+                  </div>
+                </div>
+
+                {property.property_type !== 'commercial' && (
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Bed className="w-4 h-4" />
+                      <span>{property.bedrooms || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Bath className="w-4 h-4" />
+                      <span>{property.bathrooms || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Square className="w-4 h-4" />
+                      <span>{property.area_sqft?.toLocaleString() || 'N/A'}</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
+                  <Button
                     size="sm"
+                    variant="outline"
+                    className="flex-1"
                     onClick={() => navigate(`/properties?id=${item.property_id}`)}
                   >
-                    <ExternalLink className="h-4 w-4 mr-2" />
+                    <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
                   <Button 
-                    variant="ghost" 
-                    size="sm"
+                    size="sm" 
+                    variant="ghost"
                     onClick={() => handleUnlinkProperty(item.property_id, item.role)}
+                    title="Unlink property from contact"
                   >
-                    <Unlink className="h-4 w-4 mr-2" />
-                    Unlink
+                    <Unlink className="w-4 h-4" />
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
         
         {contactProperties.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p>No properties linked yet</p>
-            <p className="text-sm">Use the "Link Property" button to connect properties to this contact</p>
+          <div className="col-span-full text-center py-12 text-muted-foreground">
+            <Home className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">No properties linked yet</p>
+            <p className="text-sm mt-2">Use the "Link Property" button to connect properties to this contact</p>
           </div>
         )}
       </div>
