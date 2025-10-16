@@ -1553,6 +1553,10 @@ export type Database = {
           task_id: string
         }[]
       }
+      can_access_contact_property_link: {
+        Args: { p_contact_id: string; p_property_id: string; p_user_id: string }
+        Returns: boolean
+      }
       can_view_profile_sensitive: {
         Args: { profile_user_id: string }
         Returns: boolean
