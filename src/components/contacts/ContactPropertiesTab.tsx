@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,7 @@ interface ContactPropertiesTabProps {
 }
 
 export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
+  const navigate = useNavigate();
   const [contactProperties, setContactProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -309,7 +311,11 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate(`/properties?id=${item.property_id}`)}
+                  >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     View
                   </Button>
