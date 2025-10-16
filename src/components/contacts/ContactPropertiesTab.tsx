@@ -6,11 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Plus, ExternalLink, Unlink } from "lucide-react";
-import { getContactProperties, linkPropertyToContact, unlinkPropertyFromContact, ContactPropertyRole } from "@/services/contacts";
+import { getContactProperties, linkPropertyToContact, unlinkPropertyFromContact, ContactPropertyRole, resolveRelatedContactIds } from "@/services/contacts";
 import { useProperties } from "@/hooks/useProperties";
 import { toast } from "@/hooks/use-toast";
 import { useSync } from "@/hooks/useSync";
 import { supabase } from "@/integrations/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 // Format currency helper
 const formatCurrency = (amount: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -29,6 +30,7 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<ContactPropertyRole>('buyer_interest');
+  const [relatedContactIds, setRelatedContactIds] = useState<string[]>([contactId]);
   
   const { properties } = useProperties();
 
@@ -44,33 +46,46 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
     }
   });
 
+  // Load related contact IDs and properties on mount
   useEffect(() => {
+    const loadRelatedIds = async () => {
+      const ids = await resolveRelatedContactIds(contactId);
+      setRelatedContactIds(ids);
+    };
+    loadRelatedIds();
     loadContactProperties();
   }, [contactId]);
 
-  // Set up real-time subscription for contact_properties
+  // Set up real-time subscriptions for ALL related contact IDs
   useEffect(() => {
-    const channel = supabase
-      .channel(`contact-properties-${contactId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'contact_properties',
-          filter: `contact_id=eq.${contactId}`
-        },
-        (payload) => {
-          console.log('[ContactPropertiesTab] Real-time change:', payload);
-          loadContactProperties();
-        }
-      )
-      .subscribe();
+    const channels: RealtimeChannel[] = [];
+
+    // Subscribe to changes for each related contact ID
+    relatedContactIds.forEach((id) => {
+      const channel = supabase
+        .channel(`contact-properties-${id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'contact_properties',
+            filter: `contact_id=eq.${id}`
+          },
+          (payload) => {
+            console.log('[ContactPropertiesTab] Real-time change for', id, ':', payload);
+            loadContactProperties();
+          }
+        )
+        .subscribe();
+      
+      channels.push(channel);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      channels.forEach(channel => supabase.removeChannel(channel));
     };
-  }, [contactId]);
+  }, [relatedContactIds]);
 
   const loadContactProperties = async () => {
     try {
@@ -147,6 +162,10 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
         title: "Property Unlinked",
         description: "Property has been unlinked from this contact",
       });
+
+      // Dispatch events for cross-app sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
       
       loadContactProperties();
     } catch (error) {

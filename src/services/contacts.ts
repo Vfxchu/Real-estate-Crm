@@ -121,21 +121,93 @@ export async function recomputeContactStatus(contactId: string) {
   return { data, error };
 }
 
+/**
+ * Resolve all related contact IDs for a given contact
+ * Returns [canonicalId, ...alternateIds]
+ * 
+ * Logic:
+ * - If contactId exists in leads and has contact_id set → canonical is that contact_id
+ * - Otherwise, the contactId itself is canonical
+ * - Include all lead IDs that reference this contact
+ */
+export async function resolveRelatedContactIds(contactId: string): Promise<string[]> {
+  const ids = new Set<string>();
+  ids.add(contactId);
+
+  // Check if this is a lead with a contact_id reference
+  const { data: leadData } = await supabase
+    .from("leads")
+    .select("id, contact_id")
+    .eq("id", contactId)
+    .maybeSingle();
+
+  if (leadData?.contact_id) {
+    // This lead points to a contact - that contact is canonical
+    ids.add(leadData.contact_id);
+  }
+
+  // Find all leads that reference this contact as their canonical contact
+  const { data: referencingLeads } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("contact_id", contactId);
+
+  if (referencingLeads) {
+    referencingLeads.forEach(lead => ids.add(lead.id));
+  }
+
+  // Check if this ID exists in contacts table
+  const { data: contactData } = await supabase
+    .from("contacts")
+    .select("id")
+    .eq("id", contactId)
+    .maybeSingle();
+
+  if (contactData) {
+    ids.add(contactData.id);
+  }
+
+  return Array.from(ids);
+}
+
+/**
+ * Get the canonical contact ID for a given contact
+ * If the contact is a lead with contact_id set, return that
+ * Otherwise return the contact ID itself
+ */
+export async function normalizeContactId(contactId: string): Promise<string> {
+  const { data: leadData } = await supabase
+    .from("leads")
+    .select("contact_id")
+    .eq("id", contactId)
+    .maybeSingle();
+
+  return leadData?.contact_id || contactId;
+}
+
 // Property Relationships
 export async function linkPropertyToContact(params: {
   contactId: string;
   propertyId: string;
   role: ContactPropertyRole;
 }) {
+  // Use canonical contact ID for consistency
+  const canonicalContactId = await normalizeContactId(params.contactId);
+
   const { data, error } = await supabase
     .from("contact_properties")
     .insert({
-      contact_id: params.contactId,
+      contact_id: canonicalContactId,
       property_id: params.propertyId,
       role: params.role,
     })
     .select()
-    .single();
+    .maybeSingle(); // Use maybeSingle to handle conflicts gracefully
+
+  // If there's a conflict (duplicate), treat it as success
+  if (error && error.code === '23505') {
+    return { data: null, error: null };
+  }
 
   return { data, error };
 }
@@ -145,10 +217,13 @@ export async function unlinkPropertyFromContact(params: {
   propertyId: string;
   role: ContactPropertyRole;
 }) {
+  // Resolve all related contact IDs to ensure we delete the link regardless of which ID was used
+  const relatedIds = await resolveRelatedContactIds(params.contactId);
+
   const { data, error } = await supabase
     .from("contact_properties")
     .delete()
-    .eq("contact_id", params.contactId)
+    .in("contact_id", relatedIds)
     .eq("property_id", params.propertyId)
     .eq("role", params.role);
 
@@ -156,6 +231,9 @@ export async function unlinkPropertyFromContact(params: {
 }
 
 export async function getContactProperties(contactId: string) {
+  // Resolve all related contact IDs to get properties linked via any ID
+  const relatedIds = await resolveRelatedContactIds(contactId);
+
   const { data, error } = await supabase
     .from("contact_properties")
     .select(
@@ -164,7 +242,7 @@ export async function getContactProperties(contactId: string) {
       properties!inner(*)
     `
     )
-    .eq("contact_id", contactId);
+    .in("contact_id", relatedIds);
 
   return { data, error };
 }
