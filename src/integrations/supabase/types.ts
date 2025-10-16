@@ -483,13 +483,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "contact_properties_contact_id_fkey"
-            columns: ["contact_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "contact_properties_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false

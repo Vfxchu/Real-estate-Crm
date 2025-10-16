@@ -9,6 +9,7 @@ import { Plus, ExternalLink, Unlink } from "lucide-react";
 import { getContactProperties, linkPropertyToContact, unlinkPropertyFromContact, ContactPropertyRole } from "@/services/contacts";
 import { useProperties } from "@/hooks/useProperties";
 import { toast } from "@/hooks/use-toast";
+import { useSync } from "@/hooks/useSync";
 // Format currency helper
 const formatCurrency = (amount: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -29,6 +30,13 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
   const [selectedRole, setSelectedRole] = useState<ContactPropertyRole>('buyer_interest');
   
   const { properties } = useProperties();
+
+  // Listen for property changes to refresh the list
+  useSync({
+    onPropertiesChange: () => {
+      loadContactProperties();
+    }
+  });
 
   useEffect(() => {
     loadContactProperties();

@@ -185,6 +185,9 @@ export const useProperties = () => {
         description: 'New property has been added to your listings.',
       });
 
+      // Dispatch event for cross-component sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
+
       return { data: propertyWithProfile, error: null };
     } catch (error: any) {
       console.error('[PROPERTIES] Property creation error:', error);
@@ -213,6 +216,9 @@ export const useProperties = () => {
         title: 'Property updated',
         description: 'Property has been updated successfully.',
       });
+
+      // Dispatch event for cross-component sync
+      window.dispatchEvent(new CustomEvent('properties:refresh'));
 
       return { data, error: null };
     } catch (error: any) {
