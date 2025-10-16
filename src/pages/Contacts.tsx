@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Download, Upload, GitMerge, X, Plus, Phone, Mail, MessageSquare, Filter, Edit, MoreHorizontal } from 'lucide-react';
+import { Users, Download, Upload, GitMerge, X, Plus, Phone, Mail, MessageSquare, Filter, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -67,6 +67,7 @@ export default function Contacts() {
   const { user, profile } = useAuth();
   const { list, updateContact, mergeContacts, potentialDuplicates, toCSV } = useContacts();
   const { toast } = useToast();
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   
@@ -274,48 +275,100 @@ export default function Contacts() {
     }
   };
 
+  const handleDeleteContact = async (contactId: string, contactName: string, contactAgentId: string) => {
+    // Check permissions
+    const canDelete = isAdmin || contactAgentId === user?.id;
+    
+    if (!canDelete) {
+      toast({ 
+        title: 'Permission denied', 
+        description: 'You can only delete your own contacts',
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    if (!confirm(`Delete contact "${contactName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    const { error } = await deleteLead(contactId);
+    
+    if (error) {
+      toast({ 
+        title: 'Error deleting contact', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    } else {
+      toast({ 
+        title: 'Contact deleted', 
+        description: `${contactName} has been removed` 
+      });
+      fetchRows();
+      if (drawerId === contactId) {
+        setDrawerId(null);
+      }
+    }
+  };
+
   const totalPages = Math.ceil(total / pageSize);
 
-  const ContactCard = ({ contact }: { contact: any }) => (
-    <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDrawerId(contact.id)}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">{contact.name}</h3>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={(e) => {
-                e.stopPropagation();
-                setDrawerId(contact.id);
-              }}>
-                <Edit className="mr-2 h-4 w-4" />
-                View Details
-              </DropdownMenuItem>
-              {contact.phone && (
+  const ContactCard = ({ contact }: { contact: any }) => {
+    const canDelete = isAdmin || contact.agent_id === user?.id || contact.created_by === user?.id;
+    
+    return (
+      <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDrawerId(contact.id)}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">{contact.name}</h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation();
-                  window.open(`tel:${contact.phone}`, '_self');
+                  setDrawerId(contact.id);
                 }}>
-                  <Phone className="mr-2 h-4 w-4" />
-                  Call
+                  <Edit className="mr-2 h-4 w-4" />
+                  View Details
                 </DropdownMenuItem>
-              )}
-              {contact.email && (
-                <DropdownMenuItem onClick={(e) => {
-                  e.stopPropagation();
-                  window.open(`mailto:${contact.email}`, '_blank');
-                }}>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Email
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                {contact.phone && (
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`tel:${contact.phone}`, '_self');
+                  }}>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Call
+                  </DropdownMenuItem>
+                )}
+                {contact.email && (
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`mailto:${contact.email}`, '_blank');
+                  }}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email
+                  </DropdownMenuItem>
+                )}
+                {canDelete && (
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteContact(contact.id, contact.name, contact.agent_id || contact.created_by);
+                    }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         
         <div className="space-y-2">
           {contact.phone && (
@@ -345,7 +398,8 @@ export default function Contacts() {
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
@@ -744,6 +798,18 @@ export default function Contacts() {
                             }}>
                               <Mail className="mr-2 h-4 w-4" />
                               Email
+                            </DropdownMenuItem>
+                          )}
+                          {(isAdmin || contact.agent_id === user?.id || contact.created_by === user?.id) && (
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteContact(contact.id, contact.name, contact.agent_id || contact.created_by);
+                              }}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
