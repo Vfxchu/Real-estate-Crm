@@ -14,9 +14,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile, deleteFile } from '@/services/storage';
 import { getContactFileUrl } from '@/services/contactFiles';
+import { deleteLead } from '@/services/leads';
 import ContactForm from './ContactForm';
 import ContactActivitiesTab from './ContactActivitiesTab';
 import ContactTasksEventsTab from './ContactTasksEventsTab';
@@ -48,10 +50,17 @@ export default function ContactDetailDrawer({
   onUpdate 
 }: ContactDetailDrawerProps) {
   const { toast } = useToast();
+  const { user, profile } = useAuth();
   const isMobile = useIsMobile();
   const [editMode, setEditMode] = useState(false);
   const [files, setFiles] = useState<ContactFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
+  const canDelete = contact?._source === 'contacts'
+    ? isAdmin || contact?.created_by === user?.id
+    : isAdmin || contact?.agent_id === user?.id;
 
   const handleContactUpdated = () => {
     setEditMode(false);
@@ -191,6 +200,66 @@ export default function ContactDetailDrawer({
       .slice(0, 2);
   };
 
+  const handleDeleteContact = async () => {
+    if (!contact || !canDelete) {
+      toast({
+        title: 'Permission denied',
+        description: 'You can only delete your own contacts',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!confirm(`Delete contact "${contact.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      // Determine which table to delete from
+      let error;
+      if (contact._source === 'contacts') {
+        const { error: deleteError } = await supabase
+          .from('contacts')
+          .delete()
+          .eq('id', contact.id);
+        error = deleteError;
+      } else {
+        const { error: deleteError } = await deleteLead(contact.id);
+        error = deleteError;
+      }
+
+      if (error) {
+        toast({
+          title: 'Error deleting contact',
+          description: error.message,
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Dispatch events for sync
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
+      window.dispatchEvent(new CustomEvent('leads:changed'));
+
+      toast({
+        title: 'Contact deleted',
+        description: `${contact.name} has been removed`
+      });
+
+      // Close drawer
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: 'Error deleting contact',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!contact) return null;
 
   return (
@@ -231,10 +300,24 @@ export default function ContactDetailDrawer({
             </div>
             <div className="flex items-center gap-2">
               {!editMode && (
-                <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
-                  <Edit className="h-4 w-4 mr-1 sm:mr-2" />
-                  {isMobile ? '' : 'Edit'}
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                    <Edit className="h-4 w-4 mr-1 sm:mr-2" />
+                    {isMobile ? '' : 'Edit'}
+                  </Button>
+                  {canDelete && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDeleteContact}
+                      disabled={deleting}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                      {isMobile ? '' : deleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>

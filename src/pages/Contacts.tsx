@@ -275,9 +275,11 @@ export default function Contacts() {
     }
   };
 
-  const handleDeleteContact = async (contactId: string, contactName: string, contactAgentId: string) => {
-    // Check permissions
-    const canDelete = isAdmin || contactAgentId === user?.id;
+  const handleDeleteContact = async (contact: any) => {
+    // Check permissions based on contact source
+    const canDelete = contact._source === 'contacts' 
+      ? isAdmin || contact.created_by === user?.id
+      : isAdmin || contact.agent_id === user?.id;
     
     if (!canDelete) {
       toast({ 
@@ -288,34 +290,67 @@ export default function Contacts() {
       return;
     }
 
-    if (!confirm(`Delete contact "${contactName}"? This action cannot be undone.`)) {
+    if (!confirm(`Delete contact "${contact.name}"? This action cannot be undone.`)) {
       return;
     }
 
-    const { error } = await deleteLead(contactId);
-    
-    if (error) {
+    try {
+      // Determine which table to delete from
+      let error;
+      if (contact._source === 'contacts') {
+        const { error: deleteError } = await supabase
+          .from('contacts')
+          .delete()
+          .eq('id', contact.id);
+        error = deleteError;
+      } else {
+        const { error: deleteError } = await deleteLead(contact.id);
+        error = deleteError;
+      }
+      
+      if (error) {
+        toast({ 
+          title: 'Error deleting contact', 
+          description: error.message, 
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      // Optimistically update UI
+      setRows(prev => prev.filter(r => r.id !== contact.id));
+      
+      // Close drawer if this contact was open
+      if (drawerId === contact.id) {
+        setDrawerId(null);
+      }
+      
+      // Dispatch events for sync
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
+      window.dispatchEvent(new CustomEvent('leads:changed'));
+      
+      toast({ 
+        title: 'Contact deleted', 
+        description: `${contact.name} has been removed` 
+      });
+      
+      // Refresh from server
+      fetchRows();
+    } catch (error: any) {
       toast({ 
         title: 'Error deleting contact', 
         description: error.message, 
         variant: 'destructive' 
       });
-    } else {
-      toast({ 
-        title: 'Contact deleted', 
-        description: `${contactName} has been removed` 
-      });
-      fetchRows();
-      if (drawerId === contactId) {
-        setDrawerId(null);
-      }
     }
   };
 
   const totalPages = Math.ceil(total / pageSize);
 
   const ContactCard = ({ contact }: { contact: any }) => {
-    const canDelete = isAdmin || contact.agent_id === user?.id || contact.created_by === user?.id;
+    const canDelete = contact._source === 'contacts'
+      ? isAdmin || contact.created_by === user?.id
+      : isAdmin || contact.agent_id === user?.id;
     
     return (
       <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDrawerId(contact.id)}>
@@ -336,6 +371,18 @@ export default function Contacts() {
                   <Edit className="mr-2 h-4 w-4" />
                   View Details
                 </DropdownMenuItem>
+                {canDelete && (
+                  <DropdownMenuItem 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteContact(contact);
+                    }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
                 {contact.phone && (
                   <DropdownMenuItem onClick={(e) => {
                     e.stopPropagation();
@@ -352,18 +399,6 @@ export default function Contacts() {
                   }}>
                     <Mail className="mr-2 h-4 w-4" />
                     Email
-                  </DropdownMenuItem>
-                )}
-                {canDelete && (
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteContact(contact.id, contact.name, contact.agent_id || contact.created_by);
-                    }}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -782,6 +817,23 @@ export default function Contacts() {
                             <Edit className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
+                          {(() => {
+                            const canDelete = contact._source === 'contacts'
+                              ? isAdmin || contact.created_by === user?.id
+                              : isAdmin || contact.agent_id === user?.id;
+                            return canDelete && (
+                              <DropdownMenuItem 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteContact(contact);
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            );
+                          })()}
                           {contact.phone && (
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
@@ -798,18 +850,6 @@ export default function Contacts() {
                             }}>
                               <Mail className="mr-2 h-4 w-4" />
                               Email
-                            </DropdownMenuItem>
-                          )}
-                          {(isAdmin || contact.agent_id === user?.id || contact.created_by === user?.id) && (
-                            <DropdownMenuItem 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteContact(contact.id, contact.name, contact.agent_id || contact.created_by);
-                              }}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
