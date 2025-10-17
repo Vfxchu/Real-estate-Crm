@@ -134,6 +134,24 @@ export const useLeads = () => {
             created_by: currentUser.id
           });
         }
+
+        // Send notification to assigned agent if different from creator
+        if (data.agent_id && data.agent_id !== currentUser.id) {
+          try {
+            const { sendLeadNotification } = await import('@/services/notification');
+            await sendLeadNotification({
+              agentId: data.agent_id,
+              leadId: data.id,
+              leadName: data.name,
+              leadEmail: data.email,
+              leadPhone: data.phone || undefined,
+              notificationType: 'assignment'
+            });
+          } catch (notifError) {
+            console.error('Error sending lead notification:', notifError);
+            // Don't fail lead creation if notification fails
+          }
+        }
       }
 
       // Data already includes profile from service, no additional fetch needed
@@ -197,14 +215,33 @@ export const useLeads = () => {
 
   const deleteLead = async (id: string) => {
     try {
+      console.log('[LEADS] Deleting lead:', id);
+      
+      // Optimistic update - remove from UI immediately
+      const leadToDelete = leads.find(lead => lead.id === id);
+      setLeads(prev => prev.filter(lead => lead.id !== id));
+
+      // Perform deletion with proper error handling
       const { error } = await supabase
         .from('leads')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[LEADS] Delete error:', error);
+        // Rollback optimistic update on error
+        if (leadToDelete) {
+          setLeads(prev => [...prev, leadToDelete]);
+        }
+        throw error;
+      }
 
-      setLeads(prev => prev.filter(lead => lead.id !== id));
+      console.log('[LEADS] Lead deleted successfully');
+      
+      // Trigger sync events
+      window.dispatchEvent(new CustomEvent('leads:changed'));
+      window.dispatchEvent(new CustomEvent('contacts:updated'));
+      
       toast({
         title: 'Lead deleted',
         description: 'Lead has been deleted successfully.',
@@ -212,9 +249,10 @@ export const useLeads = () => {
 
       return { error: null };
     } catch (error: any) {
+      console.error('[LEADS] Error in deleteLead:', error);
       toast({
         title: 'Error deleting lead',
-        description: error.message,
+        description: error.message || 'Failed to delete lead. Please try again.',
         variant: 'destructive',
       });
       return { error };

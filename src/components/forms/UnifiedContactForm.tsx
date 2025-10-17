@@ -200,6 +200,8 @@ export default function UnifiedContactForm({
 
   const form = useForm<UnifiedFormData>({
     resolver: zodResolver(unifiedFormSchema),
+    mode: 'onChange', // Enable real-time validation
+    reValidateMode: 'onChange',
     defaultValues: {
       name: contact?.name || '',
       phone: contact?.phone || '',
@@ -429,7 +431,16 @@ export default function UnifiedContactForm({
       }
 
       if (result.error) {
+        console.error('[FORM] Submission error:', result.error);
         throw new Error(result.error.message);
+      }
+
+      // Show success toast consistently
+      if (!contact?.id) {
+        toast({
+          title: 'Success',
+          description: `${mode === 'lead' ? 'Lead' : 'Contact'} created successfully.`,
+        });
       }
 
       // Save uploaded files to database if we have a contact ID
