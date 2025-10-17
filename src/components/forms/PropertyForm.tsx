@@ -19,7 +19,6 @@ import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum 
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import { Plus } from "lucide-react";
 import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
-import { ensureOwnerTag } from "@/services/property-automation";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -433,9 +432,10 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
 
       // Move all files and update contact records
       if (propertyData) {
-        // Auto-assign seller/landlord tag to owner
+        // Auto-assign Owner/Landlord tags based on all properties owned
         if (data.owner_contact_id) {
-          await ensureOwnerTag(data.owner_contact_id, data.offer_type);
+          const { syncOwnerTagsFromProperties } = await import('@/services/property-automation');
+          await syncOwnerTagsFromProperties(data.owner_contact_id);
           
           // Link property to contact in contact_properties table
           try {

@@ -1,6 +1,32 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Sync Owner/Landlord tags from all properties linked to a contact
+ * This is the recommended function to use - it handles contacts with multiple properties
+ */
+export async function syncOwnerTagsFromProperties(
+  contactId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.rpc('sync_owner_tags_from_properties', {
+      p_contact_id: contactId
+    });
+
+    if (error) {
+      console.error('Error syncing owner tags:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`Successfully synced Owner/Landlord tags for contact ${contactId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in syncOwnerTagsFromProperties:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * @deprecated Use syncOwnerTagsFromProperties() instead for better multi-property support
  * Auto-assign seller/landlord tags to owner contact based on property offer_type
  */
 export async function ensureOwnerTag(

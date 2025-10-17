@@ -1746,6 +1746,10 @@ export type Database = {
         Args: { p_contact_id: string; p_reason?: string }
         Returns: undefined
       }
+      sync_owner_tags_from_properties: {
+        Args: { p_contact_id: string }
+        Returns: undefined
+      }
       update_contact_profile_safe: {
         Args: { p_contact_id: string; p_patch: Json }
         Returns: undefined
