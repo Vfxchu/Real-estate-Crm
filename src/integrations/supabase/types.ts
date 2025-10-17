@@ -405,6 +405,69 @@ export type Database = {
           },
         ]
       }
+      communications: {
+        Row: {
+          agent_id: string
+          contact_id: string | null
+          created_at: string
+          created_by: string
+          direction: string
+          id: string
+          lead_id: string | null
+          message: string
+          metadata: Json | null
+          status: string
+          subject: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          message: string
+          metadata?: Json | null
+          status?: string
+          subject?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          message?: string
+          metadata?: Json | null
+          status?: string
+          subject?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_files: {
         Row: {
           contact_id: string

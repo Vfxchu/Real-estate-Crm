@@ -27,6 +27,8 @@ import { CallOutcomeDialog } from "./CallOutcomeDialog";
 import { LeadOutcomeDialog } from "./LeadOutcomeDialog";
 import { DueBadge } from "./DueBadge";
 import { useTasks } from "@/hooks/useTasks";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { EventModal } from "@/components/calendar/EventModal";
 import { supabase } from "@/integrations/supabase/client";
 
 interface LeadDetailDrawerProps {
@@ -71,8 +73,10 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
   const [showCallOutcomeDialog, setShowCallOutcomeDialog] = useState(false);
   const [isOutcomeDialogOpen, setIsOutcomeDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showEventModal, setShowEventModal] = useState(false);
   
   const { tasks, loading: loadingTasks, createManualFollowUp, updateTaskStatus } = useTasks(lead?.id);
+  const { createEvent } = useCalendarEvents();
 
   const isAdmin = profile?.role === 'admin';
   const canEdit = isAdmin || lead?.agent_id === user?.id;
@@ -303,6 +307,15 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setShowEventModal(true)}
+                disabled={isTerminalStatus}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule
+              </Button>
               {canEdit && (
                 <Button variant="outline" size="sm" onClick={() => setEditMode(!editMode)}>
                   <Edit className="h-4 w-4 mr-2" />
@@ -718,6 +731,26 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           loadActivities();
           loadCalendarEvents();
         }}
+      />
+
+      {/* Event Modal for Scheduling */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onSave={async (eventData) => {
+          await createEvent(eventData);
+          loadCalendarEvents();
+          loadActivities();
+          toast({
+            title: 'Event created',
+            description: 'Calendar event has been scheduled successfully.',
+          });
+        }}
+        linkedRecord={{
+          type: 'lead',
+          id: lead?.id || '',
+        }}
+        defaultType="contact_meeting"
       />
     </Sheet>
   );

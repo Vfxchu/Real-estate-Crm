@@ -22,53 +22,43 @@ import {
   Mail,
   MessageSquare,
   Phone,
-  Filter,
-  Plus,
   Clock,
   CheckCircle,
   XCircle,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-interface CommunicationLog {
-  id: string;
-  leadName: string;
-  agentName: string;
-  type: 'email' | 'whatsapp' | 'call' | 'sms';
-  subject?: string;
-  message: string;
-  status: 'sent' | 'delivered' | 'read' | 'failed';
-  timestamp: string;
-  leadId: string;
-}
-
-// Mock communication logs - in production, store in Supabase
-const mockCommunications: CommunicationLog[] = [];
+import { useCommunications } from '@/hooks/useCommunications';
+import { useLeads } from '@/hooks/useLeads';
+import { format } from 'date-fns';
+import { SearchableContactCombobox } from '@/components/ui/SearchableContactCombobox';
 
 export const Communication = () => {
-  const [communications, setCommunications] = useState<CommunicationLog[]>(mockCommunications);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [newMessage, setNewMessage] = useState({
-    type: 'email',
-    recipient: '',
+    type: 'email' as 'email' | 'whatsapp' | 'call' | 'sms',
+    leadId: '',
     subject: '',
     message: '',
   });
-  const { toast } = useToast();
+
+  const { communications, stats, loading, sendMessage } = useCommunications({
+    type: typeFilter,
+    status: statusFilter,
+  });
+  const { leads } = useLeads();
 
   const filteredCommunications = communications.filter(comm => {
-    const matchesSearch = comm.leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         comm.agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const leadName = comm.leads?.name || comm.contacts?.full_name || 'Unknown';
+    const agentName = comm.profiles?.name || 'Unknown';
+    const matchesSearch = leadName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         agentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          comm.message.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || comm.type === typeFilter;
-    const matchesStatus = statusFilter === 'all' || comm.status === statusFilter;
     
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch;
   });
 
-  const getTypeIcon = (type: CommunicationLog['type']) => {
+  const getTypeIcon = (type: 'email' | 'whatsapp' | 'call' | 'sms' | 'meeting') => {
     switch (type) {
       case 'email': return <Mail className="w-4 h-4" />;
       case 'whatsapp': return <MessageSquare className="w-4 h-4" />;
@@ -78,7 +68,7 @@ export const Communication = () => {
     }
   };
 
-  const getTypeColor = (type: CommunicationLog['type']) => {
+  const getTypeColor = (type: 'email' | 'whatsapp' | 'call' | 'sms' | 'meeting') => {
     switch (type) {
       case 'email': return 'bg-info text-info-foreground';
       case 'whatsapp': return 'bg-success text-success-foreground';
@@ -88,7 +78,7 @@ export const Communication = () => {
     }
   };
 
-  const getStatusIcon = (status: CommunicationLog['status']) => {
+  const getStatusIcon = (status: 'sent' | 'delivered' | 'read' | 'failed') => {
     switch (status) {
       case 'sent': return <Clock className="w-4 h-4 text-warning" />;
       case 'delivered': return <CheckCircle className="w-4 h-4 text-info" />;
@@ -98,18 +88,23 @@ export const Communication = () => {
     }
   };
 
-  const handleSendMessage = () => {
-    toast({
-      title: 'Message sent',
-      description: `${newMessage.type} message sent successfully`,
-    });
-    setNewMessage({ type: 'email', recipient: '', subject: '', message: '' });
-  };
+  const handleSendMessage = async () => {
+    if (!newMessage.leadId || !newMessage.message) {
+      return;
+    }
 
-  const totalMessages = communications.length;
-  const emailCount = communications.filter(c => c.type === 'email').length;
-  const whatsappCount = communications.filter(c => c.type === 'whatsapp').length;
-  const callCount = communications.filter(c => c.type === 'call').length;
+    try {
+      await sendMessage({
+        lead_id: newMessage.leadId,
+        type: newMessage.type,
+        subject: newMessage.subject || undefined,
+        message: newMessage.message,
+      });
+      setNewMessage({ type: 'email', leadId: '', subject: '', message: '' });
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -131,7 +126,7 @@ export const Communication = () => {
               <Mail className="w-8 h-8 text-info" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Total Messages</p>
-                <p className="text-2xl font-bold">{totalMessages}</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
             </div>
           </CardContent>
@@ -142,7 +137,7 @@ export const Communication = () => {
               <Mail className="w-8 h-8 text-info" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Emails</p>
-                <p className="text-2xl font-bold">{emailCount}</p>
+                <p className="text-2xl font-bold">{stats.email}</p>
               </div>
             </div>
           </CardContent>
@@ -153,7 +148,7 @@ export const Communication = () => {
               <MessageSquare className="w-8 h-8 text-success" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">WhatsApp</p>
-                <p className="text-2xl font-bold">{whatsappCount}</p>
+                <p className="text-2xl font-bold">{stats.whatsapp}</p>
               </div>
             </div>
           </CardContent>
@@ -164,7 +159,7 @@ export const Communication = () => {
               <Phone className="w-8 h-8 text-warning" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Calls</p>
-                <p className="text-2xl font-bold">{callCount}</p>
+                <p className="text-2xl font-bold">{stats.call}</p>
               </div>
             </div>
           </CardContent>
@@ -241,46 +236,65 @@ export const Communication = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCommunications.map((comm) => (
-                      <TableRow key={comm.id} className="hover:bg-muted/30">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="text-xs">
-                                {comm.leadName.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">{comm.leadName}</span>
-                          </div>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          Loading communications...
                         </TableCell>
-                        <TableCell>{comm.agentName}</TableCell>
-                        <TableCell>
-                          <Badge className={getTypeColor(comm.type)}>
-                            <div className="flex items-center gap-1">
-                              {getTypeIcon(comm.type)}
-                              {comm.type}
-                            </div>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            {comm.subject && (
-                              <p className="font-medium text-sm mb-1">{comm.subject}</p>
-                            )}
-                            <p className="text-sm text-muted-foreground truncate max-w-xs">
-                              {comm.message}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(comm.status)}
-                            <span className="capitalize">{comm.status}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{comm.timestamp}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : filteredCommunications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No communications found. Send your first message!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredCommunications.map((comm) => {
+                        const leadName = comm.leads?.name || comm.contacts?.full_name || 'Unknown';
+                        const agentName = comm.profiles?.name || 'Unknown';
+                        
+                        return (
+                          <TableRow key={comm.id} className="hover:bg-muted/30">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback className="text-xs">
+                                    {leadName.split(' ').map(n => n[0]).join('')}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">{leadName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{agentName}</TableCell>
+                            <TableCell>
+                              <Badge className={getTypeColor(comm.type)}>
+                                <div className="flex items-center gap-1">
+                                  {getTypeIcon(comm.type)}
+                                  {comm.type}
+                                </div>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                {comm.subject && (
+                                  <p className="font-medium text-sm mb-1">{comm.subject}</p>
+                                )}
+                                <p className="text-sm text-muted-foreground truncate max-w-xs">
+                                  {comm.message}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getStatusIcon(comm.status)}
+                                <span className="capitalize">{comm.status}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{format(new Date(comm.created_at), 'PPp')}</TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -300,7 +314,7 @@ export const Communication = () => {
                   <Label>Message Type</Label>
                   <Select
                     value={newMessage.type}
-                    onValueChange={(value) => setNewMessage(prev => ({ ...prev, type: value }))}
+                    onValueChange={(value) => setNewMessage(prev => ({ ...prev, type: value as any }))}
                   >
                     <SelectTrigger className="mt-2">
                       <SelectValue />
@@ -309,17 +323,27 @@ export const Communication = () => {
                       <SelectItem value="email">Email</SelectItem>
                       <SelectItem value="whatsapp">WhatsApp</SelectItem>
                       <SelectItem value="sms">SMS</SelectItem>
+                      <SelectItem value="call">Call Log</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Recipient</Label>
-                  <Input
-                    placeholder="Select lead or enter contact"
-                    value={newMessage.recipient}
-                    onChange={(e) => setNewMessage(prev => ({ ...prev, recipient: e.target.value }))}
-                    className="mt-2"
-                  />
+                  <Label>Lead / Contact</Label>
+                  <Select
+                    value={newMessage.leadId}
+                    onValueChange={(value) => setNewMessage(prev => ({ ...prev, leadId: value }))}
+                  >
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select lead" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {leads.map((lead) => (
+                        <SelectItem key={lead.id} value={lead.id}>
+                          {lead.name} - {lead.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -347,12 +371,14 @@ export const Communication = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={handleSendMessage} className="btn-primary">
+                <Button 
+                  onClick={handleSendMessage} 
+                  className="btn-primary"
+                  disabled={!newMessage.leadId || !newMessage.message || loading}
+                >
                   <Send className="w-4 h-4 mr-2" />
-                  Send Message
+                  {loading ? 'Sending...' : 'Send Message'}
                 </Button>
-                <Button variant="outline">Save as Template</Button>
-                <Button variant="outline">Schedule Send</Button>
               </div>
             </CardContent>
           </Card>
