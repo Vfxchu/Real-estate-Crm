@@ -14,6 +14,7 @@ import { useSync } from "@/hooks/useSync";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { PropertyGallery } from "@/components/properties/PropertyGallery";
+import { PropertyDetailDrawer } from "@/components/properties/PropertyDetailDrawer";
 
 // Format currency helper
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -45,6 +46,8 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
   const [selectedProperty, setSelectedProperty] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<ContactPropertyRole>('buyer_interest');
   const [relatedContactIds, setRelatedContactIds] = useState<string[]>([contactId]);
+  const [selectedPropertyForDrawer, setSelectedPropertyForDrawer] = useState<Property | null>(null);
+  const [showPropertyDrawer, setShowPropertyDrawer] = useState(false);
   
   const { properties } = useProperties();
 
@@ -393,7 +396,10 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => navigate(`/properties?id=${item.property_id}`)}
+                    onClick={() => {
+                      setSelectedPropertyForDrawer(property);
+                      setShowPropertyDrawer(true);
+                    }}
                   >
                     <Eye className="w-4 h-4 mr-1" />
                     View
@@ -420,6 +426,19 @@ export function ContactPropertiesTab({ contactId }: ContactPropertiesTabProps) {
           </div>
         )}
       </div>
+
+      {/* Property Detail Drawer */}
+      <PropertyDetailDrawer
+        property={selectedPropertyForDrawer}
+        open={showPropertyDrawer}
+        onClose={() => {
+          setShowPropertyDrawer(false);
+          setSelectedPropertyForDrawer(null);
+        }}
+        onUpdate={() => {
+          loadContactProperties();
+        }}
+      />
     </div>
   );
 }
