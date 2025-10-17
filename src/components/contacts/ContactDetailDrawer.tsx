@@ -57,6 +57,7 @@ export default function ContactDetailDrawer({
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentContact, setCurrentContact] = useState(contact);
+  const [ownershipTags, setOwnershipTags] = useState<string[]>([]);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
   const canDelete = contact?._source === 'contacts'
@@ -73,21 +74,34 @@ export default function ContactDetailDrawer({
     if (!contact?.id) return;
     await loadFiles();
     await refreshContactData();
+    await loadOwnershipTags();
   };
 
   const refreshContactData = async () => {
     if (!contact?.id) return;
-    
     try {
-      // Fetch fresh contact data from the database
-      const { data, error } = await supabase
+      // Try leads first, then contacts
+      const { data: lead, error: leadError } = await supabase
         .from('leads')
         .select('*')
         .eq('id', contact.id)
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
-        setCurrentContact({ ...contact, ...data });
+      if (lead) {
+        setCurrentContact({ ...contact, ...lead });
+        return;
+      }
+
+      const { data: realContact, error: contactError } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', contact.id)
+        .maybeSingle();
+
+      if (realContact) {
+        setCurrentContact({ ...contact, ...realContact });
+      } else if (leadError || contactError) {
+        console.error('Error refreshing contact:', leadError || contactError);
       }
     } catch (error) {
       console.error('Error refreshing contact:', error);
@@ -112,6 +126,39 @@ export default function ContactDetailDrawer({
     return () => window.removeEventListener('contacts:updated', handleContactsUpdated);
   }, [open, contact?.id]);
 
+  // Realtime sync for ownership tags
+  useEffect(() => {
+    if (!open || !contact?.id) return;
+    const channel = supabase
+      .channel(`contact-ownership-${contact.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'contact_properties',
+        filter: `contact_id=eq.${contact.id}`
+      }, () => {
+        loadOwnershipTags();
+        refreshContactData();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'properties'
+      }, (payload) => {
+        const oldOwner = (payload as any)?.old?.owner_contact_id;
+        const newOwner = (payload as any)?.new?.owner_contact_id;
+        if (oldOwner === contact.id || newOwner === contact.id) {
+          loadOwnershipTags();
+          refreshContactData();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, contact?.id]);
+
   // Update local state when prop changes
   useEffect(() => {
     setCurrentContact(contact);
@@ -131,6 +178,28 @@ export default function ContactDetailDrawer({
       setFiles(data || []);
     } catch (error: any) {
       console.error('Error loading files:', error);
+    }
+  };
+
+  const loadOwnershipTags = async () => {
+    if (!contact?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('contact_properties')
+        .select('property_id, properties(offer_type)')
+        .eq('contact_id', contact.id)
+        .eq('role', 'owner');
+
+      if (error) throw error;
+      const owned = (data || []).map((cp: any) => cp.properties).filter(Boolean);
+      const hasSale = owned.some((p: any) => p?.offer_type === 'sale');
+      const hasRent = owned.some((p: any) => p?.offer_type === 'rent');
+      const tags: string[] = [];
+      if (hasSale) tags.push('Owner');
+      if (hasRent) tags.push('Landlord');
+      setOwnershipTags(tags);
+    } catch (e) {
+      console.error('Error loading ownership tags:', e);
     }
   };
 
@@ -323,6 +392,13 @@ export default function ContactDetailDrawer({
                   <Badge variant={getStatusVariant(currentContact?.contact_status || currentContact?.status)}>
                     {currentContact?.contact_status || currentContact?.status}
                   </Badge>
+                  {/* Ownership role tags (Owner / Landlord) */}
+                  {ownershipTags.map((tag) => (
+                    <Badge key={tag} variant="default" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {/* Existing interest tags */}
                   {currentContact?.interest_tags?.slice(0, 2).map((tag) => (
                     <Badge key={tag} variant="outline" className="text-xs">
                       {tag}
@@ -506,6 +582,18 @@ export default function ContactDetailDrawer({
                               </div>
                             </div>
                           </div>
+                          {ownershipTags.length > 0 && (
+                            <div>
+                              <Label className="text-xs font-medium text-muted-foreground">Client Role</Label>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {ownershipTags.map((tag) => (
+                                  <Badge key={tag} variant="default" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           {currentContact?.interest_tags && currentContact.interest_tags.length > 0 && (
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Interest Tags</Label>
