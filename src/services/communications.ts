@@ -47,7 +47,7 @@ export async function fetchCommunications(filters?: {
       *,
       leads(name, email),
       contacts(full_name, email),
-      profiles:agent_id(name, email)
+      agent:agent_id(name, email)
     `)
     .order('created_at', { ascending: false });
 
