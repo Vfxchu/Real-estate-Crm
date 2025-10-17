@@ -192,9 +192,51 @@ export default function Contacts() {
           console.error('Failed to fetch closed leads:', closedLeadError);
         }
       }
+
+      // Enrich with property data - fetch owned properties and interested properties
+      const enrichedData = await Promise.all(contactData.map(async (contact) => {
+        const contactId = contact.id;
+        
+        // Fetch owned properties (via contact_properties with role='owner')
+        const { data: ownedProps } = await supabase
+          .from('contact_properties')
+          .select('property_id, properties(id, offer_type)')
+          .eq('contact_id', contactId)
+          .eq('role', 'owner');
+
+        const ownedProperties = ownedProps?.map(cp => cp.properties).filter(Boolean) || [];
+        const ownedCount = ownedProperties.length;
+
+        // Determine Owner/Landlord tags based on owned properties
+        const hasSaleProperty = ownedProperties.some(p => p?.offer_type === 'sale');
+        const hasRentProperty = ownedProperties.some(p => p?.offer_type === 'rent');
+        
+        const ownershipTags = [];
+        if (hasSaleProperty) ownershipTags.push('Owner');
+        if (hasRentProperty) ownershipTags.push('Landlord');
+
+        // For leads: fetch interested properties (different from owned - these are properties they want to buy/rent)
+        let interestedCount = 0;
+        if (contact.contact_status === 'lead') {
+          const { data: interestedProps } = await supabase
+            .from('contact_properties')
+            .select('property_id')
+            .eq('contact_id', contactId)
+            .neq('role', 'owner'); // Properties they're interested in, not owning
+
+          interestedCount = interestedProps?.length || 0;
+        }
+
+        return {
+          ...contact,
+          _ownedCount: ownedCount,
+          _interestedCount: interestedCount,
+          _ownershipTags: ownershipTags,
+        };
+      }));
       
-      setRows(contactData);
-      setTotal(rowTotal || contactData.length);
+      setRows(enrichedData);
+      setTotal(rowTotal || enrichedData.length);
     } finally {
       setLoading(false);
     }
@@ -845,19 +887,51 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {contact.interest_tags?.slice(0, 2).map((tag: string) => (
+                        {/* Show Owner/Landlord tags based on owned properties */}
+                        {contact._ownershipTags?.map((tag: string) => (
+                          <Badge 
+                            key={tag} 
+                            variant="default" 
+                            className="text-xs"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                        
+                        {/* For leads, show their interest tags */}
+                        {contact.contact_status === 'lead' && contact.interest_tags?.slice(0, 2).map((tag: string) => (
                           <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
                         ))}
-                        {contact.interest_tags?.length > 2 && (
+                        {contact.contact_status === 'lead' && contact.interest_tags?.length > 2 && (
                           <Badge variant="outline" className="text-xs">+{contact.interest_tags.length - 2}</Badge>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm space-y-1">
-                        {contact.segment && <div className="capitalize">{contact.segment}</div>}
-                        {contact.subtype && <div className="text-muted-foreground">{contact.subtype}</div>}
-                        {contact.bedrooms && <div className="text-muted-foreground">{contact.bedrooms}</div>}
+                        {/* Show property counts based on contact type */}
+                        {contact.contact_status === 'lead' ? (
+                          <>
+                            {contact._interestedCount > 0 && (
+                              <div className="text-muted-foreground">
+                                Interested: {contact._interestedCount} {contact._interestedCount === 1 ? 'property' : 'properties'}
+                              </div>
+                            )}
+                            {contact._ownedCount > 0 && (
+                              <div className="text-muted-foreground">
+                                Owns: {contact._ownedCount} {contact._ownedCount === 1 ? 'property' : 'properties'}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {contact._ownedCount > 0 && (
+                              <div className="font-medium">
+                                {contact._ownedCount} {contact._ownedCount === 1 ? 'Property' : 'Properties'}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
