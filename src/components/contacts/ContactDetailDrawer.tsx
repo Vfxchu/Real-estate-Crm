@@ -594,18 +594,6 @@ export default function ContactDetailDrawer({
                               </div>
                             </div>
                           )}
-                          {currentContact?.interest_tags && currentContact.interest_tags.length > 0 && (
-                            <div>
-                              <Label className="text-xs font-medium text-muted-foreground">Interest Tags</Label>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {currentContact.interest_tags.map((tag) => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                           {currentContact?.notes && (
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
