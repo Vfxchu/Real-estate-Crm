@@ -245,23 +245,87 @@ export default function Contacts() {
   }, []);
 
   const onExport = () => {
-    const csv = toCSV(rows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'contacts_export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: 'Export complete', description: `Exported ${rows.length} contacts` });
+    const { exportLeadsToCSV } = require('@/utils/csvExport');
+    
+    try {
+      exportLeadsToCSV(rows as any, 'contacts_export.csv');
+      toast({ 
+        title: 'Export complete', 
+        description: `Exported ${rows.length} contacts successfully` 
+      });
+    } catch (error: any) {
+      toast({ 
+        title: 'Export failed', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
   };
 
   const onImportStub = async (file: File) => {
+    const { parseLeadsFromFile, validateImportedLead } = await import('@/utils/csvImport');
+    const { createLead } = await import('@/services/leads');
+    
     try {
-      await file.text();
-      toast({ title: 'Import stub', description: 'File read — bulk insert will be added later.' });
-    } catch (error) {
-      toast({ title: 'Import error', description: 'Could not read file', variant: 'destructive' });
+      toast({
+        title: 'Importing...',
+        description: 'Processing your file...',
+      });
+
+      const importedLeads = await parseLeadsFromFile(file);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const lead of importedLeads) {
+        const validation = validateImportedLead(lead);
+        
+        if (!validation.valid) {
+          errorCount++;
+          errors.push(`${lead.name}: ${validation.errors.join(', ')}`);
+          continue;
+        }
+
+        const { error } = await createLead(lead as any);
+        
+        if (error) {
+          errorCount++;
+          errors.push(`${lead.name}: ${error.message}`);
+        } else {
+          successCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        await fetchRows(); // Refresh the list
+        toast({
+          title: 'Import complete',
+          description: `Successfully imported ${successCount} contacts. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
+        });
+      }
+
+      if (errors.length > 0 && errors.length <= 5) {
+        toast({
+          title: 'Import errors',
+          description: errors.join('\n'),
+          variant: 'destructive',
+        });
+      } else if (errorCount > 5) {
+        toast({
+          title: 'Import errors',
+          description: `${errorCount} contacts failed to import. Check console for details.`,
+          variant: 'destructive',
+        });
+        console.error('Import errors:', errors);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Import failed',
+        description: error.message,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -459,11 +523,14 @@ export default function Contacts() {
           <label className="cursor-pointer">
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) onImportStub(file);
+                if (file) {
+                  onImportStub(file);
+                  e.target.value = ''; // Reset input
+                }
               }}
             />
             <Button variant="outline" asChild size={isMobile ? "sm" : "default"}>

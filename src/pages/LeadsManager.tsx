@@ -265,11 +265,104 @@ export const LeadsManager = () => {
   };
 
   const handleBulkAction = (action: string) => {
-    toast({
-      title: `Bulk action: ${action}`,
-      description: `Applied to ${selectedLeads.length} leads`,
-    });
-    setSelectedLeads([]);
+    if (action === 'export') {
+      handleExportLeads();
+    } else {
+      toast({
+        title: `Bulk action: ${action}`,
+        description: `Applied to ${selectedLeads.length} leads`,
+      });
+      setSelectedLeads([]);
+    }
+  };
+
+  const handleExportLeads = () => {
+    const { exportLeadsToCSV } = require('@/utils/csvExport');
+    const leadsToExport = selectedLeads.length > 0 
+      ? leads.filter(lead => selectedLeads.includes(lead.id))
+      : filteredLeads;
+    
+    try {
+      exportLeadsToCSV(leadsToExport, 'leads_export.csv');
+      toast({
+        title: 'Export complete',
+        description: `Exported ${leadsToExport.length} leads successfully`,
+      });
+      setSelectedLeads([]);
+    } catch (error: any) {
+      toast({
+        title: 'Export failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleImportLeads = async (file: File) => {
+    const { parseLeadsFromFile, validateImportedLead } = await import('@/utils/csvImport');
+    const { createLead } = await import('@/services/leads');
+    
+    try {
+      toast({
+        title: 'Importing...',
+        description: 'Processing your file...',
+      });
+
+      const importedLeads = await parseLeadsFromFile(file);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const lead of importedLeads) {
+        const validation = validateImportedLead(lead);
+        
+        if (!validation.valid) {
+          errorCount++;
+          errors.push(`${lead.name}: ${validation.errors.join(', ')}`);
+          continue;
+        }
+
+        const { error } = await createLead(lead as any);
+        
+        if (error) {
+          errorCount++;
+          errors.push(`${lead.name}: ${error.message}`);
+        } else {
+          successCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        await fetchLeads(); // Refresh the list
+        toast({
+          title: 'Import complete',
+          description: `Successfully imported ${successCount} leads. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
+        });
+      }
+
+      if (errors.length > 0 && errors.length <= 5) {
+        toast({
+          title: 'Import errors',
+          description: errors.join('\n'),
+          variant: 'destructive',
+        });
+      } else if (errorCount > 5) {
+        toast({
+          title: 'Import errors',
+          description: `${errorCount} leads failed to import. Check console for details.`,
+          variant: 'destructive',
+        });
+        console.error('Import errors:', errors);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Import failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRowClick = (lead: Lead) => {
@@ -288,10 +381,41 @@ export const LeadsManager = () => {
               {filteredLeads.length} leads • Manage and track all your leads
             </p>
           </div>
-          <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Lead
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              id="import-leads-file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImportLeads(file);
+                  e.target.value = ''; // Reset input
+                }
+              }}
+            />
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto"
+              onClick={() => document.getElementById('import-leads-file')?.click()}
+            >
+              <Download className="w-4 h-4 mr-2 rotate-180" />
+              Import
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto"
+              onClick={handleExportLeads}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button className="btn-primary w-full sm:w-auto shrink-0" onClick={() => setShowAddForm(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Lead
+            </Button>
+          </div>
         </div>
 
         {/* Status Tabs */}
