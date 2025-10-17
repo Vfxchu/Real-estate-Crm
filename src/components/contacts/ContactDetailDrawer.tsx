@@ -56,6 +56,7 @@ export default function ContactDetailDrawer({
   const [files, setFiles] = useState<ContactFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [currentContact, setCurrentContact] = useState(contact);
 
   const isAdmin = profile?.role === 'admin' || profile?.role === 'superadmin';
   const canDelete = contact?._source === 'contacts'
@@ -71,6 +72,26 @@ export default function ContactDetailDrawer({
   const loadContactData = async () => {
     if (!contact?.id) return;
     await loadFiles();
+    await refreshContactData();
+  };
+
+  const refreshContactData = async () => {
+    if (!contact?.id) return;
+    
+    try {
+      // Fetch fresh contact data from the database
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', contact.id)
+        .single();
+
+      if (!error && data) {
+        setCurrentContact({ ...contact, ...data });
+      }
+    } catch (error) {
+      console.error('Error refreshing contact:', error);
+    }
   };
 
   useEffect(() => {
@@ -78,6 +99,23 @@ export default function ContactDetailDrawer({
       loadContactData();
     }
   }, [contact?.id, open]);
+
+  // Listen for contact updates
+  useEffect(() => {
+    const handleContactsUpdated = () => {
+      if (open && contact?.id) {
+        refreshContactData();
+      }
+    };
+
+    window.addEventListener('contacts:updated', handleContactsUpdated);
+    return () => window.removeEventListener('contacts:updated', handleContactsUpdated);
+  }, [open, contact?.id]);
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setCurrentContact(contact);
+  }, [contact]);
 
   const loadFiles = async () => {
     if (!contact?.id) return;
@@ -279,20 +317,20 @@ export default function ContactDetailDrawer({
               </Avatar>
               <div>
                 <SheetTitle className="text-lg font-semibold">
-                  {contact.name || 'Unknown Contact'}
+                  {currentContact?.name || 'Unknown Contact'}
                 </SheetTitle>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={getStatusVariant(contact.contact_status || contact.status)}>
-                    {contact.contact_status || contact.status}
+                  <Badge variant={getStatusVariant(currentContact?.contact_status || currentContact?.status)}>
+                    {currentContact?.contact_status || currentContact?.status}
                   </Badge>
-                  {contact.interest_tags?.slice(0, 2).map((tag) => (
+                  {currentContact?.interest_tags?.slice(0, 2).map((tag) => (
                     <Badge key={tag} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
-                  {contact.interest_tags && contact.interest_tags.length > 2 && (
+                  {currentContact?.interest_tags && currentContact.interest_tags.length > 2 && (
                     <Badge variant="outline" className="text-xs">
-                      +{contact.interest_tags.length - 2}
+                      +{currentContact.interest_tags.length - 2}
                     </Badge>
                   )}
                 </div>
@@ -324,23 +362,23 @@ export default function ContactDetailDrawer({
 
           {/* Quick Actions Bar - Always visible */}
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
-            {contact.phone && (
-              <Button size="sm" variant="outline" onClick={() => window.open(`tel:${contact.phone}`, '_self')}>
+            {currentContact?.phone && (
+              <Button size="sm" variant="outline" onClick={() => window.open(`tel:${currentContact.phone}`, '_self')}>
                 <Phone className="h-3 w-3 mr-1" />
                 Call
               </Button>
             )}
-            {contact.email && (
-              <Button size="sm" variant="outline" onClick={() => window.open(`mailto:${contact.email}`, '_blank')}>
+            {currentContact?.email && (
+              <Button size="sm" variant="outline" onClick={() => window.open(`mailto:${currentContact.email}`, '_blank')}>
                 <Mail className="h-3 w-3 mr-1" />
                 Email
               </Button>
             )}
-            {contact.phone && (
+            {currentContact?.phone && (
               <Button 
                 size="sm" 
                 variant="outline" 
-                onClick={() => window.open(`https://wa.me/${contact.phone?.replace(/[^\d]/g, '')}`, '_blank')}
+                onClick={() => window.open(`https://wa.me/${currentContact.phone?.replace(/[^\d]/g, '')}`, '_blank')}
               >
                 <MessageSquare className="h-3 w-3 mr-1" />
                 {isMobile ? 'WhatsApp' : 'WhatsApp'}
@@ -399,28 +437,28 @@ export default function ContactDetailDrawer({
                               <Label className="text-xs font-medium text-muted-foreground">Email</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <Mail className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">{contact.email || 'No email'}</span>
+                                <span className="text-sm">{currentContact?.email || 'No email'}</span>
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Phone</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <Phone className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">{contact.phone || 'No phone'}</span>
+                                <span className="text-sm">{currentContact?.phone || 'No phone'}</span>
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Address</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">{contact.address || 'No address'}</span>
+                                <span className="text-sm">{currentContact?.address || 'No address'}</span>
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Source</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <Tag className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm capitalize">{contact.source || 'Unknown'}</span>
+                                <span className="text-sm capitalize">{currentContact?.source || 'Unknown'}</span>
                               </div>
                             </div>
                           </div>
@@ -438,7 +476,7 @@ export default function ContactDetailDrawer({
                               <Label className="text-xs font-medium text-muted-foreground">Interest Type</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <Building className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm capitalize">{contact.category || 'Not specified'}</span>
+                                <span className="text-sm capitalize">{currentContact?.category || 'Not specified'}</span>
                               </div>
                             </div>
                             <div>
@@ -446,8 +484,8 @@ export default function ContactDetailDrawer({
                               <div className="flex items-center gap-2 mt-1">
                                 <Coins className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm">
-                                  {contact.budget_min && contact.budget_max 
-                                    ? `AED ${contact.budget_min?.toLocaleString()} - ${contact.budget_max?.toLocaleString()}`
+                                  {currentContact?.budget_min && currentContact.budget_max 
+                                    ? `AED ${currentContact.budget_min?.toLocaleString()} - ${currentContact.budget_max?.toLocaleString()}`
                                     : 'Not specified'
                                   }
                                 </span>
@@ -457,22 +495,22 @@ export default function ContactDetailDrawer({
                               <Label className="text-xs font-medium text-muted-foreground">Location</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <MapPin className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm">{contact.location_address || 'Not specified'}</span>
+                                <span className="text-sm">{currentContact?.location_address || 'Not specified'}</span>
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Property Type</Label>
                               <div className="flex items-center gap-2 mt-1">
                                 <Home className="w-4 h-4 text-muted-foreground" />
-                                <span className="text-sm capitalize">{contact.subtype || 'Not specified'}</span>
+                                <span className="text-sm capitalize">{currentContact?.subtype || 'Not specified'}</span>
                               </div>
                             </div>
                           </div>
-                          {contact.interest_tags && contact.interest_tags.length > 0 && (
+                          {currentContact?.interest_tags && currentContact.interest_tags.length > 0 && (
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Interest Tags</Label>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {contact.interest_tags.map((tag) => (
+                                {currentContact.interest_tags.map((tag) => (
                                   <Badge key={tag} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -480,10 +518,10 @@ export default function ContactDetailDrawer({
                               </div>
                             </div>
                           )}
-                          {contact.notes && (
+                          {currentContact?.notes && (
                             <div>
                               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
-                              <p className="text-sm mt-1">{contact.notes}</p>
+                              <p className="text-sm mt-1">{currentContact.notes}</p>
                             </div>
                           )}
                         </CardContent>
