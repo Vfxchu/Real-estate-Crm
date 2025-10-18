@@ -46,6 +46,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PropertyMetaTags } from "@/components/properties/PropertyMetaTags";
 
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -873,6 +874,15 @@ export const Properties = () => {
                         </div>
                       )}
 
+                      {/* Listed by and Assigned to tags */}
+                      <PropertyMetaTags
+                        assignedAgentName={property.assigned_agent?.name}
+                        creatorName={property.creator_profile?.name}
+                        creatorIsAdmin={property.creator_profile?.is_admin}
+                        createdAt={property.created_at}
+                        className="border-t pt-3"
+                      />
+
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -1039,6 +1049,15 @@ export const Properties = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Listed by and Assigned to tags */}
+                    <PropertyMetaTags
+                      assignedAgentName={property.assigned_agent?.name}
+                      creatorName={property.creator_profile?.name}
+                      creatorIsAdmin={property.creator_profile?.is_admin}
+                      createdAt={property.created_at}
+                      className="border-t pt-3"
+                    />
 
                     <div className="flex gap-2">
                       <Button

@@ -21,7 +21,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorName || (creatorIsAdmin ? 'Admin' : 'Unknown');
+  const listedByText = creatorName || (creatorIsAdmin ? 'Admin' : createdBy ? 'Agent' : 'System');
 
   return (
     <div className={`flex items-center gap-3 flex-wrap ${className}`}>
