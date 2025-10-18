@@ -363,12 +363,61 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   };
 
   const onSubmit = async (data: PropertyFormData) => {
+    const submissionId = `prop-submit-${Date.now()}`;
+    
     try {
       setLoading(true);
+      
+      console.log(`[${submissionId}] Starting property submission`, {
+        isEdit: !!editProperty,
+        hasOwner: !!data.owner_contact_id,
+        imageCount: uploadedImages.length,
+        layoutCount: uploadedLayouts.length,
+        documentCount: uploadedDocuments.length
+      });
 
-      // Use cached auth state instead of making fresh API call
-      if (!user) {
-        throw new Error('Please sign in to continue');
+      // CRITICAL: Robust session validation - fetch fresh session from Supabase
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session || !session.user) {
+        console.error(`[${submissionId}] Session validation failed:`, sessionError);
+        throw new Error('Your session has expired. Please refresh the page and try again.');
+      }
+
+      // Use session.user for guaranteed fresh data
+      const currentUser = session.user;
+      
+      // Verify profile is loaded
+      if (!profile) {
+        throw new Error('User profile not loaded. Please refresh the page.');
+      }
+
+      console.log(`[${submissionId}] Session validated successfully`);
+
+      // Validate owner contact exists
+      if (data.owner_contact_id) {
+        const { data: ownerExists, error: ownerCheckError } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('id', data.owner_contact_id)
+          .maybeSingle();
+        
+        if (ownerCheckError) {
+          console.error(`[${submissionId}] Error checking owner contact:`, ownerCheckError);
+        }
+        
+        if (!ownerExists) {
+          // Check contacts table as fallback
+          const { data: ownerInContacts } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('id', data.owner_contact_id)
+            .maybeSingle();
+          
+          if (!ownerInContacts) {
+            throw new Error('Selected owner contact does not exist. Please refresh and try again.');
+          }
+        }
       }
 
       // Check if admin for agent assignment
@@ -394,7 +443,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         description: data.description || null,
         permit_number: data.permit_number || null,
         owner_contact_id: data.owner_contact_id || null,
-        agent_id: isAdmin && data.agent_id ? data.agent_id : user.id,
+        agent_id: isAdmin && data.agent_id ? data.agent_id : (currentUser?.id || user?.id || ''),
         images: uploadedImages.length > 0 ? uploadedImages : null,
         view: data.view || null,
       };
@@ -424,41 +473,67 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
           .single();
 
         if (error) {
-          console.error('Create property error:', error);
+          console.error(`[${submissionId}] Create property error:`, error);
           throw error;
         }
         propertyData = newData;
       }
 
+      console.log(`[${submissionId}] Property created/updated:`, propertyData.id);
+
       // Move all files and update contact records
       if (propertyData) {
-        // Auto-assign Owner/Landlord tags based on all properties owned
+        // Auto-assign Seller/Landlord tags based on all properties owned
         if (data.owner_contact_id) {
-          const { syncOwnerTagsFromProperties } = await import('@/services/property-automation');
-          await syncOwnerTagsFromProperties(data.owner_contact_id);
+          try {
+            const { syncOwnerTagsFromProperties } = await import('@/services/property-automation');
+            const syncResult = await syncOwnerTagsFromProperties(data.owner_contact_id);
+            
+            if (!syncResult.success) {
+              console.warn(`[${submissionId}] Failed to sync owner tags:`, syncResult.error);
+              toast({
+                title: 'Warning',
+                description: 'Property created but owner tags may not be updated. You can manually refresh contact data.',
+                variant: 'default'
+              });
+            } else {
+              console.log(`[${submissionId}] Successfully synced Seller/Landlord tags`);
+            }
+          } catch (syncError) {
+            console.error(`[${submissionId}] Critical error in syncOwnerTagsFromProperties:`, syncError);
+            // Don't fail the entire operation - property was created successfully
+            toast({
+              title: 'Partial Success',
+              description: 'Property created successfully, but automatic tag assignment failed. Please update contact tags manually.',
+              variant: 'default'
+            });
+          }
           
           // Link property to contact in contact_properties table
           try {
-            // Check if relationship already exists
-            const { data: existing } = await supabase
+            // Use upsert to prevent duplicate key errors
+            const { error: linkError } = await supabase
               .from('contact_properties')
-              .select('id')
-              .eq('contact_id', data.owner_contact_id)
-              .eq('property_id', propertyData.id)
-              .single();
+              .upsert({
+                contact_id: data.owner_contact_id,
+                property_id: propertyData.id,
+                role: 'owner'
+              }, {
+                onConflict: 'contact_id,property_id,role',
+                ignoreDuplicates: false
+              });
             
-            // Only create if doesn't exist
-            if (!existing) {
-              await supabase
-                .from('contact_properties')
-                .insert([{
-                  contact_id: data.owner_contact_id,
-                  property_id: propertyData.id,
-                  role: 'owner'
-                }]);
+            if (linkError) {
+              console.error(`[${submissionId}] Failed to link property to contact:`, linkError);
+              // Log but don't fail - property was created successfully
+              toast({
+                title: 'Warning',
+                description: 'Property created but contact linkage may be incomplete.',
+                variant: 'default'
+              });
             }
           } catch (linkError) {
-            console.error('Failed to link property to contact:', linkError);
+            console.error(`[${submissionId}] Critical error linking property to contact:`, linkError);
           }
         }
 
@@ -527,7 +602,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                     path: docPath,
                     type: 'document',
                     size: fileSize,
-                    created_by: user.id
+                    created_by: currentUser?.id || user?.id || session?.user?.id
                   });
                 
                 if (propertyFileError) {
@@ -545,7 +620,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                       path: docPath,
                       name: originalName,
                       type: 'document',
-                      created_by: user.id
+                      created_by: currentUser?.id || user?.id || session?.user?.id
                     });
                   
                   if (contactFileError) {
@@ -559,7 +634,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
             }
           }
         } catch (docError) {
-          console.error('Error processing documents:', docError);
+          console.error(`[${submissionId}] Error processing documents:`, docError);
           toast({
             title: 'Warning',
             description: 'Some documents may not have been uploaded correctly',
@@ -568,10 +643,36 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
         }
       }
 
+      console.log(`[${submissionId}] File operations completed`);
+
+      // Verify property was created/updated correctly
+      try {
+        const { data: verifyProperty, error: verifyError } = await supabase
+          .from('properties')
+          .select('id, title, owner_contact_id')
+          .eq('id', propertyData.id)
+          .single();
+        
+        if (verifyError || !verifyProperty) {
+          throw new Error('Property verification failed - data may not be saved correctly');
+        }
+        
+        console.log(`[${submissionId}] Property verification successful:`, verifyProperty);
+      } catch (verifyError) {
+        console.error(`[${submissionId}] Property verification failed:`, verifyError);
+        toast({
+          title: 'Warning',
+          description: 'Property may not have been saved correctly. Please verify in the properties list.',
+          variant: 'destructive'
+        });
+      }
+
       toast({
         title: editProperty ? 'Property updated successfully' : 'Property created successfully',
         description: editProperty ? 'Property has been updated.' : 'New property has been added to your listings.',
       });
+
+      console.log(`[${submissionId}] Submission successful - closing form`);
 
       // Dispatch events for real-time sync across the app
       window.dispatchEvent(new CustomEvent('properties:refresh'));
@@ -588,15 +689,41 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
       onSuccess?.();
 
     } catch (error: any) {
-      console.error('Property creation error:', error);
+      console.error(`[${submissionId}] Property form submission error:`, {
+        error,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        timestamp: new Date().toISOString(),
+        hasUser: !!user,
+        hasProfile: !!profile,
+        sessionCheck: !!(await supabase.auth.getSession()).data.session
+      });
       
-      let errorMessage = error.message || 'Please check all required fields and try again.';
-      if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
-        errorMessage = 'Permission denied: You can only create properties assigned to yourself.';
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      let errorTitle = editProperty ? 'Error updating property' : 'Error creating property';
+      
+      // Session/Auth errors
+      if (error.message?.includes('session') || error.message?.includes('sign in') || error.message?.includes('expired')) {
+        errorTitle = 'Session Expired';
+        errorMessage = 'Your login session has expired. Please refresh the page and try again.';
+      }
+      // RLS/Permission errors
+      else if (error.message?.includes('row-level security') || error.message?.includes('permission denied')) {
+        errorTitle = 'Permission Denied';
+        errorMessage = 'You do not have permission to perform this action. Contact your administrator.';
+      }
+      // Network errors
+      else if (error.message?.includes('fetch') || error.message?.includes('network')) {
+        errorTitle = 'Connection Error';
+        errorMessage = 'Network connection failed. Please check your internet and try again.';
+      }
+      // Validation errors
+      else if (error.message) {
+        errorMessage = error.message;
       }
       
       toast({
-        title: editProperty ? 'Error updating property' : 'Error creating property',
+        title: errorTitle,
         description: errorMessage,
         variant: 'destructive',
       });
