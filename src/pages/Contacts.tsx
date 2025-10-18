@@ -207,12 +207,12 @@ export default function Contacts() {
         const ownedProperties = ownedProps?.map(cp => cp.properties).filter(Boolean) || [];
         const ownedCount = ownedProperties.length;
 
-        // Determine Owner/Landlord tags based on owned properties
+        // Determine Seller/Landlord tags based on owned properties
         const hasSaleProperty = ownedProperties.some(p => p?.offer_type === 'sale');
         const hasRentProperty = ownedProperties.some(p => p?.offer_type === 'rent');
         
         const ownershipTags = [];
-        if (hasSaleProperty) ownershipTags.push('Owner');
+        if (hasSaleProperty) ownershipTags.push('Seller');
         if (hasRentProperty) ownershipTags.push('Landlord');
 
         // For leads: fetch interested properties (different from owned - these are properties they want to buy/rent)
@@ -887,7 +887,7 @@ export default function Contacts() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {/* Show Owner/Landlord tags based on owned properties */}
+                        {/* Show Seller/Landlord tags based on owned properties */}
                         {contact._ownershipTags?.map((tag: string) => (
                           <Badge 
                             key={tag} 
