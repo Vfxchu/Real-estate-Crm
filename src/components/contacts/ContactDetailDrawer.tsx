@@ -195,7 +195,7 @@ export default function ContactDetailDrawer({
       const hasSale = owned.some((p: any) => p?.offer_type === 'sale');
       const hasRent = owned.some((p: any) => p?.offer_type === 'rent');
       const tags: string[] = [];
-      if (hasSale) tags.push('Owner');
+      if (hasSale) tags.push('Seller');
       if (hasRent) tags.push('Landlord');
       setOwnershipTags(tags);
     } catch (e) {
