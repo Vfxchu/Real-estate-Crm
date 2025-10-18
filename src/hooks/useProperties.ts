@@ -83,8 +83,9 @@ export const useProperties = () => {
       });
 
       // Build map of user_id -> { name, is_admin }
+      const list = (publicUsers as any[]) || [];
       const userMap = new Map(
-        (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+        list.map((u: any) => [u.user_id, { name: u.name, email: u.email, is_admin: u.is_admin }])
       );
 
       // Process properties with profiles
@@ -107,10 +108,10 @@ export const useProperties = () => {
             ...property,
             images: secureImages,
             profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
-            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.email || '' } : null,
             creator_profile: creatorUser ? {
               name: creatorUser.name,
-              email: creatorUser.name,
+              email: creatorUser.email || '',
               is_admin: creatorUser.is_admin
             } : null
           };
@@ -157,8 +158,9 @@ export const useProperties = () => {
           user_ids: userIds
         });
 
+        const list = (publicUsers as any[]) || [];
         const userMap = new Map(
-          (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+          list.map((u: any) => [u.user_id, { name: u.name, email: u.email, is_admin: u.is_admin }])
         );
 
         const assignedUser = data.agent_id ? userMap.get(data.agent_id) : null;
@@ -166,11 +168,11 @@ export const useProperties = () => {
 
         propertyWithProfile = {
           ...data,
-          profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : { name: 'Unassigned', email: '' },
-          assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
+          profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.email || '' } : { name: 'Unassigned', email: '' },
+          assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.email || '' } : null,
           creator_profile: creatorUser ? {
             name: creatorUser.name,
-            email: creatorUser.name,
+            email: creatorUser.email || '',
             is_admin: creatorUser.is_admin
           } : null
         } as any;
@@ -371,8 +373,9 @@ export const useProperties = () => {
             user_ids: userIds
           });
 
+          const list = (publicUsers as any[]) || [];
           const userMap = new Map(
-            (publicUsers || []).map(u => [u.user_id, { name: u.name, is_admin: u.is_admin }])
+            list.map((u: any) => [u.user_id, { name: u.name, email: u.email, is_admin: u.is_admin }])
           );
 
           const assignedUser = updatedProperty.agent_id ? userMap.get(updatedProperty.agent_id) : null;
@@ -391,11 +394,11 @@ export const useProperties = () => {
           const enrichedProperty = {
             ...updatedProperty,
             images: secureImages,
-            profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : { name: 'Unassigned', email: '' },
-            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
+            profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.email || '' } : { name: 'Unassigned', email: '' },
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.email || '' } : null,
             creator_profile: creatorUser ? {
               name: creatorUser.name,
-              email: creatorUser.name,
+              email: creatorUser.email || '',
               is_admin: creatorUser.is_admin
             } : null
           };

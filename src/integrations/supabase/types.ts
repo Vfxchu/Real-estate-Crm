@@ -1688,6 +1688,7 @@ export type Database = {
       get_user_public_info: {
         Args: { user_ids: string[] }
         Returns: {
+          email: string
           is_admin: boolean
           name: string
           user_id: string

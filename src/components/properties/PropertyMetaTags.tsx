@@ -23,7 +23,7 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorName || creatorEmail || (creatorIsAdmin ? 'Admin' : 'Unknown');
+  const listedByText = creatorName || creatorEmail || (creatorIsAdmin ? 'Admin' : '');
 
   return (
     <div className={`flex items-center gap-3 flex-wrap ${className}`}>
@@ -41,20 +41,22 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
           </TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="outline" className="text-xs flex items-center gap-1.5 px-3 py-1">
-              <span className="text-muted-foreground">Listed by</span>
-              <span className="font-medium truncate max-w-[150px]">{listedByText}</span>
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="font-medium">Listed by: {listedByText}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Created: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
-            </p>
-          </TooltipContent>
-        </Tooltip>
+        {listedByText && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="text-xs flex items-center gap-1.5 px-3 py-1">
+                <span className="text-muted-foreground">Listed by</span>
+                <span className="font-medium truncate max-w-[150px]">{listedByText}</span>
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="font-medium">Listed by: {listedByText}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Created: {createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown'}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </TooltipProvider>
     </div>
   );
