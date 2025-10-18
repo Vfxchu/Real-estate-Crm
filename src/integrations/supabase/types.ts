@@ -1638,6 +1638,16 @@ export type Database = {
         Args: { profile_user_id: string }
         Returns: boolean
       }
+      check_property_contact_consistency: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          issue_type: string
+          message: string
+          owner_contact_id: string
+          property_id: string
+          property_title: string
+        }[]
+      }
       check_task_consistency: {
         Args: Record<PropertyKey, never>
         Returns: {

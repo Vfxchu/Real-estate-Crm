@@ -19,6 +19,7 @@ import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum 
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import { Plus } from "lucide-react";
 import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
+import { useSessionMonitor } from "@/hooks/useSessionMonitor";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -85,6 +86,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const contacts = useContacts();
+  const { sessionHealthy } = useSessionMonitor();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
@@ -367,6 +369,17 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
     
     try {
       setLoading(true);
+      
+      // CRITICAL: Prevent submission if session is unhealthy
+      if (!sessionHealthy) {
+        toast({
+          title: 'Session Expired',
+          description: 'Please refresh the page before submitting.',
+          variant: 'destructive'
+        });
+        setLoading(false);
+        return;
+      }
       
       console.log(`[${submissionId}] Starting property submission`, {
         isEdit: !!editProperty,
