@@ -878,6 +878,7 @@ export const Properties = () => {
                       <PropertyMetaTags
                         assignedAgentName={property.assigned_agent?.name}
                         creatorName={property.creator_profile?.name}
+                        creatorEmail={property.creator_profile?.email}
                         creatorIsAdmin={property.creator_profile?.is_admin}
                         createdAt={property.created_at}
                         className="border-t pt-3"
@@ -1054,6 +1055,7 @@ export const Properties = () => {
                     <PropertyMetaTags
                       assignedAgentName={property.assigned_agent?.name}
                       creatorName={property.creator_profile?.name}
+                      creatorEmail={property.creator_profile?.email}
                       creatorIsAdmin={property.creator_profile?.is_admin}
                       createdAt={property.created_at}
                       className="border-t pt-3"

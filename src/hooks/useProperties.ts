@@ -107,10 +107,10 @@ export const useProperties = () => {
             ...property,
             images: secureImages,
             profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
-            assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
             creator_profile: creatorUser ? {
               name: creatorUser.name,
-              email: '',
+              email: creatorUser.name,
               is_admin: creatorUser.is_admin
             } : null
           };
@@ -166,11 +166,11 @@ export const useProperties = () => {
 
         propertyWithProfile = {
           ...data,
-          profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
-          assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+          profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : { name: 'Unassigned', email: '' },
+          assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
           creator_profile: creatorUser ? {
             name: creatorUser.name,
-            email: '',
+            email: creatorUser.name,
             is_admin: creatorUser.is_admin
           } : null
         } as any;
@@ -391,11 +391,11 @@ export const useProperties = () => {
           const enrichedProperty = {
             ...updatedProperty,
             images: secureImages,
-            profiles: assignedUser ? { name: assignedUser.name, email: '' } : { name: 'Unassigned', email: '' },
-            assigned_agent: assignedUser ? { name: assignedUser.name, email: '' } : null,
+            profiles: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : { name: 'Unassigned', email: '' },
+            assigned_agent: assignedUser ? { name: assignedUser.name, email: assignedUser.name } : null,
             creator_profile: creatorUser ? {
               name: creatorUser.name,
-              email: '',
+              email: creatorUser.name,
               is_admin: creatorUser.is_admin
             } : null
           };

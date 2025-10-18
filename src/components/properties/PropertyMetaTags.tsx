@@ -7,6 +7,7 @@ interface PropertyMetaTagsProps {
   assignedAgentName?: string | null;
   createdBy?: string | null;
   creatorName?: string | null;
+  creatorEmail?: string | null;
   creatorIsAdmin?: boolean;
   createdAt?: string;
   className?: string;
@@ -16,12 +17,13 @@ export const PropertyMetaTags: React.FC<PropertyMetaTagsProps> = ({
   assignedAgentName,
   createdBy,
   creatorName,
+  creatorEmail,
   creatorIsAdmin,
   createdAt,
   className = ''
 }) => {
   const assignedText = assignedAgentName || 'Unassigned';
-  const listedByText = creatorName || (creatorIsAdmin ? 'Admin' : createdBy ? 'Agent' : 'System');
+  const listedByText = creatorName || creatorEmail || (creatorIsAdmin ? 'Admin' : 'Unknown');
 
   return (
     <div className={`flex items-center gap-3 flex-wrap ${className}`}>

@@ -284,6 +284,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
               <PropertyMetaTags
                 assignedAgentName={property.assigned_agent?.name}
                 creatorName={property.creator_profile?.name}
+                creatorEmail={property.creator_profile?.email}
                 creatorIsAdmin={property.creator_profile?.is_admin}
                 createdAt={property.created_at}
                 className="pt-2"
