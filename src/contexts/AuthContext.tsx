@@ -53,6 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     console.log('[AUTH] Setting up auth state listener');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -64,36 +65,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Use setTimeout to prevent authentication deadlock
           setTimeout(async () => {
             try {
-          // Fetch profile and role securely
-          const [profileResult, userRole] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single(),
-            getCurrentUserRole()
-          ]);
+              // Fetch profile and role securely
+              const [profileResult, userRole] = await Promise.all([
+                supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('user_id', session.user.id)
+                  .single(),
+                getCurrentUserRole()
+              ]);
 
-          if (profileResult.error) {
-            console.error('Error fetching profile:', profileResult.error);
-            // Create a fallback profile if none exists
-            const fallbackProfile: UserProfile = {
-              id: session.user.id,
-              user_id: session.user.id,
-              email: session.user.email || '',
-              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-              role: userRole,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            setProfile(fallbackProfile);
-          } else {
-            // Use secure role from user_roles table
-            setProfile({
-              ...profileResult.data,
-              role: userRole
-            } as UserProfile);
-          }
+              if (profileResult.error) {
+                console.error('Error fetching profile:', profileResult.error);
+                // Create a fallback profile if none exists
+                const fallbackProfile: UserProfile = {
+                  id: session.user.id,
+                  user_id: session.user.id,
+                  email: session.user.email || '',
+                  name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                  role: userRole,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                setProfile(fallbackProfile);
+              } else {
+                // Use secure role from user_roles table
+                setProfile({
+                  ...profileResult.data,
+                  role: userRole
+                } as UserProfile);
+              }
             } catch (error) {
               console.error('Error during profile fetch:', formatErrorForUser(error, 'profile fetch'));
               setProfile(null);
@@ -155,7 +156,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Proactive token refresh - check every 5 minutes
+    const refreshInterval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const expiresAt = session.expires_at;
+        if (expiresAt) {
+          const timeUntilExpiry = (expiresAt * 1000) - Date.now();
+          // Refresh token if it expires in less than 10 minutes
+          if (timeUntilExpiry < 10 * 60 * 1000) {
+            console.log('[AUTH] Proactively refreshing session token');
+            await supabase.auth.refreshSession();
+          }
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
