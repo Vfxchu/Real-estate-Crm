@@ -6,6 +6,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { NotificationSystem } from '@/components/calendar/NotificationSystem';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import { AIAssistantButton } from '@/components/ai/AIAssistantButton';
+import { AIAssistantChat } from '@/components/ai/AIAssistantChat';
+import { useAIAssistant } from '@/hooks/useAIAssistant';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -14,8 +17,16 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const isMobile = useIsMobile();
   const { events, updateEvent } = useCalendarEvents();
+  
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    executeAction,
+  } = useAIAssistant();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
@@ -62,6 +73,20 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Notification System - Global */}
       <NotificationSystem events={events} onEventUpdate={updateEvent} />
+      
+      {/* AI Assistant */}
+      <AIAssistantButton 
+        onClick={() => setIsAIChatOpen(true)}
+        hasNewSuggestions={false}
+      />
+      <AIAssistantChat
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
+        messages={messages}
+        onSendMessage={sendMessage}
+        isLoading={isLoading}
+        onExecuteAction={executeAction}
+      />
     </div>
   );
 };
