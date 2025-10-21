@@ -42,11 +42,13 @@ import {
   Coins,
   Calendar,
   Share2,
+  Globe,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PropertyMetaTags } from "@/components/properties/PropertyMetaTags";
+import { WordPressPropertiesSidebar } from "@/components/properties/WordPressPropertiesSidebar";
 
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -145,6 +147,7 @@ export const Properties = () => {
     totalValue: 0,
     loading: true
   });
+  const [showWordPressSidebar, setShowWordPressSidebar] = useState(false);
 
   const { toast } = useToast();
 
@@ -486,6 +489,15 @@ export const Properties = () => {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowWordPressSidebar(true)}
+            className="gap-2"
+          >
+            <Globe className="w-4 h-4" />
+            <span className="hidden sm:inline">WordPress Properties</span>
+          </Button>
           <Select value={currency} onValueChange={setCurrency}>
             <SelectTrigger className="w-20 sm:w-24">
               <SelectValue />
@@ -1141,6 +1153,13 @@ export const Properties = () => {
         onClose={() => setShowDetailView(false)}
         onEdit={handleEditProperty}
         onUpdate={fetchStats}
+      />
+
+      {/* WordPress Properties Sidebar */}
+      <WordPressPropertiesSidebar
+        open={showWordPressSidebar}
+        onOpenChange={setShowWordPressSidebar}
+        onViewProperty={handleViewProperty}
       />
 
       {/* Property Delete Dialog */}
