@@ -117,6 +117,98 @@ export type Database = {
           },
         ]
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_quick_actions: {
+        Row: {
+          action_data: Json | null
+          action_type: string
+          error_message: string | null
+          executed_at: string
+          id: string
+          success: boolean
+          user_id: string
+        }
+        Insert: {
+          action_data?: Json | null
+          action_type: string
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          success?: boolean
+          user_id: string
+        }
+        Update: {
+          action_data?: Json | null
+          action_type?: string
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       assignment_history: {
         Row: {
           agent_id: string
@@ -1139,6 +1231,50 @@ export type Database = {
           },
         ]
       }
+      portal_sync_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          portal: string
+          property_id: string
+          request_data: Json | null
+          response_data: Json | null
+          status: string
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          portal: string
+          property_id: string
+          request_data?: Json | null
+          response_data?: Json | null
+          status: string
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          portal?: string
+          property_id?: string
+          request_data?: Json | null
+          response_data?: Json | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portal_sync_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_audit: {
         Row: {
           changed_at: string | null
@@ -1237,8 +1373,11 @@ export type Database = {
           updated_at: string
           view: string | null
           wp_id: number | null
+          wp_last_sync_at: string | null
           wp_permalink: string | null
           wp_slug: string | null
+          wp_sync_error: string | null
+          wp_sync_status: string | null
           zip_code: string | null
         }
         Insert: {
@@ -1275,8 +1414,11 @@ export type Database = {
           updated_at?: string
           view?: string | null
           wp_id?: number | null
+          wp_last_sync_at?: string | null
           wp_permalink?: string | null
           wp_slug?: string | null
+          wp_sync_error?: string | null
+          wp_sync_status?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -1313,8 +1455,11 @@ export type Database = {
           updated_at?: string
           view?: string | null
           wp_id?: number | null
+          wp_last_sync_at?: string | null
           wp_permalink?: string | null
           wp_slug?: string | null
+          wp_sync_error?: string | null
+          wp_sync_status?: string | null
           zip_code?: string | null
         }
         Relationships: [

@@ -35,6 +35,13 @@ export interface Property {
   created_at: string;
   updated_at: string;
   created_by?: string | null;
+  // WordPress sync fields
+  wp_id?: number | null;
+  wp_slug?: string | null;
+  wp_permalink?: string | null;
+  wp_sync_status?: string | null;
+  wp_last_sync_at?: string | null;
+  wp_sync_error?: string | null;
   profiles?: {
     name: string;
     email: string;

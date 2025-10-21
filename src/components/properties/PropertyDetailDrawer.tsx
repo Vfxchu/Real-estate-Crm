@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PropertyFilesSection } from "./PropertyFilesSection";
 import { PropertyImageGallery } from "./PropertyImageGallery";
 import { PropertyLayoutGallery } from "./PropertyLayoutGallery";
+import { PropertyPortalsView } from "./PropertyPortalsView";
 import { canViewSensitiveFields } from "@/utils/propertyPermissions";
 import { User } from "lucide-react";
 
@@ -297,6 +298,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="images">Images</TabsTrigger>
                 {canViewSensitive && <TabsTrigger value="documents">Documents</TabsTrigger>}
+                <TabsTrigger value="portals">🌐 Portals</TabsTrigger>
                 {showActivities && <TabsTrigger value="activities">Activities</TabsTrigger>}
               </TabsList>
 
@@ -571,6 +573,14 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                   />
                 </TabsContent>
               )}
+
+              {/* Portals Tab */}
+              <TabsContent value="portals" className="mt-4">
+                <PropertyPortalsView 
+                  property={property as Property}
+                  onUpdate={onUpdate}
+                />
+              </TabsContent>
 
               {/* Activities Tab */}
               {showActivities && (
