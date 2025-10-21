@@ -24,6 +24,7 @@ import {
   XCircle,
   Clock,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 
 interface WordPressPropertiesSidebarProps {
@@ -103,6 +104,36 @@ export const WordPressPropertiesSidebar: React.FC<WordPressPropertiesSidebarProp
       });
     } finally {
       setSyncing(null);
+    }
+  };
+
+  const handleSyncFromWordPress = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-from-wordpress');
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: 'Sync successful',
+          description: `${data.message}`,
+        });
+        loadWordPressProperties();
+        // Trigger properties refresh
+        window.dispatchEvent(new CustomEvent('properties:refresh'));
+      } else {
+        throw new Error(data.error || 'Sync failed');
+      }
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast({
+        title: 'Sync failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,17 +229,29 @@ export const WordPressPropertiesSidebar: React.FC<WordPressPropertiesSidebarProp
             />
           </div>
 
-          {/* Refresh button */}
-          <Button
-            onClick={loadWordPressProperties}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            className="w-full"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh List
-          </Button>
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <Button
+              onClick={loadWordPressProperties}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              className="flex-1"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={handleSyncFromWordPress}
+              variant="default"
+              size="sm"
+              disabled={loading}
+              className="flex-1"
+            >
+              <Download className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Import from WP
+            </Button>
+          </div>
         </div>
 
         {/* Properties List */}

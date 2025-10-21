@@ -279,6 +279,19 @@ export const Properties = () => {
     loadAgents();
   }, [fetchStats, isAdmin]);
 
+  // Listen for properties refresh events (e.g., from WordPress sync)
+  useEffect(() => {
+    const handlePropertiesRefresh = () => {
+      fetchStats();
+    };
+    
+    window.addEventListener('properties:refresh', handlePropertiesRefresh);
+    
+    return () => {
+      window.removeEventListener('properties:refresh', handlePropertiesRefresh);
+    };
+  }, [fetchStats]);
+
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
     let filtered = properties.filter(property => {
@@ -488,7 +501,7 @@ export const Properties = () => {
             Manage your property listings and inventory
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"

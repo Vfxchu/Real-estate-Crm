@@ -20,3 +20,6 @@ verify_jwt = true
 
 [functions.sync-to-wordpress]
 verify_jwt = true
+
+[functions.sync-from-wordpress]
+verify_jwt = false

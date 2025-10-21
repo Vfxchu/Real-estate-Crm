@@ -434,8 +434,15 @@ export const useProperties = () => {
         })
         .subscribe();
       
+      // Listen for custom refresh events
+      const handleRefresh = () => {
+        fetchProperties();
+      };
+      window.addEventListener('properties:refresh', handleRefresh);
+      
       return () => {
         supabase.removeChannel(channel);
+        window.removeEventListener('properties:refresh', handleRefresh);
       };
     }
   }, [user]);
