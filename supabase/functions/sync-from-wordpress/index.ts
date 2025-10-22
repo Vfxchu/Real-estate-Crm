@@ -25,15 +25,35 @@ serve(async (req) => {
       throw new Error('WordPress credentials not configured');
     }
 
-    // Fetch all published properties from WordPress
-    const wpResponse = await fetch(`${wpUrl}/wp-json/wp/v2/posts?status=publish&per_page=100`, {
-      headers: {
-        'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`),
-      },
-    });
+    // Fetch all published items from WordPress (supports custom post types)
+    const postType = Deno.env.get('WORDPRESS_POST_TYPE') || 'posts'
 
-    if (!wpResponse.ok) {
-      throw new Error(`WordPress API error: ${wpResponse.statusText}`);
+    const baseHeaders = {
+      'Authorization': 'Basic ' + btoa(`${wpUser}:${wpPassword}`),
+      'Accept': 'application/json',
+      'User-Agent': 'DKV-CRM-WordPressSync/1.0',
+    } as const
+
+    const candidates = [
+      `${wpUrl}/wp-json/wp/v2/${postType}?status=publish&per_page=100`,
+      `${wpUrl}/?rest_route=/wp/v2/${postType}&status=publish&per_page=100`,
+    ]
+
+    let wpResponse: Response | null = null
+    let lastBody = ''
+    for (const url of candidates) {
+      const res = await fetch(url, { headers: baseHeaders })
+      const contentType = res.headers.get('content-type') || ''
+      if (!res.ok || !contentType.includes('application/json')) {
+        try { lastBody = await res.text() } catch {}
+        continue
+      }
+      wpResponse = res
+      break
+    }
+
+    if (!wpResponse) {
+      throw new Error(`WordPress API error: could not retrieve JSON from endpoints for ${postType}. Sample response: ${lastBody.slice(0,300)}`)
     }
 
     const wpPosts = await wpResponse.json();
