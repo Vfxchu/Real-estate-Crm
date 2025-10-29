@@ -335,10 +335,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
             tasks={tasks}
             loading={loadingTasks}
             leadStatus={lead.status}
-            onCompleteTask={(taskId) => {
-              // Open outcome dialog instead of directly completing
-              setSelectedTaskId(taskId);
-              setIsOutcomeDialogOpen(true);
+            onCompleteTask={async (taskId) => {
+              await updateTaskStatus(taskId, 'Completed');
+              loadActivities();
+              loadCalendarEvents();
+              onUpdate?.();
             }}
           />
           
@@ -721,18 +722,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
       {/* Lead Outcome Dialog */}
       <LeadOutcomeDialog
         isOpen={isOutcomeDialogOpen}
-        onOpenChange={(open) => {
-          setIsOutcomeDialogOpen(open);
-          if (!open) {
-            setSelectedTaskId(null);
-          }
-        }}
+        onOpenChange={setIsOutcomeDialogOpen}
         lead={lead}
-        isFromTaskCompletion={!!selectedTaskId}
-        selectedTaskId={selectedTaskId || undefined}
+        isFromTaskCompletion={true}
+        selectedTaskId={selectedTaskId}
         onComplete={() => {
-          setIsOutcomeDialogOpen(false);
-          setSelectedTaskId(null);
           onUpdate?.();
           loadActivities();
           loadCalendarEvents();
