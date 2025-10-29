@@ -33,44 +33,63 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
 }) => {
   const [tasksWithOutcomes, setTasksWithOutcomes] = useState<TaskWithOutcome[]>([]);
   const [meetingScheduledEvents, setMeetingScheduledEvents] = useState<CalendarEventSimple[]>([]);
+  const [hasMeetingScheduledOutcome, setHasMeetingScheduledOutcome] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null);
 
   // Get the most recent open task (next upcoming by due date)
   const recentTask = tasks
     .filter(t => t.status === 'Open')
     .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())[0];
 
-  // Fetch outcomes and meeting events for the recent task
+  // Store lead_id from tasks
+  useEffect(() => {
+    if (recentTask?.lead_id) {
+      setLeadId(recentTask.lead_id);
+    }
+  }, [recentTask?.lead_id]);
+
+  // Fetch outcomes and meeting events
   useEffect(() => {
     const fetchData = async () => {
-      if (!recentTask?.lead_id) {
+      if (!leadId && !recentTask?.lead_id) {
         setTasksWithOutcomes(recentTask ? [recentTask] : []);
         setMeetingScheduledEvents([]);
+        setHasMeetingScheduledOutcome(false);
         return;
       }
 
+      const currentLeadId = leadId || recentTask?.lead_id;
+
       try {
-        // Fetch outcomes
+        // Fetch latest outcome for the lead
         const { data: outcomes, error: outcomeError } = await supabase
           .from('lead_outcomes')
           .select('outcome, created_at')
-          .eq('lead_id', recentTask.lead_id)
+          .eq('lead_id', currentLeadId)
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (outcomeError) throw outcomeError;
 
-        const taskWithOutcome: TaskWithOutcome = {
-          ...recentTask,
-          outcomeLabel: outcomes?.[0]?.outcome
-        };
+        const latestOutcome = outcomes?.[0]?.outcome;
+        setHasMeetingScheduledOutcome(latestOutcome === 'Meeting Scheduled');
 
-        setTasksWithOutcomes([taskWithOutcome]);
+        // If we have a recent task, attach the outcome to it
+        if (recentTask) {
+          const taskWithOutcome: TaskWithOutcome = {
+            ...recentTask,
+            outcomeLabel: latestOutcome
+          };
+          setTasksWithOutcomes([taskWithOutcome]);
+        } else {
+          setTasksWithOutcomes([]);
+        }
 
         // Fetch meeting scheduled events
         const { data: events, error: eventsError } = await supabase
           .from('calendar_events')
           .select('id, title, start_date, status')
-          .eq('lead_id', recentTask.lead_id)
+          .eq('lead_id', currentLeadId)
           .eq('event_type', 'contact_meeting')
           .eq('status', 'scheduled')
           .order('start_date', { ascending: true });
@@ -80,13 +99,14 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
         setMeetingScheduledEvents(events || []);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setTasksWithOutcomes([recentTask]);
+        setTasksWithOutcomes(recentTask ? [recentTask] : []);
         setMeetingScheduledEvents([]);
+        setHasMeetingScheduledOutcome(false);
       }
     };
 
     fetchData();
-  }, [recentTask?.id, recentTask?.lead_id]);
+  }, [recentTask?.id, leadId]);
 
   if (loading) {
     return (
@@ -96,11 +116,11 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
     );
   }
 
-  // Check if we have a meeting scheduled event
+  // Check if we have a meeting scheduled outcome and event
   const meetingEvent = meetingScheduledEvents[0];
 
-  // If there's a meeting scheduled, show it instead of task
-  if (meetingEvent && tasksWithOutcomes[0]?.outcomeLabel === 'Meeting Scheduled') {
+  // If there's a "Meeting Scheduled" outcome and a meeting event, show it instead of task
+  if (hasMeetingScheduledOutcome && meetingEvent) {
     const meetingDate = new Date(meetingEvent.start_date);
     const formattedDateTime = meetingDate.toLocaleDateString('en-US', {
       month: 'short',
