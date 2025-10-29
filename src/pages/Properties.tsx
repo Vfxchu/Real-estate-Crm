@@ -505,15 +505,14 @@ export const Properties = () => {
             Manage your property listings and inventory
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowWordPressSidebar(true)}
-            className="gap-2"
+            title="WordPress Properties"
           >
             <Globe className="w-4 h-4" />
-            <span className="hidden sm:inline">WordPress Properties</span>
           </Button>
           {isAdmin && (
             <>
@@ -547,7 +546,7 @@ export const Properties = () => {
               <SelectItem value="EUR">EUR</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="btn-primary flex-1 sm:flex-none" onClick={() => setShowAddProperty(true)}>
+          <Button className="btn-primary" onClick={() => setShowAddProperty(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add Property
           </Button>
