@@ -58,6 +58,7 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   const [clientStillWithUs, setClientStillWithUs] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [scheduledEventData, setScheduledEventData] = useState<any>(null);
   
   const [invalidReasons, setInvalidReasons] = useState<InvalidReason[]>([]);
   const [dealLostReasons, setDealLostReasons] = useState<DealLostReason[]>([]);
@@ -157,16 +158,19 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   };
 
   const handleEventSaved = async (eventData: any) => {
-    setShowEventModal(false);
+    // Store the event data to use when recording outcome
+    setScheduledEventData(eventData);
     
-    // Store the event data and set the follow-up date/time
+    // Extract datetime from the event
     const eventDate = new Date(eventData.start_date);
     setFollowUpDate(eventDate);
     setFollowUpTime(format(eventDate, 'HH:mm'));
     
+    setShowEventModal(false);
+    
     toast({
       title: 'Meeting Scheduled',
-      description: 'Event added to calendar. You can add notes and complete the outcome below.',
+      description: 'Event added to calendar. Complete outcome recording below.',
     });
   };
 
@@ -330,9 +334,9 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
                 ))}
               </SelectContent>
             </Select>
-            {outcome === 'Meeting Scheduled' && (
+            {outcome === 'Meeting Scheduled' && scheduledEventData && (
               <p className="text-sm text-muted-foreground">
-                Please schedule the meeting in the calendar form.
+                Meeting scheduled for {format(new Date(scheduledEventData.start_date), "MMM d, yyyy 'at' HH:mm")} (Dubai time)
               </p>
             )}
           </div>
