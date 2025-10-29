@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Lead } from "@/types";
+import { EventModal } from "@/components/calendar/EventModal";
+import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 
 interface LeadOutcomeDialogProps {
   isOpen: boolean;
@@ -55,12 +57,15 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   const [selectedReason, setSelectedReason] = useState("");
   const [clientStillWithUs, setClientStillWithUs] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [scheduledEventData, setScheduledEventData] = useState<any>(null);
   
   const [invalidReasons, setInvalidReasons] = useState<InvalidReason[]>([]);
   const [dealLostReasons, setDealLostReasons] = useState<DealLostReason[]>([]);
   const [availableOutcomes, setAvailableOutcomes] = useState<FollowUpOutcome[]>([]);
   
   const { toast } = useToast();
+  const { createEvent } = useCalendarEvents();
 
   useEffect(() => {
     if (isOpen && lead) {
@@ -123,7 +128,7 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
 
       // Remove one-time outcomes that were already used
       available = available.filter(o => {
-        if (['Interested', 'Under Offer'].includes(o)) {
+        if (['Interested', 'Under Offer', 'Meeting Scheduled'].includes(o)) {
           return !usedOutcomes.includes(o);
         }
         return true;
@@ -134,6 +139,39 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       console.error('Error loading available outcomes:', error);
       setAvailableOutcomes([...FOLLOW_UP_OUTCOMES]);
     }
+  };
+
+  const handleOutcomeChange = (value: FollowUpOutcome) => {
+    setOutcome(value);
+    
+    // If "Meeting Scheduled" is selected, trigger event modal
+    if (value === 'Meeting Scheduled') {
+      // Set default date to 15 minutes from now
+      const now = new Date();
+      const in15Minutes = new Date(now.getTime() + 15 * 60 * 1000);
+      setFollowUpDate(in15Minutes);
+      setFollowUpTime(format(in15Minutes, 'HH:mm'));
+      
+      // Open event modal
+      setShowEventModal(true);
+    }
+  };
+
+  const handleEventSaved = async (eventData: any) => {
+    // Store the event data to use when recording outcome
+    setScheduledEventData(eventData);
+    
+    // Extract datetime from the event
+    const eventDate = new Date(eventData.start_date);
+    setFollowUpDate(eventDate);
+    setFollowUpTime(format(eventDate, 'HH:mm'));
+    
+    setShowEventModal(false);
+    
+    toast({
+      title: 'Meeting Scheduled',
+      description: 'Event added to calendar. Complete outcome recording below.',
+    });
   };
 
   const handleSubmit = async () => {
@@ -284,7 +322,7 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
           {/* Outcome Selection */}
           <div className="space-y-2">
             <Label>Outcome *</Label>
-            <Select value={outcome} onValueChange={(value) => setOutcome(value as FollowUpOutcome)}>
+            <Select value={outcome} onValueChange={handleOutcomeChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Select outcome" />
               </SelectTrigger>
@@ -296,6 +334,11 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
                 ))}
               </SelectContent>
             </Select>
+            {outcome === 'Meeting Scheduled' && scheduledEventData && (
+              <p className="text-sm text-muted-foreground">
+                Meeting scheduled for {format(new Date(scheduledEventData.start_date), "MMM d, yyyy 'at' HH:mm")} (Dubai time)
+              </p>
+            )}
           </div>
 
           {/* Reason Selection (for Invalid/Deal Lost) */}
@@ -345,40 +388,42 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
             </div>
           )}
 
-          {/* Follow-up Date & Time */}
-          <div className="space-y-2">
-            <Label>Next Follow-up Date & Time *</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {followUpDate ? format(followUpDate, "MMM d, yyyy") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={followUpDate}
-                    onSelect={setFollowUpDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              
-              <Input
-                type="time"
-                value={followUpTime}
-                onChange={(e) => setFollowUpTime(e.target.value)}
-              />
+          {/* Follow-up Date & Time - Hidden for Meeting Scheduled */}
+          {outcome !== 'Meeting Scheduled' && (
+            <div className="space-y-2">
+              <Label>Next Follow-up Date & Time *</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {followUpDate ? format(followUpDate, "MMM d, yyyy") : "Pick date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={followUpDate}
+                      onSelect={setFollowUpDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <Input
+                  type="time"
+                  value={followUpTime}
+                  onChange={(e) => setFollowUpTime(e.target.value)}
+                />
+              </div>
+              {followUpDate && (
+                <p className="text-sm text-muted-foreground">
+                  Scheduled for: {format(followUpDate, "MMM d, yyyy")} at {followUpTime} (Dubai time)
+                </p>
+              )}
             </div>
-            {followUpDate && (
-              <p className="text-sm text-muted-foreground">
-                Scheduled for: {format(followUpDate, "MMM d, yyyy")} at {followUpTime} (Dubai time)
-              </p>
-            )}
-          </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
@@ -405,6 +450,29 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
           </div>
         </div>
       </DialogContent>
+      
+      {/* Event Modal for Meeting Scheduled */}
+      {lead && (
+        <EventModal
+          isOpen={showEventModal}
+          onClose={() => setShowEventModal(false)}
+          onSave={async (eventData) => {
+            const createdEvent = await createEvent({
+              ...eventData,
+              lead_id: lead.id,
+              event_type: 'contact_meeting'
+            });
+            if (createdEvent) {
+              handleEventSaved(createdEvent);
+            }
+          }}
+          linkedRecord={{
+            type: 'lead',
+            id: lead.id,
+          }}
+          defaultType="contact_meeting"
+        />
+      )}
     </Dialog>
   );
 }
