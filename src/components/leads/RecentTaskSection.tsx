@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Clock, Calendar } from "lucide-react";
 import { Task } from "@/hooks/useTasks";
 import { DueBadge } from "./DueBadge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RecentTaskSectionProps {
   tasks: Task[];
@@ -13,16 +14,55 @@ interface RecentTaskSectionProps {
   leadStatus?: string;
 }
 
+interface TaskWithOutcome extends Task {
+  outcomeLabel?: string;
+}
+
 export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
   tasks,
   loading,
   onCompleteTask,
   leadStatus
 }) => {
+  const [tasksWithOutcomes, setTasksWithOutcomes] = useState<TaskWithOutcome[]>([]);
+
   // Get the most recent open task (next upcoming by due date)
   const recentTask = tasks
     .filter(t => t.status === 'Open')
     .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())[0];
+
+  // Fetch outcomes for the recent task
+  useEffect(() => {
+    const fetchOutcomes = async () => {
+      if (!recentTask?.lead_id) {
+        setTasksWithOutcomes(recentTask ? [recentTask] : []);
+        return;
+      }
+
+      try {
+        const { data: outcomes, error } = await supabase
+          .from('lead_outcomes')
+          .select('outcome, created_at')
+          .eq('lead_id', recentTask.lead_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        const taskWithOutcome: TaskWithOutcome = {
+          ...recentTask,
+          outcomeLabel: outcomes?.[0]?.outcome
+        };
+
+        setTasksWithOutcomes([taskWithOutcome]);
+      } catch (error) {
+        console.error('Error fetching outcomes:', error);
+        setTasksWithOutcomes([recentTask]);
+      }
+    };
+
+    fetchOutcomes();
+  }, [recentTask?.id, recentTask?.lead_id]);
 
   if (loading) {
     return (
@@ -43,7 +83,8 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
     );
   }
 
-  const dueDate = new Date(recentTask.due_at);
+  const taskToDisplay: TaskWithOutcome = tasksWithOutcomes[0] || recentTask;
+  const dueDate = new Date(taskToDisplay.due_at);
   const formattedDueTime = dueDate.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -52,37 +93,42 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
     timeZone: 'Asia/Dubai'
   });
 
+  // Format title with outcome if available
+  const displayTitle = taskToDisplay.outcomeLabel 
+    ? `${taskToDisplay.title} — Outcome: ${taskToDisplay.outcomeLabel}`
+    : taskToDisplay.title;
+
   return (
     <Card className="border-primary/20 bg-primary/5">
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h4 className="font-semibold text-sm truncate">{recentTask.title}</h4>
-              <DueBadge dueAt={recentTask.due_at} taskStatus={recentTask.status} leadStatus={leadStatus} />
+              <h4 className="font-semibold text-sm truncate">{displayTitle}</h4>
+              <DueBadge dueAt={taskToDisplay.due_at} taskStatus={taskToDisplay.status} leadStatus={leadStatus} />
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
               <Clock className="w-3 h-3" />
               <span>{formattedDueTime} (Dubai time)</span>
             </div>
-            {recentTask.description && (
+            {taskToDisplay.description && (
               <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                {recentTask.description}
+                {taskToDisplay.description}
               </p>
             )}
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
-                {recentTask.type.replace('_', ' ')}
+                {taskToDisplay.type.replace('_', ' ')}
               </Badge>
               <Badge variant="secondary" className="text-xs">
-                {recentTask.status}
+                {taskToDisplay.status}
               </Badge>
             </div>
           </div>
           <Button
             size="sm"
             variant="default"
-            onClick={() => onCompleteTask(recentTask.id)}
+            onClick={() => onCompleteTask(taskToDisplay.id)}
             className="flex-shrink-0"
           >
             <CheckCircle className="w-4 h-4 mr-1" />
