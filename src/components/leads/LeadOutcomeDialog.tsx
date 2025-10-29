@@ -58,7 +58,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   const [clientStillWithUs, setClientStillWithUs] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [scheduledEventData, setScheduledEventData] = useState<any>(null);
   
   const [invalidReasons, setInvalidReasons] = useState<InvalidReason[]>([]);
   const [dealLostReasons, setDealLostReasons] = useState<DealLostReason[]>([]);
@@ -158,20 +157,57 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
   };
 
   const handleEventSaved = async (eventData: any) => {
-    // Store the event data to use when recording outcome
-    setScheduledEventData(eventData);
-    
-    // Extract datetime from the event
-    const eventDate = new Date(eventData.start_date);
-    setFollowUpDate(eventDate);
-    setFollowUpTime(format(eventDate, 'HH:mm'));
-    
     setShowEventModal(false);
+    setLoading(true);
     
-    toast({
-      title: 'Meeting Scheduled',
-      description: 'Event added to calendar. Complete outcome recording below.',
-    });
+    try {
+      // Extract datetime from the event
+      const eventDate = new Date(eventData.start_date);
+      
+      // Convert to UTC (assuming Dubai timezone +4)
+      const utcDueAt = new Date(eventDate.getTime() - (4 * 60 * 60 * 1000));
+
+      // Record the outcome immediately
+      const { data, error } = await supabase.rpc('apply_followup_outcome', {
+        p_lead_id: lead!.id,
+        p_outcome: 'Meeting Scheduled',
+        p_due_at: utcDueAt.toISOString(),
+        p_reason_id: null,
+        p_client_still_with_us: null,
+        p_notes: notes || null
+      });
+
+      if (error) {
+        console.error('Error recording outcome:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to record outcome',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      const result = (data as any)?.[0];
+
+      toast({
+        title: "Meeting Scheduled",
+        description: `Event created • Lead moved to ${result.new_stage} stage`,
+        variant: "default"
+      });
+
+      onComplete?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error('Error applying outcome:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to record outcome",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -334,9 +370,9 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
                 ))}
               </SelectContent>
             </Select>
-            {outcome === 'Meeting Scheduled' && scheduledEventData && (
+            {outcome === 'Meeting Scheduled' && (
               <p className="text-sm text-muted-foreground">
-                Meeting scheduled for {format(new Date(scheduledEventData.start_date), "MMM d, yyyy 'at' HH:mm")} (Dubai time)
+                Please schedule the meeting in the calendar form.
               </p>
             )}
           </div>
@@ -436,18 +472,20 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={loading || !outcome || !followUpDate}
-            >
-              {loading ? "Recording..." : "Record Outcome"}
-            </Button>
-          </div>
+          {/* Actions - Hide for Meeting Scheduled since it auto-submits */}
+          {outcome !== 'Meeting Scheduled' && (
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={loading || !outcome || !followUpDate}
+              >
+                {loading ? "Recording..." : "Record Outcome"}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
       
