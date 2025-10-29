@@ -498,9 +498,6 @@ export const LeadsManager = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">Leads</h1>
-            <p className="text-sm text-muted-foreground">
-              {filteredLeads.length} leads • Manage and track all your leads
-            </p>
           </div>
           <div className="flex gap-2">
             <input
