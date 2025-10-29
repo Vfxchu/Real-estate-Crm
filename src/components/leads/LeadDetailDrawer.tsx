@@ -329,17 +329,17 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         {/* Recent Task Section */}
         <div className="p-4 border-b bg-muted/20 flex-shrink-0">
           <div className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Recent Tasks
+            Recent Task
           </div>
           <RecentTaskSection 
             tasks={tasks}
             loading={loadingTasks}
             leadStatus={lead.status}
-            maxTasks={5}
-            onCompleteTask={(taskId) => {
-              // Open outcome dialog for recording outcome
-              setSelectedTaskId(taskId);
-              setIsOutcomeDialogOpen(true);
+            onCompleteTask={async (taskId) => {
+              await updateTaskStatus(taskId, 'Completed');
+              loadActivities();
+              loadCalendarEvents();
+              onUpdate?.();
             }}
           />
           
