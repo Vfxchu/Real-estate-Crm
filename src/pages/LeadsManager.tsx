@@ -473,6 +473,24 @@ export const LeadsManager = () => {
     }
   };
 
+  // Calculate counts for each tab
+  const getTabCounts = () => {
+    const allLeads = leads.filter(shouldShowLead);
+    
+    return {
+      all: allLeads.length,
+      new: allLeads.filter(l => l.status === 'new').length,
+      contacted: allLeads.filter(l => l.status === 'contacted').length,
+      qualified: allLeads.filter(l => l.status === 'qualified').length,
+      underOffer: allLeads.filter(l => l.status === 'negotiating').length,
+      won: allLeads.filter(l => l.status === 'won').length,
+      lost: allLeads.filter(l => l.status === 'lost').length,
+      invalid: allLeads.filter(l => l.custom_fields?.invalid === 'true').length,
+    };
+  };
+
+  const tabCounts = getTabCounts();
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Sticky Header */}
@@ -525,14 +543,30 @@ export const LeadsManager = () => {
         <div className="mt-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-8 h-10">
-              <TabsTrigger value="All" className="text-xs">All</TabsTrigger>
-              <TabsTrigger value="New" className="text-xs">New</TabsTrigger>
-              <TabsTrigger value="Contacted" className="text-xs">Contacted</TabsTrigger>
-              <TabsTrigger value="Qualified" className="text-xs">Qualified</TabsTrigger>
-              <TabsTrigger value="Under Offer" className="text-xs">Under Offer</TabsTrigger>
-              <TabsTrigger value="Won" className="text-xs">Won</TabsTrigger>
-              <TabsTrigger value="Lost" className="text-xs">Lost</TabsTrigger>
-              <TabsTrigger value="Invalid" className="text-xs">Invalid</TabsTrigger>
+              <TabsTrigger value="All" className="text-xs">
+                All <span className="ml-1 text-muted-foreground">({tabCounts.all})</span>
+              </TabsTrigger>
+              <TabsTrigger value="New" className="text-xs">
+                New <span className="ml-1 text-muted-foreground">({tabCounts.new})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Contacted" className="text-xs">
+                Contacted <span className="ml-1 text-muted-foreground">({tabCounts.contacted})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Qualified" className="text-xs">
+                Qualified <span className="ml-1 text-muted-foreground">({tabCounts.qualified})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Under Offer" className="text-xs">
+                Under Offer <span className="ml-1 text-muted-foreground">({tabCounts.underOffer})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Won" className="text-xs">
+                Won <span className="ml-1 text-muted-foreground">({tabCounts.won})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Lost" className="text-xs">
+                Lost <span className="ml-1 text-muted-foreground">({tabCounts.lost})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Invalid" className="text-xs">
+                Invalid <span className="ml-1 text-muted-foreground">({tabCounts.invalid})</span>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
