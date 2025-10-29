@@ -116,23 +116,27 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       const { data: pastOutcomes } = await supabase
         .from('lead_outcomes')
         .select('outcome')
-        .eq('lead_id', lead.id);
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
 
       const usedOutcomes = pastOutcomes?.map(o => o.outcome) || [];
-      const currentStage = lead.status.toLowerCase();
+      const latestOutcome = pastOutcomes?.[0]?.outcome;
 
       // Apply visibility rules
       let available = [...FOLLOW_UP_OUTCOMES];
 
-      // Deal Won is always available for all stages
-
-      // Remove one-time outcomes that were already used
-      available = available.filter(o => {
-        if (['Interested', 'Under Offer', 'Meeting Scheduled'].includes(o)) {
-          return !usedOutcomes.includes(o);
-        }
-        return true;
-      });
+      // If completing a task from a "Meeting Scheduled" outcome, hide "Meeting Scheduled"
+      if (isFromTaskCompletion && latestOutcome === 'Meeting Scheduled') {
+        available = available.filter(o => o !== 'Meeting Scheduled');
+      } else {
+        // Remove one-time outcomes that were already used
+        available = available.filter(o => {
+          if (['Interested', 'Under Offer', 'Meeting Scheduled'].includes(o)) {
+            return !usedOutcomes.includes(o);
+          }
+          return true;
+        });
+      }
 
       setAvailableOutcomes(available);
     } catch (error) {

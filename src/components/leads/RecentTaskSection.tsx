@@ -116,19 +116,28 @@ export const RecentTaskSection: React.FC<RecentTaskSectionProps> = ({
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <h4 className="font-semibold text-sm truncate">Meeting Scheduled</h4>
-                <Badge variant="outline" className="text-xs">
-                  Upcoming
+                <h4 className="font-semibold text-sm">Meeting Scheduled</h4>
+                <Badge variant="outline" className="text-xs bg-primary/10">
+                  Current Outcome
                 </Badge>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                <Clock className="w-3 h-3" />
-                <span>{formattedDateTime} (Dubai time)</span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <Calendar className="w-3 h-3" />
+                <span className="font-medium">{formattedDateTime} (Dubai time)</span>
               </div>
-              <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
+              <p className="text-xs text-muted-foreground line-clamp-2">
                 {meetingEvent.title}
               </p>
             </div>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => onCompleteTask(tasksWithOutcomes[0].id)}
+              className="flex-shrink-0"
+            >
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Complete
+            </Button>
           </div>
         </div>
       </Card>
