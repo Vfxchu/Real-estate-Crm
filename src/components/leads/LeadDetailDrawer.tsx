@@ -356,10 +356,9 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
           <ScrollArea className="h-full">
             <div className="p-6">
               <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-6">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="activities">Activities</TabsTrigger>
-                  <TabsTrigger value="calendar">Tasks & Events</TabsTrigger>
                   <TabsTrigger value="status">Status</TabsTrigger>
                   <TabsTrigger value="deals">Deals</TabsTrigger>
                   <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -471,120 +470,6 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                         <div className="text-center py-8 text-muted-foreground">
                           <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
                           <p className="text-sm">No activities yet</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="calendar" className="space-y-4">
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4" />
-                        Tasks & Events
-                      </CardTitle>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => lead && createManualFollowUp(lead.id)}
-                          disabled={loadingTasks || isTerminalStatus}
-                          title={isTerminalStatus ? "Cannot create tasks for Won/Lost/Invalid leads" : ""}
-                        >
-                          Add Follow-Up (+1h)
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => setIsOutcomeDialogOpen(true)}
-                          disabled={isTerminalStatus}
-                          title={isTerminalStatus ? "Cannot record outcomes for Won/Lost/Invalid leads" : ""}
-                        >
-                          Record Outcome
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {loadingTasks ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          Loading tasks and events...
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {/* Show next follow-up task at the top */}
-                          {tasks.filter(t => t.status === 'Open' && t.type === 'follow_up').slice(0, 1).map((task) => (
-                            <Card key={task.id} className="border-primary/20 bg-primary/5">
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-medium text-sm">{task.title}</h4>
-                                      <DueBadge dueAt={task.due_at} taskStatus={task.status} leadStatus={lead.status} />
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(task.due_at).toLocaleDateString('en-US', {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        timeZone: 'Asia/Dubai'
-                                      })} (Dubai time)
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setIsOutcomeDialogOpen(true)}
-                                    >
-                                      Complete
-                                    </Button>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                          
-                          {/* Show other tasks and events */}
-                          {events.length === 0 && tasks.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                              <p className="text-sm">No tasks or events scheduled</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {tasks.filter(t => !(t.status === 'Open' && t.type === 'follow_up')).map((task) => (
-                                <Card key={task.id} className="p-3 border-l-4 border-l-blue-200">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <h4 className="font-medium text-sm">{task.title}</h4>
-                                      <p className="text-xs text-muted-foreground">
-                                        {task.status} • {new Date(task.due_at).toLocaleDateString('en-US', {
-                                          month: 'short',
-                                          day: 'numeric',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                          timeZone: 'Asia/Dubai'
-                                        })} (Dubai time)
-                                      </p>
-                                    </div>
-                                    <DueBadge dueAt={task.due_at} taskStatus={task.status} leadStatus={lead.status} />
-                                  </div>
-                                </Card>
-                              ))}
-                              
-                              {events.map((event) => (
-                                <TaskEventItem
-                                  key={event.id}
-                                  event={event}
-                                  onUpdate={() => {
-                                    loadCalendarEvents();
-                                    loadActivities();
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </CardContent>
