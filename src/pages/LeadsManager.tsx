@@ -15,7 +15,9 @@ import { LeadMeta } from "@/components/leads/LeadMeta";
 import { LeadSlaStatus } from "@/components/leads/LeadSlaStatus";
 import { QuickCallActions } from "@/components/leads/QuickCallActions";
 import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
+import LeadsAdvancedSearch, { type LeadSearchFilters } from "@/components/leads/LeadsAdvancedSearch";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Table,
   TableBody,
@@ -50,14 +52,8 @@ export const LeadsManager = () => {
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('All');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [contactStatusFilter, setContactStatusFilter] = useState<string>('all');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [agentFilter, setAgentFilter] = useState<string>('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [dateRangeFilter, setDateRangeFilter] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [advancedFilters, setAdvancedFilters] = useState<LeadSearchFilters>({});
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -65,6 +61,7 @@ export const LeadsManager = () => {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showLeadDrawer, setShowLeadDrawer] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [agents, setAgents] = useState<Array<{ id: string; name: string }>>([]);
   const { toast } = useToast();
 
   const handleStatusChange = async (leadId: string, newStatus: Lead['status']) => {
@@ -197,29 +194,55 @@ export const LeadsManager = () => {
       return false;
     }
 
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lead.phone?.includes(searchTerm) ||
-                         lead.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.phone?.includes(searchTerm) ||
+      lead.notes?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || lead.priority === priorityFilter;
-    const matchesContactStatus = contactStatusFilter === 'all' || lead.contact_status === contactStatusFilter;
-    const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
-    const matchesCategory = categoryFilter === 'all' || lead.category === categoryFilter;
-    const matchesAgent = agentFilter === 'all' || lead.profiles?.name === agentFilter;
+    // Advanced filters
+    const matchesLeadStatus = !advancedFilters.leadStatus || lead.status === advancedFilters.leadStatus;
+    const matchesPriority = !advancedFilters.priority || lead.priority === advancedFilters.priority;
+    const matchesContactStatus = !advancedFilters.contactStatus || lead.contact_status === advancedFilters.contactStatus;
+    const matchesSource = !advancedFilters.source || lead.source === advancedFilters.source || lead.lead_source === advancedFilters.source;
+    const matchesCategory = !advancedFilters.category || lead.category === advancedFilters.category;
+    const matchesAgent = !advancedFilters.agent || lead.agent_id === advancedFilters.agent;
+    
+    // Interest tags filter
+    const matchesInterestTags = !advancedFilters.interestTags || 
+      (lead.interest_tags && lead.interest_tags.includes(advancedFilters.interestTags));
+    
+    // Property requirement filters
+    const matchesSegment = !advancedFilters.segment || lead.segment === advancedFilters.segment;
+    const matchesSubtype = !advancedFilters.subtype || lead.subtype === advancedFilters.subtype;
+    const matchesBedrooms = !advancedFilters.bedrooms || lead.bedrooms === advancedFilters.bedrooms;
+    const matchesBudgetSale = !advancedFilters.budgetSaleBand || lead.budget_sale_band === advancedFilters.budgetSaleBand;
+    const matchesBudgetRent = !advancedFilters.budgetRentBand || lead.budget_rent_band === advancedFilters.budgetRentBand;
+    const matchesSizeBand = !advancedFilters.sizeBand || lead.size_band === advancedFilters.sizeBand;
+    
+    // Location filter
+    const matchesLocation = !advancedFilters.location || 
+      lead.location_address?.toLowerCase().includes(advancedFilters.location.toLowerCase());
+    
+    // Contact preference filter
+    const matchesContactPref = !advancedFilters.contactPref || 
+      (lead.contact_pref && lead.contact_pref.includes(advancedFilters.contactPref));
     
     // Date range filter
     let matchesDateRange = true;
-    if (dateRangeFilter.from && dateRangeFilter.to) {
+    if (advancedFilters.fromDate && advancedFilters.toDate) {
       const leadDate = new Date(lead.created_at);
-      const fromDate = new Date(dateRangeFilter.from);
-      const toDate = new Date(dateRangeFilter.to);
+      const fromDate = new Date(advancedFilters.fromDate);
+      const toDate = new Date(advancedFilters.toDate);
       matchesDateRange = leadDate >= fromDate && leadDate <= toDate;
     }
     
-    return matchesSearch && matchesStatus && matchesPriority && matchesContactStatus && 
-           matchesSource && matchesCategory && matchesAgent && matchesDateRange;
+    return matchesSearch && matchesLeadStatus && matchesPriority && matchesContactStatus && 
+           matchesSource && matchesCategory && matchesAgent && matchesInterestTags &&
+           matchesSegment && matchesSubtype && matchesBedrooms && matchesBudgetSale && 
+           matchesBudgetRent && matchesSizeBand && matchesLocation && matchesContactPref && 
+           matchesDateRange;
   });
 
   const getStatusColor = (status: Lead['status']) => {
@@ -370,6 +393,103 @@ export const LeadsManager = () => {
     setShowLeadDrawer(true);
   };
 
+  // Load agents for admin filter
+  React.useEffect(() => {
+    const loadAgents = async () => {
+      if (profile?.role === 'admin') {
+        const { data: agentRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'agent');
+
+        const agentUserIds = agentRoles?.map(r => r.user_id) || [];
+
+        if (agentUserIds.length > 0) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('user_id, name')
+            .in('user_id', agentUserIds)
+            .eq('status', 'active');
+            
+          if (data) {
+            setAgents(data.map(agent => ({ id: agent.user_id, name: agent.name })));
+          }
+        }
+      }
+    };
+    
+    loadAgents();
+  }, [profile?.role]);
+
+  const handleApplyFilters = (filters: LeadSearchFilters) => {
+    setAdvancedFilters(filters);
+  };
+
+  const handleClearFilters = () => {
+    setAdvancedFilters({});
+    setSearchTerm('');
+    toast({
+      title: 'Filters cleared',
+      description: 'All filters have been reset successfully'
+    });
+  };
+
+  const getActiveFilterCount = () => {
+    return Object.keys(advancedFilters).length + (searchTerm ? 1 : 0);
+  };
+
+  const getFilterChips = () => {
+    const chips: Array<{ key: string; label: string; value: string }> = [];
+    
+    if (searchTerm) {
+      chips.push({ key: 'search', label: 'Search', value: searchTerm });
+    }
+    
+    Object.entries(advancedFilters).forEach(([key, value]) => {
+      if (value) {
+        const labelMap: Record<string, string> = {
+          leadStatus: 'Lead Status',
+          priority: 'Priority',
+          contactStatus: 'Contact Status',
+          source: 'Source',
+          category: 'Category',
+          interestTags: 'Interest',
+          segment: 'Segment',
+          subtype: 'Property Type',
+          bedrooms: 'Bedrooms',
+          budgetSaleBand: 'Budget (Sale)',
+          budgetRentBand: 'Budget (Rent)',
+          sizeBand: 'Size',
+          location: 'Location',
+          contactPref: 'Contact Pref',
+          fromDate: 'From Date',
+          toDate: 'To Date',
+          agent: 'Agent',
+        };
+        
+        chips.push({ 
+          key, 
+          label: labelMap[key] || key, 
+          value: typeof value === 'string' ? value : String(value) 
+        });
+      }
+    });
+    
+    return chips;
+  };
+
+  const removeFilterChip = (key: string) => {
+    if (key === 'search') {
+      setSearchTerm('');
+    } else {
+      setAdvancedFilters(prev => {
+        const newFilters = { ...prev };
+        delete newFilters[key as keyof LeadSearchFilters];
+        return newFilters;
+      });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Sticky Header */}
@@ -434,7 +554,7 @@ export const LeadsManager = () => {
           </Tabs>
         </div>
 
-        {/* Search and Quick Filters Bar */}
+        {/* Search and Filters Bar */}
         <div className="flex flex-col sm:flex-row gap-3 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -446,229 +566,64 @@ export const LeadsManager = () => {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="qualified">Qualified</SelectItem>
-                <SelectItem value="negotiating">Negotiating</SelectItem>
-                <SelectItem value="won">Won</SelectItem>
-                <SelectItem value="lost">Lost</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={agentFilter} onValueChange={setAgentFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Agent" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Agents</SelectItem>
-                {[...new Set(leads.map(lead => lead.profiles?.name).filter(Boolean))].map(agentName => (
-                  <SelectItem key={agentName} value={agentName!}>
-                    {agentName}
-                  </SelectItem>
-                ))}
-                <SelectItem value="Unassigned">Unassigned</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={showAdvancedFilters}
-                onCheckedChange={setShowAdvancedFilters}
-                id="advanced-mode"
-              />
-              <Label htmlFor="advanced-mode" className="text-sm">Advanced</Label>
-            </div>
+            <Button
+              variant={showAdvancedFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="shrink-0"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+              {getActiveFilterCount() > 0 && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  {getActiveFilterCount()}
+                </Badge>
+              )}
+            </Button>
           </div>
         </div>
 
         {/* Active Filters Chips */}
-        {(statusFilter !== 'all' || agentFilter !== 'all' || priorityFilter !== 'all' || searchTerm) && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {statusFilter !== 'all' && (
-              <Badge variant="secondary" className="text-xs">
-                Status: {statusFilter}
+        {getActiveFilterCount() > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {getFilterChips().map(({ key, label, value }) => (
+              <Badge 
+                key={key} 
+                variant="secondary" 
+                className="text-xs flex items-center gap-1 pr-1"
+              >
+                <span className="font-medium">{label}:</span>
+                <span className="max-w-[120px] truncate">{value}</span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="ml-1 h-4 w-4 p-0"
-                  onClick={() => setStatusFilter('all')}
+                  className="h-4 w-4 p-0 hover:bg-transparent ml-1"
+                  onClick={() => removeFilterChip(key)}
                 >
                   <X className="w-3 h-3" />
                 </Button>
               </Badge>
-            )}
-            {agentFilter !== 'all' && (
-              <Badge variant="secondary" className="text-xs">
-                Agent: {agentFilter}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-1 h-4 w-4 p-0"
-                  onClick={() => setAgentFilter('all')}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </Badge>
-            )}
-            {priorityFilter !== 'all' && (
-              <Badge variant="secondary" className="text-xs">
-                Priority: {priorityFilter}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-1 h-4 w-4 p-0"
-                  onClick={() => setPriorityFilter('all')}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </Badge>
-            )}
-            {searchTerm && (
-              <Badge variant="secondary" className="text-xs">
-                Search: {searchTerm}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-1 h-4 w-4 p-0"
-                  onClick={() => setSearchTerm('')}
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </Badge>
-            )}
+            ))}
             <Button
               variant="ghost"
               size="sm"
               className="text-xs h-6"
-              onClick={() => {
-                setStatusFilter('all');
-                setPriorityFilter('all');
-                setContactStatusFilter('all');
-                setSourceFilter('all');
-                setCategoryFilter('all');
-                setAgentFilter('all');
-                setDateRangeFilter({ from: '', to: '' });
-                setSearchTerm('');
-              }}
+              onClick={handleClearFilters}
             >
-              Clear all
+              Clear All
             </Button>
           </div>
         )}
       </div>
 
-      {/* Advanced Filters Collapsible */}
+      {/* Advanced Filters Section */}
       {showAdvancedFilters && (
-        <Card className="card-elevated">
-          <CardContent className="p-4">
-            <h4 className="font-medium mb-3 text-sm">Advanced Filters</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Priority</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Contact Status</Label>
-                <Select value={contactStatusFilter} onValueChange={setContactStatusFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Contact Status</SelectItem>
-                    <SelectItem value="lead">Not Contacted</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="active_client">Active Client</SelectItem>
-                    <SelectItem value="past_client">Past Client</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Source</Label>
-                <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sources</SelectItem>
-                    <SelectItem value="website">Website</SelectItem>
-                    <SelectItem value="referral">Referral</SelectItem>
-                    <SelectItem value="social">Social Media</SelectItem>
-                    <SelectItem value="advertising">Advertising</SelectItem>
-                    <SelectItem value="cold_call">Cold Call</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="instagram">Instagram</SelectItem>
-                    <SelectItem value="facebook_ads">Facebook Ads</SelectItem>
-                    <SelectItem value="google_ads">Google Ads</SelectItem>
-                    <SelectItem value="walk_in">Walk In</SelectItem>
-                    <SelectItem value="portal">Portal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Category</Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="property">Property</SelectItem>
-                    <SelectItem value="requirement">Requirement</SelectItem>
-                    <SelectItem value="both">Both</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">From Date</Label>
-                <Input
-                  type="date"
-                  value={dateRangeFilter.from}
-                  onChange={(e) => setDateRangeFilter(prev => ({ ...prev, from: e.target.value }))}
-                  className="h-8 text-sm"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="w-full h-8 text-xs"
-                  onClick={() => {
-                    setStatusFilter('all');
-                    setPriorityFilter('all');
-                    setContactStatusFilter('all');
-                    setSourceFilter('all');
-                    setCategoryFilter('all');
-                    setAgentFilter('all');
-                    setDateRangeFilter({ from: '', to: '' });
-                    setSearchTerm('');
-                  }}
-                >
-                  Clear All
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <LeadsAdvancedSearch
+          onSearch={handleApplyFilters}
+          onClear={handleClearFilters}
+          isAdmin={profile?.role === 'admin'}
+          agents={agents}
+        />
       )}
 
       {/* Mobile and Desktop Content */}
