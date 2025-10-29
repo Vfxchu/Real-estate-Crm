@@ -35,7 +35,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           timestamp: string
           user_agent: string | null
           user_id: string
@@ -45,7 +45,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           timestamp?: string
           user_agent?: string | null
           user_id: string
@@ -55,7 +55,7 @@ export type Database = {
           entity_id?: string
           entity_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           timestamp?: string
           user_agent?: string | null
           user_id?: string
@@ -1560,7 +1560,7 @@ export type Database = {
           action: string
           created_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           resource_id: string | null
@@ -1572,7 +1572,7 @@ export type Database = {
           action: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           resource_id?: string | null
@@ -1584,7 +1584,7 @@ export type Database = {
           action?: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           resource_id?: string | null
@@ -1784,7 +1784,7 @@ export type Database = {
         Returns: boolean
       }
       check_property_contact_consistency: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           issue_type: string
           message: string
@@ -1794,7 +1794,7 @@ export type Database = {
         }[]
       }
       check_task_consistency: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           issue_type: string
           lead_id: string
@@ -1803,33 +1803,24 @@ export type Database = {
           task_count: number
         }[]
       }
-      complete_task_with_auto_followup: {
-        Args:
-          | { p_auto_next_hours?: number; p_task_id: string }
-          | { p_lead_id: string; p_outcome: string }
-        Returns: {
-          completed_task_id: string
-          lead_stage: string
-          next_event_id: string
-          next_task_id: string
-        }[]
-      }
-      custom_access_token_hook: {
-        Args: { event: Json }
-        Returns: Json
-      }
+      complete_task_with_auto_followup:
+        | {
+            Args: { p_auto_next_hours?: number; p_task_id: string }
+            Returns: {
+              completed_task_id: string
+              lead_stage: string
+              next_event_id: string
+              next_task_id: string
+            }[]
+          }
+        | { Args: { p_lead_id: string; p_outcome: string }; Returns: undefined }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       ensure_manual_followup: {
         Args: { p_due_at?: string; p_lead_id: string; p_title?: string }
         Returns: string
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_least_busy_agent: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_role: { Args: never; Returns: string }
+      get_least_busy_agent: { Args: never; Returns: string }
       get_user_public_info: {
         Args: { user_ids: string[] }
         Returns: {
@@ -1839,20 +1830,17 @@ export type Database = {
           user_id: string
         }[]
       }
-      has_role: {
-        Args:
-          | { _role: Database["public"]["Enums"]["app_role"]; _user_id: string }
-          | { _role: string; _user_id: string }
-        Returns: boolean
-      }
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_valid_uuid_path: {
-        Args: { path: string }
-        Returns: boolean
-      }
+      has_role:
+        | {
+            Args: {
+              _role: Database["public"]["Enums"]["app_role"]
+              _user_id: string
+            }
+            Returns: boolean
+          }
+        | { Args: { _role: string; _user_id: string }; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
+      is_valid_uuid_path: { Args: { path: string }; Returns: boolean }
       log_call_outcome: {
         Args: {
           p_agent_id: string
@@ -1863,10 +1851,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_index_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      log_index_usage: { Args: never; Returns: undefined }
       log_profile_access: {
         Args: {
           p_accessed_email: string
@@ -1894,10 +1879,7 @@ export type Database = {
           similarity: number
         }[]
       }
-      reassign_overdue_leads: {
-        Args: { p_minutes?: number }
-        Returns: number
-      }
+      reassign_overdue_leads: { Args: { p_minutes?: number }; Returns: number }
       recompute_contact_status: {
         Args: { p_contact_id: string; p_reason?: string }
         Returns: undefined
