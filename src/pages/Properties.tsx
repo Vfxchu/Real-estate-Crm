@@ -49,6 +49,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PropertyMetaTags } from "@/components/properties/PropertyMetaTags";
 import { WordPressPropertiesSidebar } from "@/components/properties/WordPressPropertiesSidebar";
+import { BulkUploadModal } from "@/components/properties/BulkUploadModal";
+import { exportPropertiesToExcel } from "@/utils/propertyExcel";
+import { FileDown, Upload as UploadIcon } from 'lucide-react';
 
 // Currency formatting with dirham symbol
 const formatCurrency = (amount: number, currency = 'AED') => {
@@ -148,6 +151,7 @@ export const Properties = () => {
     loading: true
   });
   const [showWordPressSidebar, setShowWordPressSidebar] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
 
   const { toast } = useToast();
 
@@ -511,6 +515,28 @@ export const Properties = () => {
             <Globe className="w-4 h-4" />
             <span className="hidden sm:inline">WordPress Properties</span>
           </Button>
+          {isAdmin && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportPropertiesToExcel(filteredProperties, filters)}
+                className="gap-2"
+              >
+                <FileDown className="w-4 h-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBulkUpload(true)}
+                className="gap-2"
+              >
+                <UploadIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Bulk Upload</span>
+              </Button>
+            </>
+          )}
           <Select value={currency} onValueChange={setCurrency}>
             <SelectTrigger className="w-20 sm:w-24">
               <SelectValue />
@@ -1206,6 +1232,13 @@ export const Properties = () => {
           />
         )}
       </ResponsiveDialog>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        open={showBulkUpload}
+        onOpenChange={setShowBulkUpload}
+        onSuccess={fetchStats}
+      />
     </div>
   );
 };
