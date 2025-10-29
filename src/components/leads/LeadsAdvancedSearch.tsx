@@ -30,15 +30,8 @@ export interface LeadSearchFilters {
   bedrooms?: string;
   sizeBand?: string;
   
-  // Location
-  location?: string;
-  
   // Communication
   contactPref?: string;
-  
-  // Date Range
-  fromDate?: string;
-  toDate?: string;
   
   // Agent (for admin)
   agent?: string;
@@ -133,8 +126,6 @@ export default function LeadsAdvancedSearch({
   const [filters, setFilters] = useState<LeadSearchFilters>({});
   const [isStatusOpen, setIsStatusOpen] = useState(true);
   const [isRequirementsOpen, setIsRequirementsOpen] = useState(false);
-  const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [isDateOpen, setIsDateOpen] = useState(false);
 
   const handleFilterChange = (key: keyof LeadSearchFilters, value: string | undefined) => {
     setFilters(prev => ({
@@ -386,60 +377,6 @@ export default function LeadsAdvancedSearch({
                   onChange={(value) => handleFilterChange('contactPref', value)}
                   options={contactPrefOptions}
                   placeholder="Select preference"
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Location Section */}
-        <Collapsible open={isLocationOpen} onOpenChange={setIsLocationOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full py-2 hover:bg-accent/50 rounded px-2 transition-colors">
-            <span className="text-sm font-medium">Location</span>
-            {isLocationOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 gap-3 pt-3">
-              <div>
-                <Label htmlFor="location" className="text-xs text-muted-foreground">Location/Address</Label>
-                <Input
-                  id="location"
-                  placeholder="Enter location or address"
-                  value={filters.location || ''}
-                  onChange={(e) => handleFilterChange('location', e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* Date Range Section */}
-        <Collapsible open={isDateOpen} onOpenChange={setIsDateOpen}>
-          <CollapsibleTrigger className="flex items-center justify-between w-full py-2 hover:bg-accent/50 rounded px-2 transition-colors">
-            <span className="text-sm font-medium">Date Range</span>
-            {isDateOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
-              <div>
-                <Label htmlFor="fromDate" className="text-xs text-muted-foreground">From Date</Label>
-                <Input
-                  id="fromDate"
-                  type="date"
-                  value={filters.fromDate || ''}
-                  onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div>
-                <Label htmlFor="toDate" className="text-xs text-muted-foreground">To Date</Label>
-                <Input
-                  id="toDate"
-                  type="date"
-                  value={filters.toDate || ''}
-                  onChange={(e) => handleFilterChange('toDate', e.target.value)}
                   className="h-9 text-sm"
                 />
               </div>

@@ -221,28 +221,14 @@ export const LeadsManager = () => {
     const matchesBudgetRent = !advancedFilters.budgetRentBand || lead.budget_rent_band === advancedFilters.budgetRentBand;
     const matchesSizeBand = !advancedFilters.sizeBand || lead.size_band === advancedFilters.sizeBand;
     
-    // Location filter
-    const matchesLocation = !advancedFilters.location || 
-      lead.location_address?.toLowerCase().includes(advancedFilters.location.toLowerCase());
-    
     // Contact preference filter
     const matchesContactPref = !advancedFilters.contactPref || 
       (lead.contact_pref && lead.contact_pref.includes(advancedFilters.contactPref));
     
-    // Date range filter
-    let matchesDateRange = true;
-    if (advancedFilters.fromDate && advancedFilters.toDate) {
-      const leadDate = new Date(lead.created_at);
-      const fromDate = new Date(advancedFilters.fromDate);
-      const toDate = new Date(advancedFilters.toDate);
-      matchesDateRange = leadDate >= fromDate && leadDate <= toDate;
-    }
-    
     return matchesSearch && matchesLeadStatus && matchesPriority && matchesContactStatus && 
            matchesSource && matchesCategory && matchesAgent && matchesInterestTags &&
            matchesSegment && matchesSubtype && matchesBedrooms && matchesBudgetSale && 
-           matchesBudgetRent && matchesSizeBand && matchesLocation && matchesContactPref && 
-           matchesDateRange;
+           matchesBudgetRent && matchesSizeBand && matchesContactPref;
   });
 
   const getStatusColor = (status: Lead['status']) => {
@@ -460,10 +446,7 @@ export const LeadsManager = () => {
           budgetSaleBand: 'Budget (Sale)',
           budgetRentBand: 'Budget (Rent)',
           sizeBand: 'Size',
-          location: 'Location',
           contactPref: 'Contact Pref',
-          fromDate: 'From Date',
-          toDate: 'To Date',
           agent: 'Agent',
         };
         
