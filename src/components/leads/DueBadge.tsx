@@ -14,15 +14,11 @@ export function DueBadge({ dueAt, className, taskStatus, leadStatus }: DueBadgeP
 
   useEffect(() => {
     const updateTimeRemaining = () => {
-      const now = new Date();
-      const due = new Date(dueAt);
+      const { nowInDubai, toDubaiTime } = require('@/lib/dubai-time');
+      const now = nowInDubai();
+      const dueInDubai = toDubaiTime(dueAt);
       
-      // Convert to Dubai time for display
-      const dubaiOffset = 4 * 60 * 60 * 1000; // +4 UTC
-      const dueInDubai = new Date(due.getTime() + dubaiOffset);
-      const nowInDubai = new Date(now.getTime() + dubaiOffset);
-      
-      const diff = dueInDubai.getTime() - nowInDubai.getTime();
+      const diff = dueInDubai.getTime() - now.getTime();
       
       // Hide badge completely if task is completed or lead is won
       if (taskStatus === 'Completed' || taskStatus === 'completed' || leadStatus === 'won') {

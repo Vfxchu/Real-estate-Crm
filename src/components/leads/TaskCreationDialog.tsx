@@ -77,13 +77,15 @@ export function TaskCreationDialog({
   ];
 
   const handleQuickSelect = (option: typeof quickTimeOptions[0]) => {
-    const date = addHours(new Date(), option.hours);
+    const { nowInDubai, getDubaiTimeString, toDubaiTime } = require('@/lib/dubai-time');
+    const dubaiNow = nowInDubai();
+    const date = addHours(dubaiNow, option.hours);
     setSelectedDate(date);
     
     if (option.time) {
       setSelectedTime(option.time);
     } else {
-      setSelectedTime(format(date, 'HH:mm'));
+      setSelectedTime(getDubaiTimeString(date));
     }
   };
 
@@ -102,10 +104,11 @@ export function TaskCreationDialog({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Combine date and time
-      const [hours, minutes] = selectedTime ? selectedTime.split(':').map(Number) : [9, 0];
-      const taskDateTime = new Date(selectedDate);
-      taskDateTime.setHours(hours, minutes, 0, 0);
+      // Combine date and time in Dubai timezone, then convert to UTC for storage
+      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
+      const dateStr = getDubaiDateString(selectedDate);
+      const timeStr = selectedTime || '09:00';
+      const taskDateTime = createDubaiDateTime(dateStr, timeStr);
 
       const config = taskConfig[taskType];
       

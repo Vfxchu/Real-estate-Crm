@@ -189,22 +189,15 @@ export function useTasks(leadId?: string) {
         (payload) => {
           const newTask = payload.new as Task;
           if (newTask.origin === 'auto_followup' && newTask.status === 'Open') {
-            const dueDate = new Date(newTask.due_at);
             // Convert to Dubai time for display
-            const dubaiTime = new Date(dueDate.getTime() + (4 * 60 * 60 * 1000));
+            const { formatDubaiTime } = require('@/lib/dubai-time');
             
             const isFromCompletion = newTask.created_at && 
               (Date.now() - new Date(newTask.created_at).getTime()) < 5000; // Within 5 seconds
             
             toast({
               title: isFromCompletion ? "Next follow-up auto-created" : "Follow-up task created",
-              description: `Due ${dubaiTime.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                timeZone: 'Asia/Dubai'
-              })}`,
+              description: `Due ${formatDubaiTime(newTask.due_at, 'MMM d, h:mm a')}`,
               variant: "default"
             });
           }

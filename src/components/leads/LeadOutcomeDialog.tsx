@@ -79,12 +79,12 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     setOutcome("");
     setNotes("");
     
-    // If opened from task completion, set follow-up to 15 minutes from now
+    // If opened from task completion, set follow-up to 15 minutes from now in Dubai time
     if (isFromTaskCompletion) {
-      const now = new Date();
-      const in15Minutes = new Date(now.getTime() + 15 * 60 * 1000);
+      const { nowInDubai, getDubaiTimeString } = require('@/lib/dubai-time');
+      const in15Minutes = new Date(nowInDubai().getTime() + 15 * 60 * 1000);
       setFollowUpDate(in15Minutes);
-      setFollowUpTime(format(in15Minutes, 'HH:mm'));
+      setFollowUpTime(getDubaiTimeString(in15Minutes));
     } else {
       setFollowUpDate(undefined);
       setFollowUpTime("09:00");
@@ -150,11 +150,11 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     
     // If "Meeting Scheduled" is selected, trigger event modal
     if (value === 'Meeting Scheduled') {
-      // Set default date to 15 minutes from now
-      const now = new Date();
-      const in15Minutes = new Date(now.getTime() + 15 * 60 * 1000);
+      // Set default date to 15 minutes from now in Dubai time
+      const { nowInDubai, getDubaiTimeString } = require('@/lib/dubai-time');
+      const in15Minutes = new Date(nowInDubai().getTime() + 15 * 60 * 1000);
       setFollowUpDate(in15Minutes);
-      setFollowUpTime(format(in15Minutes, 'HH:mm'));
+      setFollowUpTime(getDubaiTimeString(in15Minutes));
       
       // Open event modal
       setShowEventModal(true);
@@ -165,10 +165,11 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     // Store the event data to use when recording outcome
     setScheduledEventData(eventData);
     
-    // Extract datetime from the event
-    const eventDate = new Date(eventData.start_date);
-    setFollowUpDate(eventDate);
-    setFollowUpTime(format(eventDate, 'HH:mm'));
+    // Extract datetime from the event (it's in UTC, convert to Dubai time for display)
+    const { toDubaiTime, getDubaiTimeString } = require('@/lib/dubai-time');
+    const dubaiDate = toDubaiTime(eventData.start_date);
+    setFollowUpDate(dubaiDate);
+    setFollowUpTime(getDubaiTimeString(eventData.start_date));
     
     setShowEventModal(false);
     
@@ -223,13 +224,10 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     setLoading(true);
 
     try {
-      // Combine date and time in UTC
-      const [hours, minutes] = followUpTime.split(':').map(Number);
-      const dueAt = new Date(followUpDate);
-      dueAt.setHours(hours, minutes, 0, 0);
-      
-      // Convert to UTC (assuming Dubai timezone +4)
-      const utcDueAt = new Date(dueAt.getTime() - (4 * 60 * 60 * 1000));
+      // Combine date and time in Dubai timezone, then convert to UTC for storage
+      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
+      const dateStr = getDubaiDateString(followUpDate);
+      const utcDueAt = createDubaiDateTime(dateStr, followUpTime);
 
       const { data, error } = await supabase.rpc('apply_followup_outcome', {
         p_lead_id: lead.id,

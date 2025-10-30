@@ -74,16 +74,15 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   // Initialize form data
   useEffect(() => {
+    const { getDubaiDateString, getDubaiTimeString } = require('@/lib/dubai-time');
+    
     if (event) {
-      const startDate = new Date(event.start_date);
-      const endDate = event.end_date ? new Date(event.end_date) : null;
-      
       setFormData({
         title: event.title || '',
         event_type: event.event_type,
-        start_date: format(startDate, 'yyyy-MM-dd'),
-        start_time: format(startDate, 'HH:mm'),
-        end_time: endDate ? format(endDate, 'HH:mm') : '',
+        start_date: getDubaiDateString(event.start_date),
+        start_time: getDubaiTimeString(event.start_date),
+        end_time: event.end_date ? getDubaiTimeString(event.end_date) : '',
         location: event.location || '',
         notes: event.notes || '',
         lead_id: event.lead_id || '',
@@ -96,8 +95,8 @@ export const EventModal: React.FC<EventModalProps> = ({
       const defaultDateTime = defaultDate || new Date();
       setFormData(prev => ({
         ...prev,
-        start_date: format(defaultDateTime, 'yyyy-MM-dd'),
-        start_time: format(defaultDateTime, 'HH:mm'),
+        start_date: getDubaiDateString(defaultDateTime),
+        start_time: getDubaiTimeString(defaultDateTime),
         event_type: defaultType || 'contact_meeting',
         lead_id: linkedRecord?.type === 'lead' ? linkedRecord.id : '',
         property_id: linkedRecord?.type === 'property' ? linkedRecord.id : '',
@@ -111,10 +110,11 @@ export const EventModal: React.FC<EventModalProps> = ({
     try {
       setLoading(true);
       
-      // Combine date and time
-      const startDateTime = new Date(`${formData.start_date}T${formData.start_time}`);
+      // Combine date and time in Dubai timezone, then convert to UTC for storage
+      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
+      const startDateTime = createDubaiDateTime(formData.start_date, formData.start_time);
       const endDateTime = formData.end_time 
-        ? new Date(`${formData.start_date}T${formData.end_time}`)
+        ? createDubaiDateTime(formData.start_date, formData.end_time)
         : new Date(startDateTime.getTime() + 60 * 60 * 1000); // Default 1 hour
 
       const eventData: Partial<CalendarEvent> = {

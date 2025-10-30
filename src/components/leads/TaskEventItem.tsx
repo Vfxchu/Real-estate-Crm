@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { toDubaiTime, getDubaiTimeString } from '@/lib/dubai-time';
 
 interface CalendarEvent {
   id: string;
@@ -32,10 +33,20 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description || '');
-  const [startDate, setStartDate] = useState(new Date(event.start_date));
-  const [startTime, setStartTime] = useState(format(new Date(event.start_date), 'HH:mm'));
+  const dubaiDate = toDubaiTime(event.start_date);
+  const [startDate, setStartDate] = useState(dubaiDate);
+  const [startTime, setStartTime] = useState(getDubaiTimeString(event.start_date));
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Update local state when event changes
+  useEffect(() => {
+    const dubaiDate = toDubaiTime(event.start_date);
+    setStartDate(dubaiDate);
+    setStartTime(getDubaiTimeString(event.start_date));
+    setTitle(event.title);
+    setDescription(event.description || '');
+  }, [event.start_date, event.title, event.description]);
 
   const handleStatusToggle = async () => {
     const newStatus = event.status === 'completed' ? 'scheduled' : 'completed';
@@ -121,9 +132,9 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const [hours, minutes] = startTime.split(':').map(Number);
-      const updatedDate = new Date(startDate);
-      updatedDate.setHours(hours, minutes, 0, 0);
+      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
+      const dateStr = getDubaiDateString(startDate);
+      const updatedDate = createDubaiDateTime(dateStr, startTime);
 
       const { error } = await supabase
         .from('calendar_events')
@@ -165,19 +176,20 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   };
 
   const handleCancel = () => {
+    const dubaiDate = toDubaiTime(event.start_date);
     setTitle(event.title);
     setDescription(event.description || '');
-    setStartDate(new Date(event.start_date));
-    setStartTime(format(new Date(event.start_date), 'HH:mm'));
+    setStartDate(dubaiDate);
+    setStartTime(getDubaiTimeString(event.start_date));
     setIsEditing(false);
   };
 
   const handleReschedule = async () => {
     setLoading(true);
     try {
-      const [hours, minutes] = startTime.split(':').map(Number);
-      const updatedDate = new Date(startDate);
-      updatedDate.setHours(hours, minutes, 0, 0);
+      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
+      const dateStr = getDubaiDateString(startDate);
+      const updatedDate = createDubaiDateTime(dateStr, startTime);
 
       const { error } = await supabase
         .from('calendar_events')
