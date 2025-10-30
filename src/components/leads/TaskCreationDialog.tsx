@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
+import { nowInDubai, getDubaiTimeString, getDubaiDateString, createDubaiDateTime } from '@/lib/dubai-time';
 
 interface TaskCreationDialogProps {
   isOpen: boolean;
@@ -77,7 +78,6 @@ export function TaskCreationDialog({
   ];
 
   const handleQuickSelect = (option: typeof quickTimeOptions[0]) => {
-    const { nowInDubai, getDubaiTimeString, toDubaiTime } = require('@/lib/dubai-time');
     const dubaiNow = nowInDubai();
     const date = addHours(dubaiNow, option.hours);
     setSelectedDate(date);
@@ -105,7 +105,6 @@ export function TaskCreationDialog({
       if (!user) throw new Error('User not authenticated');
 
       // Combine date and time in Dubai timezone, then convert to UTC for storage
-      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
       const dateStr = getDubaiDateString(selectedDate);
       const timeStr = selectedTime || '09:00';
       const taskDateTime = createDubaiDateTime(dateStr, timeStr);

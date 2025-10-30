@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from './use-toast';
+import { formatDubaiTime } from '@/lib/dubai-time';
 
 export interface Task {
   id: string;
@@ -189,9 +190,6 @@ export function useTasks(leadId?: string) {
         (payload) => {
           const newTask = payload.new as Task;
           if (newTask.origin === 'auto_followup' && newTask.status === 'Open') {
-            // Convert to Dubai time for display
-            const { formatDubaiTime } = require('@/lib/dubai-time');
-            
             const isFromCompletion = newTask.created_at && 
               (Date.now() - new Date(newTask.created_at).getTime()) < 5000; // Within 5 seconds
             

@@ -12,6 +12,7 @@ import { useProperties } from '@/hooks/useProperties';
 import { useContacts } from '@/hooks/useContacts';
 import { useDeals } from '@/hooks/useDeals';
 import { format } from 'date-fns';
+import { getDubaiDateString, getDubaiTimeString, createDubaiDateTime } from '@/lib/dubai-time';
 import {
   CalendarIcon,
   Clock,
@@ -74,8 +75,6 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   // Initialize form data
   useEffect(() => {
-    const { getDubaiDateString, getDubaiTimeString } = require('@/lib/dubai-time');
-    
     if (event) {
       setFormData({
         title: event.title || '',
@@ -111,7 +110,6 @@ export const EventModal: React.FC<EventModalProps> = ({
       setLoading(true);
       
       // Combine date and time in Dubai timezone, then convert to UTC for storage
-      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
       const startDateTime = createDubaiDateTime(formData.start_date, formData.start_time);
       const endDateTime = formData.end_time 
         ? createDubaiDateTime(formData.start_date, formData.end_time)

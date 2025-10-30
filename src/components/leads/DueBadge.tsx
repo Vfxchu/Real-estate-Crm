@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
+import { nowInDubai, toDubaiTime } from '@/lib/dubai-time';
 
 interface DueBadgeProps {
   dueAt: string;
@@ -14,7 +15,6 @@ export function DueBadge({ dueAt, className, taskStatus, leadStatus }: DueBadgeP
 
   useEffect(() => {
     const updateTimeRemaining = () => {
-      const { nowInDubai, toDubaiTime } = require('@/lib/dubai-time');
       const now = nowInDubai();
       const dueInDubai = toDubaiTime(dueAt);
       

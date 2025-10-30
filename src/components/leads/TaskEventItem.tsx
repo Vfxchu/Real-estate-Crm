@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { toDubaiTime, getDubaiTimeString } from '@/lib/dubai-time';
+import { toDubaiTime, getDubaiTimeString, getDubaiDateString, createDubaiDateTime } from '@/lib/dubai-time';
 
 interface CalendarEvent {
   id: string;
@@ -132,7 +132,6 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
       const dateStr = getDubaiDateString(startDate);
       const updatedDate = createDubaiDateTime(dateStr, startTime);
 
@@ -187,7 +186,6 @@ export function TaskEventItem({ event, onUpdate }: TaskEventItemProps) {
   const handleReschedule = async () => {
     setLoading(true);
     try {
-      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
       const dateStr = getDubaiDateString(startDate);
       const updatedDate = createDubaiDateTime(dateStr, startTime);
 

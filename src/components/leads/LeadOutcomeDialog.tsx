@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Lead } from "@/types";
 import { EventModal } from "@/components/calendar/EventModal";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { nowInDubai, getDubaiTimeString, toDubaiTime, createDubaiDateTime, getDubaiDateString } from '@/lib/dubai-time';
 
 interface LeadOutcomeDialogProps {
   isOpen: boolean;
@@ -81,7 +82,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     
     // If opened from task completion, set follow-up to 15 minutes from now in Dubai time
     if (isFromTaskCompletion) {
-      const { nowInDubai, getDubaiTimeString } = require('@/lib/dubai-time');
       const in15Minutes = new Date(nowInDubai().getTime() + 15 * 60 * 1000);
       setFollowUpDate(in15Minutes);
       setFollowUpTime(getDubaiTimeString(in15Minutes));
@@ -151,7 +151,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     // If "Meeting Scheduled" is selected, trigger event modal
     if (value === 'Meeting Scheduled') {
       // Set default date to 15 minutes from now in Dubai time
-      const { nowInDubai, getDubaiTimeString } = require('@/lib/dubai-time');
       const in15Minutes = new Date(nowInDubai().getTime() + 15 * 60 * 1000);
       setFollowUpDate(in15Minutes);
       setFollowUpTime(getDubaiTimeString(in15Minutes));
@@ -166,7 +165,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
     setScheduledEventData(eventData);
     
     // Extract datetime from the event (it's in UTC, convert to Dubai time for display)
-    const { toDubaiTime, getDubaiTimeString } = require('@/lib/dubai-time');
     const dubaiDate = toDubaiTime(eventData.start_date);
     setFollowUpDate(dubaiDate);
     setFollowUpTime(getDubaiTimeString(eventData.start_date));
@@ -225,7 +223,6 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
 
     try {
       // Combine date and time in Dubai timezone, then convert to UTC for storage
-      const { createDubaiDateTime, getDubaiDateString } = await import('@/lib/dubai-time');
       const dateStr = getDubaiDateString(followUpDate);
       const utcDueAt = createDubaiDateTime(dateStr, followUpTime);
 
