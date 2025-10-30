@@ -68,9 +68,8 @@ export const LeadsManager = () => {
     const updateData: Partial<Lead> = { status: newStatus };
     
     // Auto-update contact_status based on lead status
-    if (newStatus === 'contacted' || newStatus === 'qualified' || newStatus === 'negotiating') {
-      updateData.contact_status = 'contacted';
-    } else if (newStatus === 'won') {
+    // Any status change from 'new' means the lead has been contacted
+    if (newStatus === 'won') {
       updateData.contact_status = 'active_client';
       // Create activity log for status change
       await addActivity(leadId, 'status_change', `Lead converted to Active Client - Won`);
@@ -80,6 +79,9 @@ export const LeadsManager = () => {
       await addActivity(leadId, 'status_change', `Lead converted to Past Client - Lost`);
     } else if (newStatus === 'new') {
       updateData.contact_status = 'lead';
+    } else {
+      // Any other status means contacted (contacted, qualified, negotiating, etc.)
+      updateData.contact_status = 'contacted';
     }
     
     await updateLead(leadId, updateData);
