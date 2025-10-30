@@ -30,6 +30,7 @@ import { useTasks } from "@/hooks/useTasks";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { EventModal } from "@/components/calendar/EventModal";
 import { supabase } from "@/integrations/supabase/client";
+import UnifiedContactForm from "@/components/forms/UnifiedContactForm";
 
 interface LeadDetailDrawerProps {
   lead: Lead | null;
@@ -54,6 +55,18 @@ interface CalendarEvent {
   event_type: string;
   description?: string;
   status?: string;
+}
+
+interface CombinedActivity {
+  id: string;
+  type: 'activity' | 'event';
+  activityType?: string;
+  eventType?: string;
+  description: string;
+  title?: string;
+  created_at: string;
+  status?: string;
+  profiles?: { name: string; email: string };
 }
 
 export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
@@ -181,7 +194,7 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
     try {
       const { data, error } = await supabase
         .from('calendar_events')
-        .select('id, title, start_date, event_type, description, status')
+        .select('id, title, start_date, event_type, description, status, created_by, profiles:created_by(name, email)')
         .eq('lead_id', lead.id)
         .order('start_date', { ascending: false })
         .limit(20);
@@ -191,6 +204,33 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
     } catch (error: any) {
       console.error('Error loading calendar events:', error);
     }
+  };
+
+  // Combine activities and calendar events for unified timeline
+  const getCombinedActivities = (): CombinedActivity[] => {
+    const activityItems: CombinedActivity[] = activities.map(act => ({
+      id: act.id,
+      type: 'activity' as const,
+      activityType: act.type,
+      description: act.description,
+      created_at: act.created_at,
+      profiles: act.profiles,
+    }));
+
+    const eventItems: CombinedActivity[] = events.map(evt => ({
+      id: evt.id,
+      type: 'event' as const,
+      eventType: evt.event_type,
+      title: evt.title,
+      description: evt.description || '',
+      created_at: evt.start_date,
+      status: evt.status,
+      profiles: (evt as any).profiles,
+    }));
+
+    return [...activityItems, ...eventItems].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   };
 
   const handleStatusChange = async (newStatus: Lead['status']) => {
@@ -355,14 +395,39 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-6">
-              <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="activities">Activities</TabsTrigger>
-                  <TabsTrigger value="status">Status</TabsTrigger>
-                  <TabsTrigger value="deals">Deals</TabsTrigger>
-                  <TabsTrigger value="documents">Documents</TabsTrigger>
-                </TabsList>
+              {editMode ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold">Edit Lead</h3>
+                    <Button variant="ghost" size="sm" onClick={() => setEditMode(false)}>
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                  <UnifiedContactForm
+                    contact={lead}
+                    onSuccess={() => {
+                      setEditMode(false);
+                      onUpdate?.();
+                      loadActivities();
+                      toast({
+                        title: 'Lead updated',
+                        description: 'Lead has been updated successfully.',
+                      });
+                    }}
+                    onCancel={() => setEditMode(false)}
+                    mode="lead"
+                  />
+                </div>
+              ) : (
+                <Tabs defaultValue="overview" className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-5">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="activities">Activities</TabsTrigger>
+                    <TabsTrigger value="status">Status</TabsTrigger>
+                    <TabsTrigger value="deals">Deals</TabsTrigger>
+                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                  </TabsList>
 
                 <TabsContent value="overview" className="space-y-4">
                   <Card>
@@ -435,46 +500,70 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="activities" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
-                        <Activity className="w-4 h-4" />
-                        Activity Timeline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {activities.length > 0 ? (
-                        <div className="space-y-3">
-                          {activities.map((activity) => (
-                            <div key={activity.id} className="flex gap-3 pb-3 border-b last:border-b-0">
-                              <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium capitalize">{activity.type.replace('_', ' ')}</p>
-                                <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
-                                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{new Date(activity.created_at).toLocaleString()}</span>
-                                  {activity.profiles && (
+                  <TabsContent value="activities" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-sm">
+                          <Activity className="w-4 h-4" />
+                          Activity Timeline
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {getCombinedActivities().length > 0 ? (
+                          <div className="space-y-3">
+                            {getCombinedActivities().map((item) => (
+                              <div key={item.id} className="flex gap-3 pb-3 border-b last:border-b-0">
+                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                  item.type === 'event' ? 'bg-blue-500' : 'bg-primary'
+                                }`} />
+                                <div className="flex-1 min-w-0">
+                                  {item.type === 'activity' ? (
                                     <>
-                                      <span>•</span>
-                                      <span>{activity.profiles.name}</span>
+                                      <p className="text-sm font-medium capitalize">
+                                        {item.activityType?.replace('_', ' ')}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="w-3 h-3" />
+                                        <p className="text-sm font-medium">{item.title}</p>
+                                        {item.status && (
+                                          <Badge variant={item.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
+                                            {item.status}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mt-1">
+                                        {item.eventType?.replace('_', ' ')}
+                                        {item.description && `: ${item.description}`}
+                                      </p>
                                     </>
                                   )}
+                                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{new Date(item.created_at).toLocaleString()}</span>
+                                    {item.profiles && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{item.profiles.name}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p className="text-sm">No activities yet</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <p className="text-sm">No activities yet</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
                 <TabsContent value="status" className="space-y-4">
                   <Card>
@@ -559,10 +648,11 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="documents" className="space-y-4">
-                  <LeadDocumentsTab lead={lead} />
-                </TabsContent>
-              </Tabs>
+                  <TabsContent value="documents" className="space-y-4">
+                    <LeadDocumentsTab lead={lead} />
+                  </TabsContent>
+                </Tabs>
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -627,6 +717,16 @@ export const LeadDetailDrawer: React.FC<LeadDetailDrawerProps> = ({
         onClose={() => setShowEventModal(false)}
         onSave={async (eventData) => {
           await createEvent(eventData);
+          
+          // Log activity for the scheduled event
+          if (lead?.id) {
+            await addActivity(
+              lead.id, 
+              'event_scheduled', 
+              `Scheduled ${eventData.event_type.replace('_', ' ')}: ${eventData.title}`
+            );
+          }
+          
           loadCalendarEvents();
           loadActivities();
           toast({
