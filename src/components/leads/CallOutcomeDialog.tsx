@@ -85,6 +85,11 @@ export function CallOutcomeDialog({
     const selectedOutcomes = customFields.outcomes_selected || [];
     
     let outcomes = businessOutcomes.filter(outcome => {
+      // If lead status is "new", allow all outcomes (full reset on status revert)
+      if (leadStatus === 'new') {
+        return true;
+      }
+      
       // Hide Deal Won until Under Offer stage
       if (outcome.value === 'deal_won' && leadStatus !== 'negotiating') {
         return false;

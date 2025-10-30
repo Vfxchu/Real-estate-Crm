@@ -125,6 +125,12 @@ export function LeadOutcomeDialog({ isOpen, onOpenChange, lead, onComplete, isFr
       // Apply visibility rules
       let available = [...FOLLOW_UP_OUTCOMES];
 
+      // If lead status is "new", allow all outcomes (full reset on status revert)
+      if (lead.status === 'new') {
+        setAvailableOutcomes(available);
+        return;
+      }
+
       // If completing a task from a "Meeting Scheduled" outcome, hide "Meeting Scheduled"
       if (isFromTaskCompletion && latestOutcome === 'Meeting Scheduled') {
         available = available.filter(o => o !== 'Meeting Scheduled');
