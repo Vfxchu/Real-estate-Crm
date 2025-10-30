@@ -24,6 +24,7 @@ import {
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { EventModal } from '@/components/calendar/EventModal';
 import { NotificationSystem } from '@/components/calendar/NotificationSystem';
+import { EventManagementPanel } from '@/components/calendar/EventManagementPanel';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
 import { CalendarEvent } from '@/types';
 import { useLeads } from '@/hooks/useLeads';
@@ -206,6 +207,14 @@ export const Calendar = () => {
       setSelectedEvent(null);
     } catch (error) {
       console.error('Error deleting event:', error);
+    }
+  };
+
+  const handleCompleteEvent = async (event: CalendarEvent) => {
+    try {
+      await updateEvent(event.id, { status: 'completed' });
+    } catch (error) {
+      console.error('Error completing event:', error);
     }
   };
 
@@ -407,18 +416,36 @@ export const Calendar = () => {
           </TabsContent>
         </Tabs>
       ) : (
-        <Card className="card-elevated">
-          <CardContent className="p-0">
-            <CalendarView
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card className="card-elevated">
+              <CardContent className="p-0">
+                <CalendarView
+                  events={filteredEvents}
+                  onEventSelect={handleEventSelect}
+                  onEventDrop={handleEventDrop}
+                  onSlotSelect={handleSlotSelect}
+                  view={calendarView}
+                  onViewChange={setCalendarView}
+                />
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="lg:col-span-1">
+            <EventManagementPanel
               events={filteredEvents}
+              onEventEdit={(event) => {
+                setSelectedEvent(event);
+                setModalMode('edit');
+                setShowEventModal(true);
+              }}
+              onEventDelete={handleDeleteEvent}
+              onEventComplete={handleCompleteEvent}
               onEventSelect={handleEventSelect}
-              onEventDrop={handleEventDrop}
-              onSlotSelect={handleSlotSelect}
-              view={calendarView}
-              onViewChange={setCalendarView}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Event Modal */}
