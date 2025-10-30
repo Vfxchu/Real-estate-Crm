@@ -144,7 +144,7 @@ export const EventManagementPanel: React.FC<EventManagementPanelProps> = ({
         </div>
       </CardHeader>
       
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      <ScrollArea className="h-[600px]">
         <CardContent className="p-4 space-y-6">
           {sortedCategories.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
