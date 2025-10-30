@@ -104,6 +104,16 @@ export const LeadsManager = () => {
     }
   };
 
+  const getContactStatusColor = (status: string) => {
+    switch (status) {
+      case 'lead': return 'text-muted-foreground';
+      case 'contacted': return 'text-info';
+      case 'active_client': return 'text-success';
+      case 'past_client': return 'text-warning';
+      default: return 'text-muted-foreground';
+    }
+  };
+
   const handleDeleteLead = async (leadId: string) => {
     if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
       return;
@@ -890,9 +900,9 @@ export const LeadsManager = () => {
                            <Badge className={getStatusColor(lead.status)}>
                              {getStatusLabel(lead.status)}
                            </Badge>
-                           <div className="text-xs text-muted-foreground">
-                             {getContactStatusDisplay(lead.contact_status || 'lead')}
-                           </div>
+                            <div className={`text-xs font-medium ${getContactStatusColor(lead.contact_status || 'lead')}`}>
+                              {getContactStatusDisplay(lead.contact_status || 'lead')}
+                            </div>
                          </div>
                       </TableCell>
                       <TableCell>
