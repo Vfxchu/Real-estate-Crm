@@ -99,20 +99,38 @@ export const AgentEditDialog: React.FC<AgentEditDialogProps> = ({
         }
       }
 
-      // Update agent in database
+      // Update agent in database (no role - managed in user_roles)
       const { error } = await supabase
         .from('profiles')
         .update({
           name: escapeHtml(formData.name.trim()),
           email: formData.email.trim(),
           phone: formData.phone.trim() || null,
-          role: formData.role,
           status: formData.status,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', agent.user_id);
 
       if (error) throw error;
+
+      // Update role in user_roles if changed
+      if (formData.role !== agent.role) {
+        // Remove old role
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', agent.user_id);
+
+        // Add new role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: agent.user_id,
+            role: formData.role === 'admin' ? 'admin' : 'agent',
+          });
+
+        if (roleError) throw roleError;
+      }
 
       toast({
         title: 'Agent updated successfully',

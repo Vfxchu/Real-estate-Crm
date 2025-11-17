@@ -12,6 +12,7 @@ import { AddAgentForm } from "@/components/forms/AddAgentForm";
 import { AgentLeadsTable } from "@/components/agents/AgentLeadsTable";
 import { AgentPerformanceView } from "@/components/agents/AgentPerformanceView";
 import { AgentLeadAssignment } from "@/components/agents/AgentLeadAssignment";
+import { AgentDetailView } from "@/components/agents/AgentDetailView";
 import { AgentEditDialog } from "@/components/agents/AgentEditDialog";
 import {
   Table,
@@ -34,6 +35,8 @@ import {
   TrendingUp,
   BarChart3,
   Settings,
+  Eye,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAgents, type Agent } from '@/hooks/useAgents';
@@ -49,6 +52,7 @@ export const AgentManager = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPerformanceView, setShowPerformanceView] = useState(false);
   const [showLeadAssignment, setShowLeadAssignment] = useState(false);
+  const [showDetailView, setShowDetailView] = useState(false);
   const { toast } = useToast();
 
   const filteredAgents = agents.filter(agent => {
@@ -127,14 +131,19 @@ export const AgentManager = () => {
     setShowLeadAssignment(true);
   };
 
-  const totalAgents = agents.length;
-  const activeAgents = agents.filter(a => a.status === 'active').length;
-  const totalLeads = agents.reduce((sum, a) => sum + (a.assignedLeads || 0), 0);
-  const totalClosedDeals = agents.reduce((sum, a) => sum + a.closedDeals, 0);
+  const openDetailView = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setShowDetailView(true);
+  };
 
   const handleAgentUpdate = () => {
     fetchAgents();
   };
+
+  const totalAgents = agents.length;
+  const activeAgents = agents.filter(a => a.status === 'active').length;
+  const totalLeads = agents.reduce((sum, a) => sum + (a.assignedLeads || 0), 0);
+  const totalClosedDeals = agents.reduce((sum, a) => sum + a.closedDeals, 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -331,6 +340,15 @@ export const AgentManager = () => {
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0"
+                              onClick={() => openDetailView(agent)}
+                              title="View Full Profile"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
                               onClick={() => openEditDialog(agent)}
                               title="Edit Agent"
                             >
@@ -352,7 +370,7 @@ export const AgentManager = () => {
                               onClick={() => openLeadAssignment(agent)}
                               title="Assign Leads"
                             >
-                              <Users className="w-4 h-4" />
+                              <UserPlus className="w-4 h-4" />
                             </Button>
                             <Button
                               size="sm"
@@ -421,33 +439,34 @@ export const AgentManager = () => {
         onAgentCreated={handleAgentUpdate}
       />
 
-      {/* Agent Edit Dialog */}
-      <AgentEditDialog
-        agent={selectedAgent}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        onAgentUpdated={handleAgentUpdate}
-        onViewPerformance={openPerformanceView}
-        onAssignLeads={openLeadAssignment}
-      />
-
-      {/* Agent Performance View */}
+      {/* Dialogs and Views */}
       {selectedAgent && (
-        <AgentPerformanceView
-          agent={selectedAgent}
-          open={showPerformanceView}
-          onOpenChange={setShowPerformanceView}
-        />
-      )}
-
-      {/* Agent Lead Assignment */}
-      {selectedAgent && (
-        <AgentLeadAssignment
-          agent={selectedAgent}
-          open={showLeadAssignment}
-          onOpenChange={setShowLeadAssignment}
-          onAssignmentComplete={handleAgentUpdate}
-        />
+        <>
+          <AgentDetailView
+            agent={selectedAgent}
+            open={showDetailView}
+            onOpenChange={setShowDetailView}
+          />
+          <AgentEditDialog
+            agent={selectedAgent}
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            onAgentUpdated={handleAgentUpdate}
+            onViewPerformance={openPerformanceView}
+            onAssignLeads={openLeadAssignment}
+          />
+          <AgentPerformanceView
+            agent={selectedAgent}
+            open={showPerformanceView}
+            onOpenChange={setShowPerformanceView}
+          />
+          <AgentLeadAssignment
+            agent={selectedAgent}
+            open={showLeadAssignment}
+            onOpenChange={setShowLeadAssignment}
+            onAssignmentComplete={handleAgentUpdate}
+          />
+        </>
       )}
     </div>
   );

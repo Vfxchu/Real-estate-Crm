@@ -65,6 +65,7 @@ export const AgentLeadAssignment: React.FC<AgentLeadAssignmentProps> = ({
   const fetchUnassignedLeads = async () => {
     setLoading(true);
     try {
+      // Fetch all leads except those assigned to this agent
       const { data, error } = await supabase
         .from('leads')
         .select('*')
@@ -72,7 +73,18 @@ export const AgentLeadAssignment: React.FC<AgentLeadAssignmentProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setLeads(data || []);
+      
+      const allLeads = data || [];
+      const unassignedCount = allLeads.filter(l => !l.agent_id).length;
+      const alreadyAssignedCount = allLeads.filter(l => l.agent_id && l.agent_id !== agent.user_id).length;
+      
+      setLeads(allLeads);
+      
+      // Show info about filtering
+      toast({
+        title: 'Leads loaded',
+        description: `${unassignedCount} unassigned, ${alreadyAssignedCount} assigned to other agents`,
+      });
     } catch (error: any) {
       toast({
         title: 'Error fetching leads',
