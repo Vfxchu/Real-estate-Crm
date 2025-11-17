@@ -60,13 +60,10 @@ export const useAgents = () => {
         return;
       }
 
-      // Fetch profiles for agents with role from user_roles
+      // Fetch profiles for agents
       const { data: agentsData, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles!inner(role)
-        `)
+        .select('*')
         .in('user_id', agentUserIds)
         .order('name');
 
@@ -97,9 +94,9 @@ export const useAgents = () => {
           const closedDeals = leads?.filter(l => l.status === 'won').length || 0;
           const conversionRate = assignedLeads > 0 ? Math.round((closedDeals / assignedLeads) * 100) : 0;
 
-          // Extract role from joined user_roles data
-          const roleData = (agent as any).user_roles;
-          const agentRole = Array.isArray(roleData) ? roleData[0]?.role : roleData?.role || 'agent';
+          // Get role from agentRoles array
+          const roleRecord = agentRoles?.find(r => r.user_id === agent.user_id);
+          const agentRole = roleRecord?.role || 'agent';
 
           return {
             ...maskedAgent,
