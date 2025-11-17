@@ -96,35 +96,30 @@ export const AddAgentForm: React.FC<AddAgentFormProps> = ({ open, onOpenChange, 
       if (authError) throw authError;
 
       if (authData.user) {
-        // Update the profile with additional information
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            name: escapeHtml(formData.name.trim()),
-            phone: formData.phone.trim() ? validatePhone(formData.phone.trim()) : null,
-            role: formData.role,
-            status: formData.status,
-          })
-          .eq('user_id', authData.user.id);
+      // Update profile with additional info (no role - managed in user_roles)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: escapeHtml(formData.name.trim()),
+          phone: formData.phone.trim() ? validatePhone(formData.phone.trim()) : null,
+          status: formData.status,
+        })
+        .eq('user_id', authData.user.id);
 
         if (profileError) throw profileError;
 
-        // Grant admin role if selected (agent role is auto-added by trigger)
-        if (formData.role === 'admin') {
-          const currentUser = (await supabase.auth.getUser()).data.user;
-          const { error: roleError } = await supabase
-            .from('user_roles')
-            .upsert(
-              {
-                user_id: authData.user.id,
-                role: 'admin',
-                assigned_by: currentUser?.id
-              } as any,
-              { onConflict: 'user_id,role' } as any
-            );
+        // Assign role in user_roles table (secure approach)
+        const roleToAssign = formData.role === 'admin' ? 'admin' : 'agent';
+        const currentUser = (await supabase.auth.getUser()).data.user;
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: authData.user.id,
+            role: roleToAssign,
+            assigned_by: currentUser?.id,
+          });
 
-          if (roleError) throw roleError;
-        }
+        if (roleError) throw roleError;
       }
 
       toast({
