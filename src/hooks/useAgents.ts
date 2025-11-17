@@ -153,27 +153,58 @@ export const useAgents = () => {
 
   const deleteAgent = async (userId: string) => {
     try {
-      // Update status to inactive instead of deleting
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status: 'inactive' })
+      // Check if agent has assigned leads
+      const { data: leads, error: leadsError } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('agent_id', userId);
+      
+      if (leadsError) throw leadsError;
+
+      if (leads && leads.length > 0) {
+        throw new Error(`Cannot delete agent with ${leads.length} assigned leads. Please reassign them first.`);
+      }
+      
+      // Check if agent has assigned properties
+      const { data: properties, error: propertiesError } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('agent_id', userId);
+      
+      if (propertiesError) throw propertiesError;
+
+      if (properties && properties.length > 0) {
+        throw new Error(`Cannot delete agent with ${properties.length} assigned properties. Please reassign them first.`);
+      }
+      
+      // Delete from user_roles first (cleanup)
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
         .eq('user_id', userId);
-
-      if (error) throw error;
-
-      setAgents(prev => prev.map(agent => 
-        agent.user_id === userId ? { ...agent, status: 'inactive' as const } : agent
-      ));
+      
+      if (rolesError) throw rolesError;
+      
+      // Delete from profiles (RLS ensures only admin can do this)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (profileError) throw profileError;
+      
+      // Remove from local state
+      setAgents(prev => prev.filter(agent => agent.user_id !== userId));
 
       toast({
-        title: 'Agent deactivated',
-        description: 'Agent has been deactivated successfully.',
+        title: 'Agent deleted',
+        description: 'Agent has been permanently deleted.',
       });
 
       return { error: null };
     } catch (error: any) {
       toast({
-        title: 'Error deactivating agent',
+        title: 'Error deleting agent',
         description: error.message,
         variant: 'destructive',
       });

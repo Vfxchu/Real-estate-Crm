@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -53,6 +54,8 @@ export const AgentManager = () => {
   const [showPerformanceView, setShowPerformanceView] = useState(false);
   const [showLeadAssignment, setShowLeadAssignment] = useState(false);
   const [showDetailView, setShowDetailView] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { toast } = useToast();
 
   const filteredAgents = agents.filter(agent => {
@@ -98,21 +101,18 @@ export const AgentManager = () => {
     }
   };
 
-  const handleDeleteAgent = async (agent: Agent) => {
-    if (window.confirm(`Are you sure you want to deactivate ${agent.name}? This action will set their status to inactive.`)) {
-      try {
-        await deleteAgent(agent.user_id);
-        toast({
-          title: 'Agent deactivated',
-          description: `${agent.name} has been deactivated.`,
-        });
-      } catch (error: any) {
-        toast({
-          title: 'Error deactivating agent',
-          description: error.message,
-          variant: 'destructive',
-        });
-      }
+  const handleDeleteClick = (agent: Agent) => {
+    setAgentToDelete(agent);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!agentToDelete) return;
+    
+    const { error } = await deleteAgent(agentToDelete.user_id);
+    if (!error) {
+      setShowDeleteConfirm(false);
+      setAgentToDelete(null);
     }
   };
 
@@ -385,7 +385,7 @@ export const AgentManager = () => {
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0 text-destructive"
-                              onClick={() => handleDeleteAgent(agent)}
+                              onClick={() => handleDeleteClick(agent)}
                               title="Delete Agent"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -468,6 +468,44 @@ export const AgentManager = () => {
           />
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Agent</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete <strong>{agentToDelete?.name}</strong>? 
+              This action cannot be undone.
+              
+              {agentToDelete && (agentToDelete.assignedLeads > 0 || agentToDelete.closedDeals > 0) && (
+                <div className="mt-4 p-3 bg-destructive/10 rounded-md border border-destructive/20">
+                  <p className="font-semibold text-destructive">
+                    ⚠️ Warning: This agent has active assignments
+                  </p>
+                  {agentToDelete.assignedLeads > 0 && (
+                    <p className="text-sm mt-2">
+                      • <strong>{agentToDelete.assignedLeads}</strong> assigned leads
+                    </p>
+                  )}
+                  <p className="text-sm mt-1 text-muted-foreground">
+                    You must reassign all leads and properties before deleting this agent.
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
