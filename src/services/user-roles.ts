@@ -37,12 +37,6 @@ export async function getCurrentUserRole(): Promise<UserRole> {
  */
 export async function assignUserRole(userId: string, role: UserRole): Promise<{ error?: any }> {
   try {
-    // Client-side authorization check
-    const currentRole = await getCurrentUserRole();
-    if (!['admin', 'superadmin'].includes(currentRole)) {
-      return { error: { message: 'Insufficient permissions to assign roles' } };
-    }
-
     const currentUser = (await supabase.auth.getUser()).data.user;
     if (!currentUser) {
       return { error: { message: 'User not authenticated' } };
@@ -98,12 +92,6 @@ export async function getAllUserRoles() {
  */
 export async function removeUserRole(userId: string, role: UserRole): Promise<{ error?: any }> {
   try {
-    // Client-side authorization check
-    const currentRole = await getCurrentUserRole();
-    if (!['admin', 'superadmin'].includes(currentRole)) {
-      return { error: { message: 'Insufficient permissions to remove roles' } };
-    }
-
     const currentUser = (await supabase.auth.getUser()).data.user;
     if (!currentUser) {
       return { error: { message: 'User not authenticated' } };
