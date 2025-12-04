@@ -62,11 +62,22 @@ export const Auth: React.FC = () => {
       const { error } = await login(loginData.email, loginData.password);
       
       if (error) {
-        toast({
-          title: 'Login Failed',
-          description: error.message || 'Invalid credentials',
-          variant: 'destructive',
-        });
+        // Check if email not confirmed
+        if (error.code === 'email_not_confirmed' || error.message?.includes('verify your email')) {
+          toast({
+            title: 'Email Not Verified',
+            description: 'Please check your inbox and click the confirmation link. You can also resend the confirmation email below.',
+            variant: 'destructive',
+          });
+          // Show option to resend confirmation
+          setForgotEmail(loginData.email);
+        } else {
+          toast({
+            title: 'Login Failed',
+            description: error.message || 'Invalid credentials',
+            variant: 'destructive',
+          });
+        }
       } else {
         toast({
           title: 'Welcome back!',
@@ -82,6 +93,48 @@ export const Auth: React.FC = () => {
     }
     
     setLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!loginData.email) {
+      toast({
+        title: 'Email required',
+        description: 'Please enter your email address first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setResetLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: loginData.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: 'Failed to resend',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Confirmation email sent!',
+          description: 'Please check your inbox and spam folder.',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Could not resend confirmation email.',
+        variant: 'destructive',
+      });
+    }
+    setResetLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -291,7 +344,16 @@ export const Auth: React.FC = () => {
                   </Button>
                 </form>
 
-                <div className="text-right">
+                <div className="flex justify-between items-center">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="px-0 h-auto text-muted-foreground text-sm"
+                    onClick={handleResendConfirmation}
+                    disabled={resetLoading || !loginData.email}
+                  >
+                    {resetLoading ? 'Sending...' : 'Resend confirmation email'}
+                  </Button>
                   <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
                     <DialogTrigger asChild>
                       <Button type="button" variant="link" className="px-0 h-auto">
