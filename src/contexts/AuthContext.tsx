@@ -183,9 +183,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        // Better error handling
+        // Handle specific error cases with user-friendly messages
+        if (error.message.includes('Email not confirmed')) {
+          return { error: { message: 'Please verify your email before signing in. Check your inbox for the confirmation link.', code: 'email_not_confirmed' } };
+        }
         if (error.message.includes('Invalid login credentials')) {
-          return { error: { message: 'Invalid email or password. Please check your credentials.' } };
+          return { error: { message: 'Invalid email or password. Please check your credentials and try again.' } };
         }
         if (error.message === '{}') {
           return { error: { message: 'Login failed. Please try again or contact support.' } };
