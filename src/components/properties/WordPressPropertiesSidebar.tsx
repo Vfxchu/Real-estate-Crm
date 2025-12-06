@@ -110,9 +110,27 @@ export const WordPressPropertiesSidebar: React.FC<WordPressPropertiesSidebarProp
   const handleSyncFromWordPress = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-from-wordpress');
-
-      if (error) throw error;
+      // Call via fetch to include custom header for authentication
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch(
+        'https://lnszidczioariaebsquo.supabase.co/functions/v1/sync-from-wordpress',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionData.session?.access_token}`,
+            'x-function-secret': import.meta.env.VITE_WORDPRESS_SYNC_SECRET || '',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Request failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const error = null;
 
       if (data.success) {
         toast({
