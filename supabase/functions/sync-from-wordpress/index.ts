@@ -12,6 +12,27 @@ serve(async (req) => {
   }
 
   try {
+    // Validate secret for security - REQUIRED (since verify_jwt is false)
+    const syncSecret = Deno.env.get('WORDPRESS_SYNC_SECRET');
+    const providedSecret = req.headers.get('x-function-secret');
+
+    // Fail fast if secret not configured
+    if (!syncSecret) {
+      console.error('[WordPress Sync] WORDPRESS_SYNC_SECRET not configured - rejecting request');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    if (providedSecret !== syncSecret) {
+      console.error('[WordPress Sync] Unauthorized: Invalid secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
