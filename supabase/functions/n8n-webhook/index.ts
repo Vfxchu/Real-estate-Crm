@@ -28,11 +28,20 @@ serve(async (req) => {
       });
     }
 
-    // Validate webhook signature for security
+    // Validate webhook signature for security - REQUIRED
     const signature = req.headers.get('x-webhook-signature');
     const webhookSecret = Deno.env.get('N8N_WEBHOOK_SECRET');
     
-    if (webhookSecret && signature !== webhookSecret) {
+    // Fail fast if secret not configured
+    if (!webhookSecret) {
+      console.error('N8N_WEBHOOK_SECRET not configured - rejecting request');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (signature !== webhookSecret) {
       console.error('Unauthorized: Invalid webhook signature');
       return new Response(JSON.stringify({ error: 'Unauthorized: Invalid signature' }), {
         status: 401,

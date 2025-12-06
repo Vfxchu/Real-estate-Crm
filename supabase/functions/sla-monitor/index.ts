@@ -13,11 +13,20 @@ serve(async (req) => {
   }
 
   try {
-    // Validate secret for security (since verify_jwt is false for cron jobs)
+    // Validate secret for security - REQUIRED (since verify_jwt is false for cron jobs)
     const authSecret = Deno.env.get('SLA_MONITOR_SECRET');
     const providedSecret = req.headers.get('x-function-secret');
 
-    if (authSecret && providedSecret !== authSecret) {
+    // Fail fast if secret not configured
+    if (!authSecret) {
+      console.error('[SLA Monitor] SLA_MONITOR_SECRET not configured - rejecting request');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    if (providedSecret !== authSecret) {
       console.error('[SLA Monitor] Unauthorized: Invalid secret');
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
