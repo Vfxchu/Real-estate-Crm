@@ -240,6 +240,47 @@ export const useProperties = () => {
     }
   };
 
+  const duplicateProperty = async (property: Property) => {
+    try {
+      console.log('[PROPERTIES] Duplicating property:', property.id);
+      
+      // Create a copy of the property without id, dates, and wp_* fields
+      const { 
+        id, created_at, updated_at, created_by, profiles, assigned_agent, creator_profile,
+        wp_id, wp_slug, wp_permalink, wp_sync_status, wp_last_sync_at, wp_sync_error,
+        ...propertyData 
+      } = property;
+      
+      const duplicatedData = {
+        ...propertyData,
+        title: `${property.title} (Copy)`,
+        agent_id: user?.id || property.agent_id, // Assign to current user
+        status: 'available', // Reset status
+        featured: false, // Reset featured flag
+        images: property.images || [], // Keep images
+      };
+      
+      const result = await createProperty(duplicatedData as any);
+      
+      if (result.data) {
+        toast({
+          title: 'Property duplicated',
+          description: 'A copy of the property has been created and is ready to edit.',
+        });
+      }
+      
+      return result;
+    } catch (error: any) {
+      console.error('[PROPERTIES] Property duplication error:', error);
+      toast({
+        title: 'Error duplicating property',
+        description: formatErrorForUser(error, 'duplicateProperty'),
+        variant: 'destructive',
+      });
+      return { data: null, error };
+    }
+  };
+
   const deleteProperty = async (id: string) => {
     try {
       // First delete property files from storage and database
@@ -453,6 +494,7 @@ export const useProperties = () => {
     fetchProperties,
     createProperty,
     updateProperty,
+    duplicateProperty,
     deleteProperty,
     uploadPropertyImage,
     addActivity,

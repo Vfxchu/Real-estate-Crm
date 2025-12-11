@@ -43,6 +43,7 @@ import {
   Calendar,
   Share2,
   Globe,
+  Copy,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -121,7 +122,7 @@ const useDebounce = (value: string, delay: number) => {
 };
 
 export const Properties = () => {
-  const { properties, loading, deleteProperty } = useProperties();
+  const { properties, loading, deleteProperty, duplicateProperty, fetchProperties } = useProperties();
   const { user, profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const isAgent = profile?.role === 'agent';
@@ -136,6 +137,7 @@ export const Properties = () => {
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [propertyToShare, setPropertyToShare] = useState<Property | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
   const [showAddContact, setShowAddContact] = useState(false);
   const [selectedPropertyForContact, setSelectedPropertyForContact] = useState<Property | null>(null);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
@@ -420,6 +422,26 @@ export const Properties = () => {
   const handleScheduleViewing = (property: Property) => {
     // Navigate to calendar with property pre-filled for viewing
     navigate(`/calendar?property=${property.id}&action=schedule-viewing&type=property_viewing`);
+  };
+
+  const handleDuplicateProperty = async (property: Property) => {
+    if (!isAdmin && property.agent_id !== user?.id) {
+      toast({
+        title: 'Access denied',
+        description: 'You can only duplicate your own properties.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setDuplicating(property.id);
+    try {
+      const result = await duplicateProperty(property);
+      if (result.data) {
+        await fetchStats();
+      }
+    } finally {
+      setDuplicating(null);
+    }
   };
 
   const handleAddContactToProperty = (property: Property) => {
@@ -965,6 +987,15 @@ export const Properties = () => {
                         <Button 
                           size="sm" 
                           variant="ghost"
+                          onClick={() => handleDuplicateProperty(property)}
+                          disabled={duplicating === property.id || (!isAdmin && property.agent_id !== user?.id)}
+                          title={!isAdmin && property.agent_id !== user?.id ? "You can only duplicate your own properties" : "Duplicate property"}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
                           onClick={() => handleEditProperty(property)}
                           disabled={!isAdmin && property.agent_id !== user?.id}
                           title={!isAdmin && property.agent_id !== user?.id ? "You can only edit your own properties" : "Edit property"}
@@ -1135,6 +1166,15 @@ export const Properties = () => {
                         onClick={() => handleShareProperty(property)}
                       >
                         <Share2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleDuplicateProperty(property)}
+                        disabled={duplicating === property.id || (!isAdmin && property.agent_id !== user?.id)}
+                        title={!isAdmin && property.agent_id !== user?.id ? "You can only duplicate your own properties" : "Duplicate property"}
+                      >
+                        <Copy className="w-4 h-4" />
                       </Button>
                       <Button 
                         size="sm" 
