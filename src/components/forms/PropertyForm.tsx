@@ -13,13 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/services/storage";
 import { validateFileUpload } from "@/lib/sanitizer";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard } from "lucide-react";
+import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard, Plus } from "lucide-react";
 import { useContacts } from "@/hooks/useContacts";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
-import { Plus } from "lucide-react";
-import { LOCATIONS, VIEW_OPTIONS } from "@/constants/property";
+import { VIEW_OPTIONS } from "@/constants/property";
 import { useSessionMonitor } from "@/hooks/useSessionMonitor";
+import { useLocations } from "@/hooks/useLocations";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -87,6 +87,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const { toast } = useToast();
   const contacts = useContacts();
   const { sessionHealthy } = useSessionMonitor();
+  const { locations, addLocation } = useLocations();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
@@ -99,6 +100,9 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const [showAddOwner, setShowAddOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState('');
   const [newOwnerPhone, setNewOwnerPhone] = useState('');
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [addingLocation, setAddingLocation] = useState(false);
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
   const [creatingOwner, setCreatingOwner] = useState(false);
 
@@ -935,20 +939,76 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Location *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select location" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="max-h-[200px]">
-                          {LOCATIONS.map((location) => (
-                            <SelectItem key={location.value} value={location.value}>
-                              {location.label}
+                      {!showAddLocation ? (
+                        <Select 
+                          onValueChange={(value) => {
+                            if (value === '__add_new__') {
+                              setShowAddLocation(true);
+                            } else {
+                              field.onChange(value);
+                            }
+                          }} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select location" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[200px]">
+                            {locations.map((location) => (
+                              <SelectItem key={location.id} value={location.name}>
+                                {location.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__add_new__" className="text-primary font-medium border-t mt-1 pt-2">
+                              <span className="flex items-center gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add New Location
+                              </span>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Enter new location name"
+                              value={newLocationName}
+                              onChange={(e) => setNewLocationName(e.target.value)}
+                              autoFocus
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={addingLocation || !newLocationName.trim()}
+                              onClick={async () => {
+                                setAddingLocation(true);
+                                const newLoc = await addLocation(newLocationName);
+                                if (newLoc) {
+                                  field.onChange(newLoc.name);
+                                  setNewLocationName('');
+                                  setShowAddLocation(false);
+                                }
+                                setAddingLocation(false);
+                              }}
+                            >
+                              {addingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setShowAddLocation(false);
+                                setNewLocationName('');
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
