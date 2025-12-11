@@ -1804,6 +1804,7 @@ export type Database = {
         }[]
       }
       complete_task_with_auto_followup:
+        | { Args: { p_lead_id: string; p_outcome: string }; Returns: undefined }
         | {
             Args: { p_auto_next_hours?: number; p_task_id: string }
             Returns: {
@@ -1813,7 +1814,6 @@ export type Database = {
               next_task_id: string
             }[]
           }
-        | { Args: { p_lead_id: string; p_outcome: string }; Returns: undefined }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       ensure_manual_followup: {
         Args: { p_due_at?: string; p_lead_id: string; p_title?: string }
