@@ -17,6 +17,8 @@ import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum 
 import { PROPERTY_SEGMENTS, getSubtypeOptions, OFFER_TYPES, PROPERTY_STATUS, VIEW_OPTIONS } from "@/constants/property";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
 import { PropertyFilesSection } from "@/components/properties/PropertyFilesSection";
+import { useLocations } from "@/hooks/useLocations";
+import { Plus } from "lucide-react";
 
 const propertySchema = z.object({
   title: z.string().min(1, "Property title is required"),
@@ -25,12 +27,14 @@ const propertySchema = z.object({
   offer_type: z.enum(['rent', 'sale'], { required_error: "Offer type is required" }),
   price: z.number().min(0, "Price must be greater than 0"),
   description: z.string().optional(),
+  location: z.string().min(1, "Location is required"),
   address: z.string().min(1, "Address is required"),
   city: z.enum(['Dubai', 'Abu Dhabi', 'Ras Al Khaimah', 'Sharjah', 'Umm Al Quwain', 'Ajman', 'Fujairah'], { required_error: "City is required" }),
   unit_number: z.string().optional(),
   bedrooms: z.string().optional(),
   bathrooms: z.number().int("Bathrooms must be a whole number").min(0).optional(),
   area_sqft: z.number().min(0).optional(),
+  plot_area_sqft: z.number().min(0).optional(),
   status: z.enum(['available', 'vacant', 'rented', 'in_development', 'sold', 'pending', 'off_market'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
@@ -49,6 +53,7 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const contacts = useContacts();
+  const { locations, addLocation } = useLocations();
   const [loading, setLoading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadedLayouts, setUploadedLayouts] = useState<string[]>([]);
@@ -62,6 +67,11 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
   const [newOwnerPhone, setNewOwnerPhone] = useState('');
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
   const [creatingOwner, setCreatingOwner] = useState(false);
+  
+  // Location state
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [addingLocation, setAddingLocation] = useState(false);
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -72,12 +82,14 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
       offer_type: (property.offer_type as any) || 'sale',
       price: property.price || 0,
       description: property.description || '',
+      location: property.address || '',
       address: property.address || '',
       city: (property.city as any) || 'Dubai',
       unit_number: property.unit_number || '',
       bedrooms: property ? numberToBedroomEnum(property.bedrooms) : '',
       bathrooms: property.bathrooms || 0,
       area_sqft: property.area_sqft || 0,
+      plot_area_sqft: 0,
       status: (property.status as any) || 'vacant',
       permit_number: property.permit_number || '',
       owner_contact_id: property.owner_contact_id || '',
@@ -534,6 +546,101 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Location *</FormLabel>
+                  {showAddLocation ? (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Enter new location name"
+                        value={newLocationName}
+                        onChange={(e) => setNewLocationName(e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!newLocationName.trim() || addingLocation}
+                          onClick={async () => {
+                            if (!newLocationName.trim()) return;
+                            setAddingLocation(true);
+                            try {
+                              const newLoc = await addLocation(newLocationName.trim());
+                              if (newLoc) {
+                                field.onChange(newLoc.name);
+                                toast({
+                                  title: 'Location added',
+                                  description: `"${newLoc.name}" has been added to locations`,
+                                });
+                              }
+                            } catch (error) {
+                              toast({
+                                title: 'Error',
+                                description: 'Failed to add location',
+                                variant: 'destructive'
+                              });
+                            } finally {
+                              setAddingLocation(false);
+                              setNewLocationName('');
+                              setShowAddLocation(false);
+                            }
+                          }}
+                        >
+                          {addingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                          Add
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowAddLocation(false);
+                            setNewLocationName('');
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Select 
+                      onValueChange={(value) => {
+                        if (value === '__add_new__') {
+                          setShowAddLocation(true);
+                        } else {
+                          field.onChange(value);
+                        }
+                      }} 
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.name}>
+                            {loc.name}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="__add_new__" className="text-primary font-medium">
+                          <span className="flex items-center gap-2">
+                            <Plus className="h-4 w-4" />
+                            Add New Location
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="address"
               render={({ field }) => (
                 <FormItem className="md:col-span-2">
@@ -654,6 +761,26 @@ export const PropertyEditForm: React.FC<PropertyEditFormProps> = ({ property, on
                       type="number" 
                       min="0"
                       placeholder="Enter area in sqft" 
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="plot_area_sqft"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plot Area (sq ft)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      placeholder="Enter plot area" 
                       {...field}
                       onChange={(e) => field.onChange(Number(e.target.value))}
                     />
