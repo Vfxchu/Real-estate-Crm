@@ -68,12 +68,6 @@ const navigation: NavItem[] = [
     roles: ['admin'],
   },
   {
-    title: 'Team Management',
-    href: '/team',
-    icon: UserCheck,
-    roles: ['admin'],
-  },
-  {
     title: 'Communication',
     href: '/communication',
     icon: MessageSquare,
@@ -89,12 +83,6 @@ const navigation: NavItem[] = [
     title: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    roles: ['admin'],
-  },
-  {
-    title: 'Automation',
-    href: '/automation',
-    icon: Workflow,
     roles: ['admin'],
   },
   {

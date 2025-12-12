@@ -35,10 +35,24 @@ export const OFFER_TYPES = [
   { value: 'rent', label: 'Rent' },
 ];
 
-export const PROPERTY_STATUS = [
+// Active property statuses
+export const PROPERTY_STATUS_ACTIVE = [
   { value: 'vacant', label: 'Vacant' },
   { value: 'rented', label: 'Rented' },
   { value: 'in_development', label: 'In Development' },
+];
+
+// Inactive/Off-market property statuses
+export const PROPERTY_STATUS_INACTIVE = [
+  { value: 'not_available_sold', label: 'Not Available (Sold)' },
+  { value: 'not_available_rented', label: 'Not Available (Rented)' },
+  { value: 'off_market', label: 'Off Market' },
+];
+
+// Combined for backward compatibility
+export const PROPERTY_STATUS = [
+  ...PROPERTY_STATUS_ACTIVE,
+  ...PROPERTY_STATUS_INACTIVE,
 ];
 
 // Location list - full provided list from requirements

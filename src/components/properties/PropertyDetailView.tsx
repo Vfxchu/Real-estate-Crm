@@ -283,10 +283,7 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                         <span className="text-sm text-muted-foreground">Subtype</span>
                         <p className="font-medium capitalize">{property.subtype || 'N/A'}</p>
                       </div>
-                      <div>
-                        <span className="text-sm text-muted-foreground">Permit Number</span>
-                        <p className="font-medium">{property.permit_number || 'N/A'}</p>
-                      </div>
+                      {/* Permit Number hidden for now */}
                       <div>
                         <span className="text-sm text-muted-foreground">Unit Number</span>
                         <p className="font-medium">{property.unit_number || 'N/A'}</p>

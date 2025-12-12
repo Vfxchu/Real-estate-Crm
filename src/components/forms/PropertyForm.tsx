@@ -36,7 +36,7 @@ const propertySchema = z.object({
   bathrooms: z.number().int("Bathrooms must be a whole number").min(0).optional(),
   area_sqft: z.number().min(0).optional(),
   plot_area_sqft: z.number().min(0).optional(),
-  status: z.enum(['vacant', 'rented', 'in_development'], { required_error: "Status is required" }),
+  status: z.enum(['vacant', 'rented', 'in_development', 'not_available_sold', 'not_available_rented', 'off_market'], { required_error: "Status is required" }),
   permit_number: z.string().optional(),
   owner_contact_id: z.string().min(1, "Owner contact is required"),
   agent_id: z.string().optional(),
@@ -1211,9 +1211,16 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          {/* Active Statuses */}
                           <SelectItem value="vacant">Vacant</SelectItem>
                           <SelectItem value="rented">Rented</SelectItem>
                           <SelectItem value="in_development">In Development</SelectItem>
+                          {/* Separator */}
+                          <div className="my-1 border-t border-border" />
+                          <div className="px-2 py-1 text-xs text-muted-foreground font-medium">Inactive / Off Market</div>
+                          <SelectItem value="not_available_sold">Not Available (Sold)</SelectItem>
+                          <SelectItem value="not_available_rented">Not Available (Rented)</SelectItem>
+                          <SelectItem value="off_market">Off Market</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1221,19 +1228,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="permit_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Permit Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter permit number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Permit Number hidden for now */}
               </div>
             </div>
 

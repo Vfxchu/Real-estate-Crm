@@ -12,15 +12,12 @@ import ClearableSelect from "@/components/ui/ClearableSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
-import { useContacts } from "@/hooks/useContacts";
 import { useProperties } from "@/hooks/useProperties";
-import { useDeals } from "@/hooks/useDeals";
 import { Loader2, Calendar, Clock } from "lucide-react";
 import { CalendarEvent } from "@/types";
 import { format, addHours } from 'date-fns';
 
 const eventSchema = z.object({
-  title: z.string().min(1, "Event title is required"),
   description: z.string().optional(),
   event_type: z.enum(['property_viewing', 'lead_call', 'contact_meeting', 'follow_up', 'general'], { 
     required_error: "Event type is required" 
@@ -28,12 +25,9 @@ const eventSchema = z.object({
   status: z.enum(['scheduled', 'completed', 'cancelled', 'rescheduled']).default('scheduled'),
   start_date: z.string().min(1, "Start date and time is required"),
   end_date: z.string().optional(),
-  location: z.string().optional(),
   notes: z.string().optional(),
-  lead_id: z.string().optional(),
   property_id: z.string().optional(),
-  contact_id: z.string().optional(),
-  deal_id: z.string().optional(),
+  contact_id: z.string().min(1, "Contact is required"),
   reminder_minutes: z.number().min(0).default(15),
 });
 
@@ -47,7 +41,6 @@ interface CalendarEventFormProps {
   defaultDate?: Date;
   preselectedContact?: string;
   preselectedProperty?: string;
-  preselectedDeal?: string;
 }
 
 const eventTypeOptions = [
@@ -75,6 +68,18 @@ const reminderOptions = [
   { value: 1440, label: '1 day' },
 ];
 
+// Auto-generate title based on event type
+const getAutoTitle = (eventType: string) => {
+  const titles: Record<string, string> = {
+    'property_viewing': 'Property Viewing',
+    'lead_call': 'Lead Call',
+    'contact_meeting': 'Contact Meeting',
+    'follow_up': 'Follow Up',
+    'general': 'General Event',
+  };
+  return titles[eventType] || 'Event';
+};
+
 export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({ 
   open, 
   onOpenChange, 
@@ -82,33 +87,25 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
   editEvent,
   defaultDate,
   preselectedContact,
-  preselectedProperty,
-  preselectedDeal
+  preselectedProperty
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { createEvent, updateEvent } = useCalendarEvents();
-  const contacts = useContacts();
   const { properties } = useProperties();
-  const { deals } = useDeals();
   const [loading, setLoading] = useState(false);
-  // Remove unused contactsList as SearchableContactCombobox loads its own contacts
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
-      title: '',
       description: '',
       event_type: 'general',
       status: 'scheduled',
       start_date: defaultDate ? format(defaultDate, "yyyy-MM-dd'T'HH:mm") : '',
       end_date: defaultDate ? format(addHours(defaultDate, 1), "yyyy-MM-dd'T'HH:mm") : '',
-      location: '',
       notes: '',
-      lead_id: '',
       property_id: preselectedProperty || '',
       contact_id: preselectedContact || '',
-      deal_id: preselectedDeal || '',
       reminder_minutes: 15,
     },
   });
@@ -117,18 +114,14 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
   useEffect(() => {
     if (editEvent) {
       form.reset({
-        title: editEvent.title || '',
         description: editEvent.description || '',
         event_type: editEvent.event_type as any || 'general',
         status: editEvent.status as any || 'scheduled',
         start_date: editEvent.start_date ? format(new Date(editEvent.start_date), "yyyy-MM-dd'T'HH:mm") : '',
         end_date: editEvent.end_date ? format(new Date(editEvent.end_date), "yyyy-MM-dd'T'HH:mm") : '',
-        location: editEvent.location || '',
         notes: editEvent.notes || '',
-        lead_id: editEvent.lead_id || '',
         property_id: editEvent.property_id || '',
         contact_id: editEvent.contact_id || '',
-        deal_id: editEvent.deal_id || '',
         reminder_minutes: editEvent.reminder_minutes || 15,
       });
     } else {
@@ -136,42 +129,37 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
       const endDate = addHours(startDate, 1);
       
       form.reset({
-        title: '',
         description: '',
         event_type: 'general',
         status: 'scheduled',
         start_date: format(startDate, "yyyy-MM-dd'T'HH:mm"),
         end_date: format(endDate, "yyyy-MM-dd'T'HH:mm"),
-        location: '',
         notes: '',
-        lead_id: '',
         property_id: preselectedProperty || '',
         contact_id: preselectedContact || '',
-        deal_id: preselectedDeal || '',
         reminder_minutes: 15,
       });
     }
-  }, [editEvent, form, defaultDate, preselectedContact, preselectedProperty, preselectedDeal]);
-
-  // Load contacts is handled by SearchableContactCombobox internally
-  useEffect(() => {
-    // No longer needed as SearchableContactCombobox handles its own data
-  }, [open]);
+  }, [editEvent, form, defaultDate, preselectedContact, preselectedProperty]);
 
   const onSubmit = async (data: EventFormData) => {
     try {
       setLoading(true);
 
+      // Auto-generate title from event type
+      const title = editEvent?.title || getAutoTitle(data.event_type);
+
       const eventData = {
-        ...data,
+        title,
+        event_type: data.event_type,
+        status: data.status,
+        start_date: data.start_date,
         description: data.description || null,
         end_date: data.end_date || null,
-        location: data.location || null,
         notes: data.notes || null,
-        lead_id: data.lead_id || null,
         property_id: data.property_id || null,
         contact_id: data.contact_id || null,
-        deal_id: data.deal_id || null,
+        reminder_minutes: data.reminder_minutes,
       };
 
       if (editEvent) {
@@ -219,22 +207,8 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Basic Information */}
+            {/* Event Type and Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Event Title *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter event title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
               <FormField
                 control={form.control}
                 name="event_type"
@@ -360,28 +334,6 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
 
               <FormField
                 control={form.control}
-                name="deal_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deal</FormLabel>
-                    <FormControl>
-                      <ClearableSelect
-                        value={field.value}
-                        onChange={field.onChange}
-                        options={deals.map(d => ({ 
-                          value: d.id, 
-                          label: d.title 
-                        }))}
-                        placeholder="Select deal"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="reminder_minutes"
                 render={({ field }) => (
                   <FormItem>
@@ -403,20 +355,6 @@ export const CalendarEventForm: React.FC<CalendarEventFormProps> = ({
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter event location" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

@@ -496,15 +496,30 @@ export const Properties = () => {
 
   const getStatusColor = (status: Property['status']) => {
     switch (status) {
+      case 'vacant': return 'bg-success text-success-foreground';
+      case 'rented': return 'bg-info text-info-foreground';
+      case 'in_development': return 'bg-warning text-warning-foreground';
+      case 'not_available_sold': return 'bg-muted text-muted-foreground';
+      case 'not_available_rented': return 'bg-muted text-muted-foreground';
+      case 'off_market': return 'bg-muted text-muted-foreground';
+      // Legacy status handling
       case 'available': return 'bg-success text-success-foreground';
       case 'pending': return 'bg-warning text-warning-foreground';
-      case 'sold': return 'bg-info text-info-foreground';
-      case 'off_market': return 'bg-muted text-muted-foreground';
-      case 'rented': return 'bg-info text-info-foreground';
-      case 'vacant': return 'bg-muted text-muted-foreground';
-      case 'in_development': return 'bg-warning text-warning-foreground';
+      case 'sold': return 'bg-muted text-muted-foreground';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const formatStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'vacant': 'Vacant',
+      'rented': 'Rented',
+      'in_development': 'In Development',
+      'not_available_sold': 'Not Available (Sold)',
+      'not_available_rented': 'Not Available (Rented)',
+      'off_market': 'Off Market',
+    };
+    return labels[status] || status.replace('_', ' ');
   };
 
   const getTypeIcon = (type: string) => {
@@ -906,7 +921,7 @@ export const Properties = () => {
                         </div>
                         <div className="flex flex-col gap-1">
                           <Badge className={getStatusColor(property.status)}>
-                            {property.status}
+                            {formatStatusLabel(property.status)}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
                             {property.offer_type}
@@ -1092,7 +1107,7 @@ export const Properties = () => {
                       </div>
                       <div className="flex flex-col gap-1">
                         <Badge className={getStatusColor(property.status)}>
-                          {property.status}
+                          {formatStatusLabel(property.status)}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
                           {property.offer_type}
