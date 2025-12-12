@@ -298,7 +298,6 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="images">Images</TabsTrigger>
                 {canViewSensitive && <TabsTrigger value="documents">Documents</TabsTrigger>}
-                <TabsTrigger value="portals">🌐 Portals</TabsTrigger>
                 {showActivities && <TabsTrigger value="activities">Activities</TabsTrigger>}
               </TabsList>
 
@@ -367,12 +366,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                           <div className="font-medium capitalize">{property.view}</div>
                         </div>
                       )}
-                      {property.permit_number && (
-                        <div>
-                          <div className="text-sm text-muted-foreground">Permit Number</div>
-                          <div className="font-medium">{property.permit_number}</div>
-                        </div>
-                      )}
+                      {/* Permit Number hidden for now */}
                     </div>
 
                     {property.description && (
@@ -574,13 +568,7 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                 </TabsContent>
               )}
 
-              {/* Portals Tab */}
-              <TabsContent value="portals" className="mt-4">
-                <PropertyPortalsView 
-                  property={property as Property}
-                  onUpdate={onUpdate}
-                />
-              </TabsContent>
+              {/* Portals Tab hidden for now */}
 
               {/* Activities Tab */}
               {showActivities && (
