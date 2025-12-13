@@ -353,10 +353,19 @@ export const PropertyDetailDrawer: React.FC<PropertyDetailDrawerProps> = ({
                       )}
                       {property.area_sqft && (
                         <div>
-                          <div className="text-sm text-muted-foreground">Area</div>
+                          <div className="text-sm text-muted-foreground">Built-up Area</div>
                           <div className="flex items-center gap-1 font-medium">
                             <Square className="w-4 h-4" />
                             {property.area_sqft.toLocaleString()} sqft
+                          </div>
+                        </div>
+                      )}
+                      {(property as any).plot_area_sqft && (
+                        <div>
+                          <div className="text-sm text-muted-foreground">Plot Area</div>
+                          <div className="flex items-center gap-1 font-medium">
+                            <Square className="w-4 h-4" />
+                            {(property as any).plot_area_sqft.toLocaleString()} sqft
                           </div>
                         </div>
                       )}

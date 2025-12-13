@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Card } from '@/components/ui/card';
 import ClearableSelect from '@/components/ui/ClearableSelect';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { asOptional } from '@/lib/schema-utils';
 import { useToast } from '@/hooks/use-toast';
 import { Lead } from '@/types';
@@ -583,7 +584,11 @@ export default function UnifiedContactForm({
                     <FormItem>
                       <FormLabel>Phone Number *</FormLabel>
                       <FormControl>
-                        <Input placeholder="+971501234567" {...field} />
+                        <PhoneInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="50 123 4567"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
