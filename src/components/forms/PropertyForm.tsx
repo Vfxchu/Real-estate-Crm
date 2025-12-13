@@ -17,6 +17,8 @@ import { Loader2, Upload, X, Image as ImageIcon, FileText, LayoutDashboard, Plus
 import { useContacts } from "@/hooks/useContacts";
 import { BEDROOM_OPTIONS, bedroomEnumToNumber, numberToBedroomEnum, BedroomEnum } from "@/constants/bedrooms";
 import { SearchableContactCombobox } from "@/components/ui/SearchableContactCombobox";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { VIEW_OPTIONS } from "@/constants/property";
 import { useSessionMonitor } from "@/hooks/useSessionMonitor";
 import { useLocations } from "@/hooks/useLocations";
@@ -100,9 +102,7 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
   const [showAddOwner, setShowAddOwner] = useState(false);
   const [newOwnerName, setNewOwnerName] = useState('');
   const [newOwnerPhone, setNewOwnerPhone] = useState('');
-  const [showAddLocation, setShowAddLocation] = useState(false);
-  const [newLocationName, setNewLocationName] = useState('');
-  const [addingLocation, setAddingLocation] = useState(false);
+  // Note: Location state managed by SearchableSelect component
   const [newOwnerEmail, setNewOwnerEmail] = useState('');
   const [creatingOwner, setCreatingOwner] = useState(false);
 
@@ -939,76 +939,29 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Location *</FormLabel>
-                      {!showAddLocation ? (
-                        <Select 
-                          onValueChange={(value) => {
-                            if (value === '__add_new__') {
-                              setShowAddLocation(true);
-                            } else {
-                              field.onChange(value);
-                            }
-                          }} 
+                      <FormControl>
+                        <SearchableSelect
+                          options={locations.map((loc) => ({ value: loc.name, label: loc.name }))}
                           value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="max-h-[200px]">
-                            {locations.map((location) => (
-                              <SelectItem key={location.id} value={location.name}>
-                                {location.name}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="__add_new__" className="text-primary font-medium border-t mt-1 pt-2">
-                              <span className="flex items-center gap-2">
-                                <Plus className="h-4 w-4" />
-                                Add New Location
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              placeholder="Enter new location name"
-                              value={newLocationName}
-                              onChange={(e) => setNewLocationName(e.target.value)}
-                              autoFocus
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={addingLocation || !newLocationName.trim()}
-                              onClick={async () => {
-                                setAddingLocation(true);
-                                const newLoc = await addLocation(newLocationName);
-                                if (newLoc) {
-                                  field.onChange(newLoc.name);
-                                  setNewLocationName('');
-                                  setShowAddLocation(false);
-                                }
-                                setAddingLocation(false);
-                              }}
-                            >
-                              {addingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setShowAddLocation(false);
-                                setNewLocationName('');
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                          onValueChange={field.onChange}
+                          placeholder="Select location..."
+                          searchPlaceholder="Search locations..."
+                          emptyMessage="No locations found."
+                          allowAddNew={true}
+                          onAddNew={async (name) => {
+                            const newLoc = await addLocation(name);
+                            if (newLoc) {
+                              toast({
+                                title: 'Location added',
+                                description: `"${newLoc.name}" has been added to locations`,
+                              });
+                              return { value: newLoc.name, label: newLoc.name };
+                            }
+                            return null;
+                          }}
+                          addNewLabel="Add New Location"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1038,22 +991,23 @@ export const PropertyForm: React.FC<PropertyFormProps> = ({ open, onOpenChange, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>City *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select city" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Dubai">Dubai</SelectItem>
-                          <SelectItem value="Abu Dhabi">Abu Dhabi</SelectItem>
-                          <SelectItem value="Ras Al Khaimah">Ras Al Khaimah</SelectItem>
-                          <SelectItem value="Sharjah">Sharjah</SelectItem>
-                          <SelectItem value="Umm Al Quwain">Umm Al Quwain</SelectItem>
-                          <SelectItem value="Ajman">Ajman</SelectItem>
-                          <SelectItem value="Fujairah">Fujairah</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <SearchableSelect
+                          options={[
+                            { value: 'Dubai', label: 'Dubai' },
+                            { value: 'Abu Dhabi', label: 'Abu Dhabi' },
+                            { value: 'Ras Al Khaimah', label: 'Ras Al Khaimah' },
+                            { value: 'Sharjah', label: 'Sharjah' },
+                            { value: 'Umm Al Quwain', label: 'Umm Al Quwain' },
+                            { value: 'Ajman', label: 'Ajman' },
+                            { value: 'Fujairah', label: 'Fujairah' },
+                          ]}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select city..."
+                          searchPlaceholder="Search cities..."
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

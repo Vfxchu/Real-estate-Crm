@@ -227,11 +227,11 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                       </div>
 
                       {(property.bedrooms || property.bathrooms || property.area_sqft) && (
-                        <div className="flex gap-6 pt-2">
-                          {property.bedrooms && (
+                        <div className="flex flex-wrap gap-6 pt-2">
+                          {property.bedrooms !== null && property.bedrooms !== undefined && (
                             <div className="flex items-center gap-1">
                               <Bed className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{property.bedrooms} beds</span>
+                              <span className="text-sm">{property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} beds`}</span>
                             </div>
                           )}
                           {property.bathrooms && (
@@ -243,7 +243,13 @@ export const PropertyDetailView: React.FC<PropertyDetailViewProps> = ({
                           {property.area_sqft && (
                             <div className="flex items-center gap-1">
                               <Square className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm">{property.area_sqft} sqft</span>
+                              <span className="text-sm">{property.area_sqft.toLocaleString()} sqft (Built-up)</span>
+                            </div>
+                          )}
+                          {(property as any).plot_area_sqft && (
+                            <div className="flex items-center gap-1">
+                              <Square className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm">{(property as any).plot_area_sqft.toLocaleString()} sqft (Plot)</span>
                             </div>
                           )}
                         </div>
