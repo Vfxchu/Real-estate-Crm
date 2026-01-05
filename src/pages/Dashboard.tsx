@@ -3,6 +3,7 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { LeadsChart } from '@/components/dashboard/LeadsChart';
 import { PropertiesOverview } from '@/components/dashboard/PropertiesOverview';
+import { MiniCalendarWidget } from '@/components/dashboard/MiniCalendarWidget';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -333,6 +334,9 @@ export const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mini Calendar Widget */}
+      <MiniCalendarWidget />
 
       {/* Add Lead Form */}
       <Dialog open={addLeadFormOpen} onOpenChange={setAddLeadFormOpen}>
